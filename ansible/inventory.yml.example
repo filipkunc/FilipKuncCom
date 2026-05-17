@@ -1,0 +1,17 @@
+# Copy to inventory.yml (gitignored) and fill in your box's public IPv4.
+# First run uses root (Hetzner Debian 12 default). Key-only SSH stays on
+# afterwards; passwords are disabled by the playbook.
+all:
+  hosts:
+    filipkunc:
+      ansible_host: REPLACE_WITH_HETZNER_IPV4
+      ansible_user: root
+      ansible_python_interpreter: /usr/bin/python3
+  vars:
+    app_name: filipkunc-com
+    app_domain: filipkunc.com
+    deploy_user: deploy
+    # Path on laptop to the SSH pubkey that should authorize the deploy user.
+    deploy_pubkey_file: ~/.ssh/id_ed25519.pub
+    # Email used by Caddy for Let's Encrypt account.
+    acme_email: kunc.filip@gmail.com

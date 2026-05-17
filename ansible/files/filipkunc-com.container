@@ -1,0 +1,31 @@
+# Podman Quadlet unit for the app. Ansible drops this at
+# ~deploy/.config/containers/systemd/filipkunc-com.container — `systemctl
+# --user daemon-reload` generates a filipkunc-com.service from it.
+#
+# Phase 2 mapping note: every field below has a k8s analogue.
+# Image -> Deployment.spec.template.spec.containers[].image
+# PublishPort -> Service / hostPort
+# Restart=on-failure -> Deployment / kubelet
+# (a readinessProbe will appear there; here, deploy.sh polls /healthz)
+
+[Unit]
+Description=filipkunc.com app (rootless podman Quadlet)
+Wants=network-online.target
+After=network-online.target
+
+[Container]
+Image=localhost/filipkunc-com:latest
+ContainerName=filipkunc-com
+PublishPort=127.0.0.1:8080:8080
+Environment=NODE_ENV=production
+# GIT_SHA is baked into the image at build time — surfaced by the app.
+# No tini: the app handles SIGTERM as PID 1.
+
+[Service]
+Restart=on-failure
+TimeoutStartSec=60
+# After 10s without SIGTERM honoring drain, podman will SIGKILL the container.
+TimeoutStopSec=15
+
+[Install]
+WantedBy=default.target
