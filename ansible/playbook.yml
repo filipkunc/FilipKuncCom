@@ -40,21 +40,20 @@
         state: present
 
     # --- ssh hardening ------------------------------------------------------
+    # Ubuntu 24.04's sshd_config includes /etc/ssh/sshd_config.d/*.conf, and
+    # cloud images sometimes ship drop-ins that re-enable password auth. A
+    # numbered-last drop-in is the robust place to harden.
 
-    - name: SSH — disable password auth
-      ansible.builtin.lineinfile:
-        path: /etc/ssh/sshd_config
-        regexp: '^#?\s*PasswordAuthentication\s'
-        line: 'PasswordAuthentication no'
-        validate: '/usr/sbin/sshd -t -f %s'
-      notify: restart sshd
-
-    - name: SSH — disable challenge-response
-      ansible.builtin.lineinfile:
-        path: /etc/ssh/sshd_config
-        regexp: '^#?\s*KbdInteractiveAuthentication\s'
-        line: 'KbdInteractiveAuthentication no'
-        validate: '/usr/sbin/sshd -t -f %s'
+    - name: SSH hardening drop-in
+      ansible.builtin.copy:
+        dest: /etc/ssh/sshd_config.d/99-hardening.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          PasswordAuthentication no
+          KbdInteractiveAuthentication no
+          PermitRootLogin prohibit-password
       notify: restart sshd
 
     # --- firewall -----------------------------------------------------------
@@ -109,6 +108,7 @@
           | gpg --dearmor -o {{ caddy_keyring }}
       args:
         creates: "{{ caddy_keyring }}"
+        executable: /bin/bash
 
     - name: Caddy apt repo
       ansible.builtin.copy:

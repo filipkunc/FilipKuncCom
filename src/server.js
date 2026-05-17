@@ -33,6 +33,7 @@ const server = http.createServer((req, res) => {
       service: 'filipkunc.com',
       gitSha: GIT_SHA,
       uptimeSec: Math.round((Date.now() - BOOT_AT) / 1000),
+      phase: 1,
     }));
     return;
   }
