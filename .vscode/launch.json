@@ -1,0 +1,29 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug: Node server (build + launch)",
+      "type": "node",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/server-dist/index.js",
+      "outFiles": ["${workspaceFolder}/server-dist/**/*.js"],
+      "env": {
+        "GIT_SHA": "dev",
+        "PORT": "8080",
+        "NODE_ENV": "development"
+      },
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"],
+      "smartStep": true
+    },
+    {
+      "name": "Attach: Node :9229",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "restart": true,
+      "skipFiles": ["<node_internals>/**"]
+    }
+  ]
+}

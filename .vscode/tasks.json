@@ -1,0 +1,95 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "dev",
+      "detail": "Astro dev server on :4321 (Vite HMR for .mdx / .astro)",
+      "type": "npm",
+      "script": "dev",
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always",
+        "clear": true
+      }
+    },
+    {
+      "label": "build",
+      "detail": "astro build (dist/) + tsc server (server-dist/)",
+      "type": "npm",
+      "script": "build",
+      "problemMatcher": ["$tsc"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "panel": "shared",
+        "reveal": "silent"
+      }
+    },
+    {
+      "label": "check",
+      "detail": "astro check + tsc --noEmit on the Node server",
+      "type": "npm",
+      "script": "check",
+      "problemMatcher": ["$tsc"],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "start (prod-like local)",
+      "detail": "Build then run the compiled Node server on :8080 — mirrors what ships",
+      "type": "shell",
+      "command": "GIT_SHA=$(git rev-parse --short=12 HEAD) npm run start",
+      "isBackground": true,
+      "problemMatcher": [],
+      "dependsOn": ["build"],
+      "dependsOrder": "sequence",
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always",
+        "clear": true
+      }
+    },
+    {
+      "label": "container: build",
+      "detail": "podman build of the prod image, tagged :local + :<short-sha>",
+      "type": "shell",
+      "command": "SHA=$(git rev-parse --short=12 HEAD); podman build --build-arg GIT_SHA=$SHA -t filipkunc-com:local -t filipkunc-com:$SHA .",
+      "problemMatcher": []
+    },
+    {
+      "label": "container: run",
+      "detail": "Run the prod image locally on :8080 (build first if needed)",
+      "type": "shell",
+      "command": "podman rm -f filipkunc-test 2>/dev/null; podman run --rm -p 8080:8080 --name filipkunc-test filipkunc-com:local",
+      "isBackground": true,
+      "problemMatcher": [],
+      "dependsOn": ["container: build"],
+      "dependsOrder": "sequence",
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always",
+        "clear": true
+      }
+    },
+    {
+      "label": "container: stop",
+      "detail": "Stop the local container started by 'container: run'",
+      "type": "shell",
+      "command": "podman rm -f filipkunc-test 2>/dev/null || true",
+      "problemMatcher": []
+    },
+    {
+      "label": "meshmaker: rebuild & sync",
+      "detail": "Build MeshMakerWeb with base=/meshmaker/ and rsync into public/meshmaker/",
+      "type": "shell",
+      "command": "./scripts/update-meshmaker.sh",
+      "problemMatcher": []
+    }
+  ]
+}
