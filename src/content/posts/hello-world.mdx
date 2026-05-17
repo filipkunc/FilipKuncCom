@@ -1,0 +1,29 @@
+---
+title: "Hello, world"
+description: "First post on the new filipkunc.com — built with Astro + MDX."
+pubDate: 2026-05-17
+tags: ["meta", "astro"]
+---
+
+This is the first post on the new site.
+
+The site is built with **Astro** and **MDX**, deployed to a Hetzner box via the same
+`./deploy.sh` script we set up in Phase 1. The "image is the only artifact" contract
+still holds — `astro build` produces a `dist/` folder, the Dockerfile bundles it with
+a tiny Node static server, and the resulting OCI image is what ships.
+
+## Why MDX
+
+Because plain Markdown is too plain and full JSX is too much. MDX is just Markdown
+where you can drop a component in when the writing needs more than text:
+
+```mdx
+import Demo from '../../components/Demo.astro';
+
+Some prose, and then:
+
+<Demo prop="value" />
+```
+
+That's it. Going to use this to ship long-form posts, small interactive demos, and
+eventually link out to [MeshMaker](/meshmaker).

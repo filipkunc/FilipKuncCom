@@ -1,12 +1,16 @@
 .git
 .gitignore
 node_modules
+dist
+server-dist
+.astro
 npm-debug.log*
 .env
 .env.local
 ansible
 deploy.sh
 rollback.sh
+scripts
 playground-deploy-phases.md
 README.md
 *.md

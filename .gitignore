@@ -1,4 +1,7 @@
 node_modules/
+dist/
+server-dist/
+.astro/
 npm-debug.log*
 .env
 .env.local

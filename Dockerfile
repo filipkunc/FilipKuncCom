@@ -1,33 +1,40 @@
-# Multi-stage build. The "build" stage is a placeholder for future tooling
-# (TypeScript compile, bundler, prisma generate, etc.). Today it just gathers
-# the production tree so the final stage is minimal.
+# Multi-stage build for the Astro static site + tiny Node static server.
+# The image is the only release artifact (per playground-deploy-phases.md).
+# Runtime stage has no node_modules: server is pure Node-builtins, site is static.
 
 ARG NODE_VERSION=22-alpine
 
+# --- build stage -------------------------------------------------------------
 FROM node:${NODE_VERSION} AS build
 WORKDIR /app
-COPY package.json ./
-# When real deps exist:
-# COPY package-lock.json ./
-# RUN npm ci --omit=dev
-COPY src ./src
 
+# Install deps with a clean cache. package-lock.json is the integrity check.
+COPY package.json package-lock.json* ./
+RUN npm ci --no-audit --no-fund
+
+# Bring in source + static assets and build.
+COPY tsconfig.json astro.config.mjs ./
+COPY src ./src
+COPY public ./public
+
+# astro build → dist/ ; tsc → server-dist/
+RUN npm run build
+
+# --- runtime stage -----------------------------------------------------------
 FROM node:${NODE_VERSION} AS runtime
 WORKDIR /app
 
-# GIT_SHA is the only build-time variable that matters: it is the artifact's
-# identity. Bake it as an env var so the running container can surface it
-# (response bodies, logs, traces).
 ARG GIT_SHA=unknown
 ENV GIT_SHA=${GIT_SHA}
 ENV NODE_ENV=production
 ENV PORT=8080
 
-# Run as non-root. The official node image already ships a `node` user.
-COPY --from=build --chown=node:node /app /app
-USER node
+# Only what the server needs at runtime: the static site + the compiled server.
+COPY --from=build --chown=node:node /app/dist ./dist
+COPY --from=build --chown=node:node /app/server-dist ./server-dist
 
+USER node
 EXPOSE 8080
 
 # Exec form — node becomes PID 1 and receives SIGTERM directly.
-CMD ["node", "src/server.js"]
+CMD ["node", "server-dist/index.js"]

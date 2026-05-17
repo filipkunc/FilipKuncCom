@@ -3,12 +3,23 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "filipkunc.com backend — Phase 1 playground.",
+  "description": "filipkunc.com — Astro + MDX content site, served by a tiny Node static server.",
   "engines": {
     "node": ">=22"
   },
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "dev": "astro dev",
+    "build": "astro build && npm run build:server",
+    "build:server": "tsc -p src/server/tsconfig.json",
+    "start": "node server-dist/index.js",
+    "preview": "astro preview",
+    "check": "astro check && tsc -p src/server/tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.4",
+    "@astrojs/mdx": "^4.0.0",
+    "@astrojs/sitemap": "^3.2.1",
+    "astro": "^5.0.0",
+    "typescript": "^5.6.0"
   }
 }
