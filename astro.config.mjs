@@ -9,6 +9,12 @@ export default defineConfig({
   build: {
     format: 'directory',
   },
+  image: {
+    // 'constrained' = image fills its container up to its intrinsic width,
+    // emits <img srcset sizes> so the browser picks the right resolution
+    // (including 2x for high-DPI screens). Applies to Markdown ![]() too.
+    layout: 'constrained',
+  },
   integrations: [
     mdx(),
     sitemap({

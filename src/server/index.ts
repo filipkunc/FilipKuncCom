@@ -39,7 +39,41 @@ const MIME: Record<string, string> = {
   '.xml': 'application/xml; charset=utf-8',
   '.map': 'application/json',
   '.pdf': 'application/pdf',
+  '.webm': 'video/webm',
+  '.mp4': 'video/mp4',
+  '.mov': 'video/quicktime',
+  '.mp3': 'audio/mpeg',
+  '.ogg': 'audio/ogg',
+  '.m4a': 'audio/mp4',
+  '.wav': 'audio/wav',
 };
+
+// HTTP Range header: "bytes=START-END" (END optional). Returns [start, end] within fileSize bounds.
+function parseRange(header: string | undefined, fileSize: number): [number, number] | null {
+  if (!header) return null;
+  const m = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
+  if (!m) return null;
+  const startStr = m[1] ?? '';
+  const endStr = m[2] ?? '';
+  let start: number;
+  let end: number;
+  if (startStr === '' && endStr !== '') {
+    // suffix-range: last N bytes
+    const n = Number(endStr);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    start = Math.max(0, fileSize - n);
+    end = fileSize - 1;
+  } else if (startStr !== '') {
+    start = Number(startStr);
+    end = endStr === '' ? fileSize - 1 : Number(endStr);
+  } else {
+    return null;
+  }
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+  if (start < 0 || end < start || start >= fileSize) return null;
+  end = Math.min(end, fileSize - 1);
+  return [start, end];
+}
 
 function log(event: string, fields: Record<string, unknown> = {}): void {
   process.stdout.write(JSON.stringify({ t: new Date().toISOString(), event, ...fields }) + '\n');
@@ -148,8 +182,34 @@ const server = http.createServer(async (req, res) => {
 
   const ext = path.extname(file).toLowerCase();
   const mime = MIME[ext] ?? 'application/octet-stream';
+  const stat = await fs.stat(file);
+  const fileSize = stat.size;
+
+  // Range request — required for <video> seeking and for browsers to begin
+  // playback before downloading the whole file.
+  const range = parseRange(req.headers.range, fileSize);
+  if (range) {
+    const [start, end] = range;
+    res.writeHead(206, {
+      'content-type': mime,
+      'content-length': String(end - start + 1),
+      'content-range': `bytes ${start}-${end}/${fileSize}`,
+      'accept-ranges': 'bytes',
+      'cache-control': cacheHeaderFor(file),
+      'x-git-sha': GIT_SHA,
+    });
+    if (req.method === 'HEAD') {
+      res.end();
+      return;
+    }
+    createReadStream(file, { start, end }).pipe(res);
+    return;
+  }
+
   res.writeHead(200, {
     'content-type': mime,
+    'content-length': String(fileSize),
+    'accept-ranges': 'bytes',
     'cache-control': cacheHeaderFor(file),
     'x-git-sha': GIT_SHA,
   });
