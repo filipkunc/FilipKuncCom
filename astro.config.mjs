@@ -47,7 +47,9 @@ export default defineConfig({
     sitemap({
       // Skip embedded apps' own routes — they're not site content.
       filter: (page) =>
-        !page.includes('/meshmaker/') && !page.includes('/space-warrior/'),
+        !page.includes('/meshmaker/') &&
+        !page.includes('/space-warrior/') &&
+        !page.includes('/gentis/'),
     }),
   ],
 });

@@ -9,16 +9,26 @@ I had worked on a few projects in the past, especially hobby game development wi
 
 ## Space Warrior
 
-A 2D side-scrolling platformer my brother and I built around 2010–2011 in
+A 2D side-scrolling platformer my brother and I built around 2002-2003 in
 Visual Studio (Win32 + OpenGL 1.1 + 24-bit BMP sprites). The original code is
 preserved almost verbatim — only the platform layer (window, input, sprites,
-text) is replaced — and compiled to WebAssembly with Emscripten.
+text) is replaced — and compiled to WebAssembly with Emscripten via Claude.
+
+At the time I was learning C++ and [DirectDraw](https://en.wikipedia.org/wiki/DirectDraw) which was the only choice for the first Pentium. Later ported the code few years later to OpenGL.
+
+![Space Warrior](./space-warrior.png)
 
 Play it here: [Space Warrior](/space-warrior).
 
-Controls: arrows to move and jump, **Space** to use doors/switches/exits,
-**T** to fire, **R** to cycle weapons, **P** to pause, **Esc** for menu.
-Cheats from the original 2011 build still work — **N** skips to the next
-level, **M** refills lives, **A** grants armor, **J** grants the jetpack,
-**F** opens the key gate.
+## Gentis
 
+Third-person 3D game not really finished. It was built around 2004-2005 and then heavily rebuilt around 2007-2008.
+At this time I had improved my C++ skills considerably and started to understand 3D math and graphics programming.
+
+It was never really finished, but it got me to learn scripting via [Lua](https://www.lua.org/), [OpenGL](https://www.opengl.org/) and many SDKs from [Nvidia](https://developer.nvidia.com/).
+
+This one was ported manually to WebGL2 and WebAssembly with Emscripten, but I had to rewrite the rendering engine from scratch as it was using fixed-function pipeline and many deprecated features.
+
+![Gentis](./gentis.png)
+
+Play it here: [Gentis](/gentis).
