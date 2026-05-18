@@ -1,6 +1,30 @@
 import { defineConfig } from 'astro/config';
 import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
+import fs from 'node:fs';
+import path from 'node:path';
+
+// Dev-only middleware: rewrite `/foo` to `/foo/index.html` when
+// `public/foo/index.html` exists. Mirrors what src/server/index.ts does
+// in production, so /meshmaker, /space-warrior etc. resolve in `astro dev`
+// without needing the explicit `.html` suffix.
+const publicDirIndex = {
+  name: 'public-dir-index',
+  apply: 'serve',
+  configureServer(server) {
+    server.middlewares.use((req, _res, next) => {
+      const url = req.url ?? '/';
+      const [pathOnly, query] = url.split('?', 2);
+      if (pathOnly !== '/' && !path.extname(pathOnly) && !pathOnly.endsWith('/')) {
+        const candidate = path.join(process.cwd(), 'public', pathOnly, 'index.html');
+        if (fs.existsSync(candidate)) {
+          req.url = pathOnly + '/index.html' + (query ? '?' + query : '');
+        }
+      }
+      next();
+    });
+  },
+};
 
 export default defineConfig({
   site: 'https://filipkunc.com',
@@ -8,6 +32,9 @@ export default defineConfig({
   trailingSlash: 'never',
   build: {
     format: 'directory',
+  },
+  vite: {
+    plugins: [publicDirIndex],
   },
   image: {
     // 'constrained' = image fills its container up to its intrinsic width,
@@ -18,8 +45,9 @@ export default defineConfig({
   integrations: [
     mdx(),
     sitemap({
-      // Skip /meshmaker/* — that's MeshMakerWeb's own app, not site content.
-      filter: (page) => !page.includes('/meshmaker/'),
+      // Skip embedded apps' own routes — they're not site content.
+      filter: (page) =>
+        !page.includes('/meshmaker/') && !page.includes('/space-warrior/'),
     }),
   ],
 });
