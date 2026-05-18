@@ -5,16 +5,17 @@ pubDate: 2026-05-18
 tags: ["webgl", "wasm", "claude"]
 ---
 
-I had worked on a few projects in the past, especially hobby game development with my brother and I wanted to revive some of them and keep them alive.
+I worked on a bunch of hobby projects with my brother years ago, mostly games. I wanted to revive some of them and keep them alive.
 
 ## Space Warrior
 
 A 2D side-scrolling platformer my brother and I built around 2002-2003 in
-Visual Studio (Win32 + OpenGL 1.1 + 24-bit BMP sprites). The original code is
-preserved almost verbatim — only the platform layer (window, input, sprites,
-text) is replaced — and compiled to WebAssembly with Emscripten via Claude.
-
-At the time I was learning C++ and [DirectDraw](https://en.wikipedia.org/wiki/DirectDraw) which was the only choice for the first Pentium. Later ported the code few years later to OpenGL.
+Visual Studio. I was 16 at the time, just learning C++ and
+[DirectDraw](https://en.wikipedia.org/wiki/DirectDraw), which was the easiest
+way to push pixels around on a Pentium. A few years later I re-did the
+renderer in OpenGL, and that OpenGL build is what Claude and I compiled to
+WebAssembly with Emscripten. The game code is preserved almost verbatim;
+only the platform layer (window, input, sprites, text) was replaced.
 
 ![Space Warrior](./space-warrior.png)
 
@@ -22,12 +23,17 @@ Play it here: [Space Warrior](/space-warrior).
 
 ## Gentis
 
-Third-person 3D game not really finished. It was built around 2004-2005 and then heavily rebuilt around 2007-2008.
-At this time I had improved my C++ skills considerably and started to understand 3D math and graphics programming.
+A third-person 3D game I never quite finished. Started around 2004-2005
+and heavily rebuilt around 2007-2008. By then my C++ had improved and I
+was getting comfortable with 3D math and graphics programming.
 
-It was never really finished, but it got me to learn scripting via [Lua](https://www.lua.org/), [OpenGL](https://www.opengl.org/) and many SDKs from [Nvidia](https://developer.nvidia.com/).
+Even unfinished, it's where I picked up [Lua](https://www.lua.org/)
+scripting, [OpenGL](https://www.opengl.org/), and a pile of
+[NVIDIA](https://developer.nvidia.com/) SDKs.
 
-This one was ported manually to WebGL2 and WebAssembly with Emscripten, but I had to rewrite the rendering engine from scratch as it was using fixed-function pipeline and many deprecated features.
+I ported this one to WebGL 2 and WebAssembly by hand. The rendering had to
+be rewritten from scratch. The original relied on the fixed-function
+pipeline and other features that simply don't exist in modern GL.
 
 ![Gentis](./gentis.png)
 
