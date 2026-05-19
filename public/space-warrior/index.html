@@ -1,1 +1,198 @@
-<!doctypehtml><html lang=en><head><meta charset=utf-8><title>Space Warrior</title><style>body,html{margin:0;padding:0;background:#000;color:#ccc;font-family:ui-monospace,monospace;height:100%}#wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh}canvas{background:#000;image-rendering:pixelated;image-rendering:crisp-edges;display:block}#status{font-size:12px;padding:6px;min-height:1.2em}.controls{font-size:11px;opacity:.6;margin-top:8px;max-width:800px}</style></head><body><div id=wrap><canvas id=canvas oncontextmenu=event.preventDefault() tabindex=0></canvas><div id=status>Loading…</div><div class=controls>Arrows = move/jump  •  Space = use  •  T = fire  •  R = next weapon  •  P = pause  •  Esc = menu</div></div><script>var BASE,statusEl=document.getElementById("status"),canvas=document.getElementById("canvas");function applyIntegerScale(){var t=window.innerWidth/800,n=(window.innerHeight-80)/600,e=Math.min(t,n);e>=1&&(e=Math.floor(e)),e<=0&&(e=1),canvas.style.width=800*e+"px",canvas.style.height=600*e+"px"}canvas.width=800,canvas.height=600,applyIntegerScale(),window.addEventListener("resize",applyIntegerScale);var p=location.pathname;BASE=p.endsWith("/")?p:p.endsWith(".html")?p.replace(/[^/]*$/,""):p+"/";var Module={canvas:canvas,locateFile:function(t){return BASE+t},print:function(t){console.log(t)},printErr:function(t){console.warn(t)},setStatus:function(t){statusEl&&(statusEl.textContent=t)},onRuntimeInitialized:function(){statusEl.textContent="",canvas.focus()}};window.onerror=function(t){statusEl.textContent="error: "+t};var s=document.createElement("script");s.async=!0,s.src=BASE+"index.js",document.body.appendChild(s)</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Space Warrior</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; background: #000; color: #ccc;
+    font-family: ui-monospace, monospace; height: 100%;
+    overscroll-behavior: none;
+  }
+  #wrap {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    min-height: 100vh; position: relative;
+  }
+  canvas {
+    background: #000; display: block;
+    image-rendering: pixelated; image-rendering: crisp-edges;
+  }
+  #status { font-size: 12px; padding: 6px; min-height: 1.2em; }
+  .controls { font-size: 11px; opacity: .6; margin-top: 8px; max-width: 800px; }
+
+  #touch {
+    display: none; position: fixed; inset: 0; z-index: 10;
+    pointer-events: none; touch-action: none;
+    user-select: none; -webkit-user-select: none;
+  }
+  #touch > * { pointer-events: auto; }
+  body.touch #touch { display: block; }
+  body.touch #status, body.touch .controls { display: none; }
+  body.touch { overflow: hidden; touch-action: none; }
+  #dpad {
+    position: absolute; left: 18px; bottom: 18px;
+    width: 130px; height: 130px; border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    border: 2px solid rgba(255,255,255,0.22);
+  }
+  #dpad::after {
+    content: ''; position: absolute; left: 50%; top: 50%;
+    width: 10px; height: 10px; transform: translate(-50%,-50%);
+    background: rgba(255,255,255,0.4); border-radius: 50%;
+  }
+  .btn {
+    position: absolute; width: 78px; height: 78px;
+    border-radius: 50%; padding: 0;
+    background: rgba(255,255,255,0.12);
+    border: 2px solid rgba(255,255,255,0.32);
+    color: #fff; font: bold 13px ui-monospace, monospace;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .btn.active, .btn:active { background: rgba(255,255,255,0.32); }
+  #btn-fire { right: 18px; bottom: 18px; }
+  #btn-use  { right: 102px; bottom: 18px; }
+
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="0"></canvas>
+  <div id="status">Loading…</div>
+  <div class="controls">
+    Arrows = move/jump &nbsp;•&nbsp; Space = use &nbsp;•&nbsp; T = fire &nbsp;•&nbsp;
+    R = next weapon &nbsp;•&nbsp; P = pause &nbsp;•&nbsp; Esc = menu
+  </div>
+</div>
+
+<div id="touch" aria-hidden="true">
+  <div id="dpad"></div>
+  <button id="btn-fire" class="btn">FIRE</button>
+  <button id="btn-use"  class="btn">USE</button>
+</div>
+
+<script>
+  var statusEl = document.getElementById('status');
+  var canvas = document.getElementById('canvas');
+
+  var IS_TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  if (IS_TOUCH) document.body.classList.add('touch');
+
+  function isTouchUI() { return IS_TOUCH; }
+  function applyScale() {
+    var w = window.innerWidth;
+    var h = isTouchUI() ? window.innerHeight : window.innerHeight - 80;
+    var s = Math.min(w / 800, h / 600);
+    if (s >= 1) s = Math.floor(s);
+    if (s <= 0) s = 1;
+    canvas.style.width  = (800 * s) + 'px';
+    canvas.style.height = (600 * s) + 'px';
+  }
+  canvas.width = 800; canvas.height = 600;
+  applyScale();
+  window.addEventListener('resize', applyScale);
+  window.addEventListener('orientationchange', applyScale);
+
+  var p = location.pathname;
+  var BASE = p.endsWith('/') ? p
+           : p.endsWith('.html') ? p.replace(/[^/]*$/, '')
+           : p + '/';
+
+  var Module = {
+    canvas: canvas,
+    locateFile: function (f) { return BASE + f; },
+    print:    function (m) { console.log(m); },
+    printErr: function (m) { console.warn(m); },
+    setStatus: function (m) { if (statusEl) statusEl.textContent = m; },
+    onRuntimeInitialized: function () { statusEl.textContent = ''; canvas.focus(); }
+  };
+  window.onerror = function (m) { statusEl.textContent = 'error: ' + m; };
+
+  // Touch overlay: synthesize KeyboardEvents that SDL2's HTML5 backend
+  // listens for on the document.
+  (function () {
+    var KEYS = {
+      up:    { code: 'ArrowUp',    key: 'ArrowUp',    keyCode: 38 },
+      down:  { code: 'ArrowDown',  key: 'ArrowDown',  keyCode: 40 },
+      left:  { code: 'ArrowLeft',  key: 'ArrowLeft',  keyCode: 37 },
+      right: { code: 'ArrowRight', key: 'ArrowRight', keyCode: 39 },
+      fire:  { code: 'KeyT',       key: 't',          keyCode: 84 },
+      use:   { code: 'Space',      key: ' ',          keyCode: 32 }
+    };
+    var down = Object.create(null);
+    function dispatch(type, k) {
+      document.dispatchEvent(new KeyboardEvent(type, {
+        code: k.code, key: k.key, keyCode: k.keyCode, which: k.keyCode,
+        bubbles: true, cancelable: true
+      }));
+    }
+    function press(name)   { if (!down[name]) { down[name] = true;  dispatch('keydown', KEYS[name]); } }
+    function release(name) { if  (down[name]) { down[name] = false; dispatch('keyup',   KEYS[name]); } }
+
+    // Analog-feel D-pad: touch position relative to its center decides
+    // which of up/down/left/right are held. Diagonals work naturally.
+    var dpad = document.getElementById('dpad');
+    var dpadId = null, cx = 0, cy = 0;
+    function updateDpad(x, y) {
+      var dx = x - cx, dy = y - cy;
+      var dead = 14;
+      if (Math.hypot(dx, dy) < dead) {
+        release('up'); release('down'); release('left'); release('right');
+        return;
+      }
+      var t = dead * 0.5;
+      (dx >  t ? press : release)('right');
+      (dx < -t ? press : release)('left');
+      (dy >  t ? press : release)('down');
+      (dy < -t ? press : release)('up');
+    }
+    dpad.addEventListener('touchstart', function (e) {
+      e.preventDefault();
+      if (dpadId !== null) return;
+      var t = e.changedTouches[0];
+      dpadId = t.identifier;
+      var r = dpad.getBoundingClientRect();
+      cx = r.left + r.width / 2; cy = r.top + r.height / 2;
+      updateDpad(t.clientX, t.clientY);
+    }, { passive: false });
+    dpad.addEventListener('touchmove', function (e) {
+      e.preventDefault();
+      for (var i = 0; i < e.changedTouches.length; i++) {
+        var t = e.changedTouches[i];
+        if (t.identifier === dpadId) { updateDpad(t.clientX, t.clientY); return; }
+      }
+    }, { passive: false });
+    function endDpad(e) {
+      for (var i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === dpadId) {
+          dpadId = null;
+          release('up'); release('down'); release('left'); release('right');
+          return;
+        }
+      }
+    }
+    dpad.addEventListener('touchend', endDpad);
+    dpad.addEventListener('touchcancel', endDpad);
+
+    function bindButton(id, name) {
+      var b = document.getElementById(id);
+      b.addEventListener('touchstart', function (e) {
+        e.preventDefault(); b.classList.add('active'); press(name);
+      }, { passive: false });
+      var off = function (e) {
+        e.preventDefault(); b.classList.remove('active'); release(name);
+      };
+      b.addEventListener('touchend', off);
+      b.addEventListener('touchcancel', off);
+    }
+    bindButton('btn-fire', 'fire');
+    bindButton('btn-use',  'use');
+  })();
+
+  var s = document.createElement('script');
+  s.async = true; s.src = BASE + 'index.js';
+  document.body.appendChild(s);
+</script>
+</body>
+</html>
