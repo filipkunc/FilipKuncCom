@@ -1,0 +1,110 @@
+---
+title: "Monkey Patching"
+description: "Tour of techniques for modifying existing code at runtime."
+pubDate: 2026-05-20
+tags: ["programming", "software-engineering"]
+---
+
+import RunnableSnippet from '../../../components/RunnableSnippet.astro';
+
+## What is monkey patching?
+
+Say you have a library that does something useful, but it has a bug, or a missing feature, or you just want to change its behavior.
+Replacing parts of it at runtime is called monkey patching.
+
+The same idea looks very different across languages.
+Some languages let you do it in one line.
+Others need a runtime hooking library and pages of unsafe code.
+
+Both demos do the same thing.
+A file on disk says `Hello, world!`.
+The program prints `Hello, Filip!`.
+The file is never touched.
+
+## JavaScript: just reassign
+
+In JavaScript a module's exports are an object whose properties you can overwrite.
+The library function is just a reference somewhere.
+Reassign it and every caller sees the new behavior.
+
+<RunnableSnippet
+  source="src/content/posts/monkey-patching/verify/js/monkey-patch.mjs"
+  outputKey="monkey-patching/js"
+  lang="javascript"
+  command="node monkey-patch.mjs"
+  inputs={["src/content/posts/monkey-patching/verify/js/hello.txt"]}
+/>
+
+The original `fs.readFileSync` is stashed in a local variable.
+A new function takes its place, calls the original, and rewrites the returned string before handing it back.
+Every later call to `fs.readFileSync` anywhere in the process gets the patched version.
+
+## Rust: native hooking via frida-gum
+
+Rust does not let you reassign a function.
+Once compiled, the call to `read` is wired to a fixed place.
+
+The way around it is to hook the call itself.
+`read` is a system call wrapper in libc, and [frida-gum](https://frida.re/) can redirect any libc function to your own code, so your hook sits in the middle of every call.
+This program does that with `read`.
+
+<RunnableSnippet
+  source="src/content/posts/monkey-patching/verify/rs/src/main.rs"
+  outputKey="monkey-patching/rs"
+  lang="rust"
+  command="cargo run --release -- hello.txt"
+  inputs={[
+    "src/content/posts/monkey-patching/verify/rs/Cargo.toml",
+    "src/content/posts/monkey-patching/verify/rs/hello.txt",
+  ]}
+/>
+
+Every byte that crosses the `read` boundary now passes through `detour` first.
+The original `read` still does the syscall and fills the buffer.
+Then the detour finds `Hello, world!` in those bytes and overwrites it with `Hello, Filip!` before returning to the caller.
+Nothing above libc sees the original.
+
+## How this is verified
+
+Each snippet above lives as a real file in this post's folder.
+Astro runs the program on every build and embeds the captured output into the page you are reading.
+
+Inside this post's folder:
+
+```
+src/content/posts/monkey-patching/
+├── index.mdx
+└── verify/
+    ├── js/
+    │   ├── hello.txt
+    │   ├── monkey-patch.mjs
+    │   └── run.sh
+    └── rs/
+        ├── Cargo.toml
+        ├── hello.txt
+        ├── run.sh
+        └── src/main.rs
+```
+
+When Astro builds the site, a pre-step walks each `verify/<lang>/` folder and runs its `run.sh`.
+Whatever the script prints to stdout becomes the captured output, stored in a manifest file.
+
+The MDX call that produced the JavaScript snippet:
+
+```mdx
+<RunnableSnippet
+  source="src/content/posts/monkey-patching/verify/js/monkey-patch.mjs"
+  outputKey="monkey-patching/js"
+  lang="javascript"
+  command="node monkey-patch.mjs"
+  inputs={["src/content/posts/monkey-patching/verify/js/hello.txt"]}
+/>
+```
+
+The result:
+
+- The code in the post is the code that ran.
+- The output in the post is what that code actually produced.
+- The post will not build at all if either drifts from the other.
+
+Source lives in `scripts/verify-snippets.mjs` and `src/components/RunnableSnippet.astro`.

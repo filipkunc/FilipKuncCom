@@ -1,0 +1,116 @@
+---
+import { Code } from 'astro:components';
+import { readFileSync } from 'node:fs';
+import { basename, join } from 'node:path';
+
+interface Props {
+  source: string;
+  outputKey: string;
+  lang: Parameters<typeof Code>[0]['lang'];
+  command: string;
+  inputs?: string[];
+}
+
+const { source, outputKey, lang, command, inputs = [] } = Astro.props;
+
+const repoRoot = process.cwd();
+const code = readFileSync(join(repoRoot, source), 'utf8');
+
+const inputFiles = inputs.map((path) => ({
+  name: basename(path),
+  content: readFileSync(join(repoRoot, path), 'utf8'),
+}));
+
+const manifestPath = join(repoRoot, 'snippet-manifest.json');
+let manifest: Record<string, { stdout: string; exitCode: number; verifiedAt: string }>;
+try {
+  manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+} catch {
+  throw new Error(
+    `RunnableSnippet: ${manifestPath} not found. Run \`npm run verify\` before building.`,
+  );
+}
+
+const entry = manifest[outputKey];
+if (!entry) {
+  throw new Error(`RunnableSnippet: no manifest entry for "${outputKey}".`);
+}
+
+const verifiedAt = entry.verifiedAt.slice(0, 10);
+---
+
+<figure class="runnable-snippet">
+  <div class="snippet-frame">
+    <div class="snippet-section">
+      <div class="snippet-label">{basename(source)}</div>
+      <Code code={code} lang={lang} />
+    </div>
+    {inputFiles.map((f) => (
+      <div class="snippet-section">
+        <div class="snippet-label">{f.name}</div>
+        <pre class="snippet-plain"><code>{f.content}</code></pre>
+      </div>
+    ))}
+    <div class="snippet-section snippet-output">
+      <div class="snippet-label snippet-run">
+        <span><span class="snippet-prompt">$</span> {command}</span>
+        <span class="snippet-verified">captured at build, {verifiedAt}</span>
+      </div>
+      <pre class="snippet-plain"><code>{entry.stdout}</code></pre>
+    </div>
+  </div>
+</figure>
+
+<style>
+  .runnable-snippet {
+    margin: 1.5rem 0;
+  }
+  .snippet-frame {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--bg);
+  }
+  .snippet-section + .snippet-section {
+    border-top: 1px solid var(--rule);
+  }
+  .snippet-label {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.75rem;
+    color: var(--muted);
+    background: color-mix(in srgb, var(--fg) 4%, transparent);
+    border-bottom: 1px solid var(--rule);
+    font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Menlo, monospace;
+  }
+  .snippet-run {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .snippet-prompt {
+    color: var(--muted);
+    user-select: none;
+    margin-right: 0.25rem;
+  }
+  .snippet-verified {
+    font-style: italic;
+  }
+  .snippet-frame :global(pre.astro-code) {
+    margin: 0;
+    border-radius: 0;
+    font-size: 0.8em;
+  }
+  .snippet-plain {
+    margin: 0;
+    padding: 0.6rem 0.75rem;
+    background: transparent;
+    border-radius: 0;
+    overflow-x: auto;
+    font-size: 0.85em;
+    color: var(--fg);
+  }
+  .snippet-output .snippet-plain {
+    background: color-mix(in srgb, var(--fg) 3%, transparent);
+  }
+</style>

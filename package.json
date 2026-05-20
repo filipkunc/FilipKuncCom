@@ -13,6 +13,7 @@
     "build:server": "tsc -p src/server/tsconfig.json",
     "start": "node server-dist/index.js",
     "preview": "astro preview",
+    "verify": "node scripts/verify-snippets.mjs",
     "check": "astro check && tsc -p src/server/tsconfig.json --noEmit"
   },
   "devDependencies": {

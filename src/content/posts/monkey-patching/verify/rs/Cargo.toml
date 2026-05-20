@@ -1,0 +1,11 @@
+[package]
+name = "monkey-demo"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+frida-gum = { version = "0.17.0", features = ["auto-download"] }
+libc = "0.2"
+
+[profile.release]
+lto = true

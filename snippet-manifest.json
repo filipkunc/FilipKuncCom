@@ -1,0 +1,16 @@
+{
+  "monkey-patching/js": {
+    "stdout": "Hello, Filip!\n",
+    "stderr": "",
+    "exitCode": 0,
+    "durationMs": 31,
+    "verifiedAt": "2026-05-20T19:15:24.918Z"
+  },
+  "monkey-patching/rs": {
+    "stdout": "Hello, Filip!\n",
+    "stderr": "    Finished `release` profile [optimized] target(s) in 0.12s\n     Running `/home/fkunc/Projects/FilipKuncCom/.cache/verify/rs/target/release/monkey-demo hello.txt`\n",
+    "exitCode": 0,
+    "durationMs": 187,
+    "verifiedAt": "2026-05-20T19:15:25.106Z"
+  }
+}

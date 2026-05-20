@@ -13,7 +13,7 @@ COPY package.json package-lock.json* ./
 RUN npm ci --no-audit --no-fund
 
 # Bring in source + static assets and build.
-COPY tsconfig.json astro.config.mjs ./
+COPY tsconfig.json astro.config.mjs snippet-manifest.json ./
 COPY src ./src
 COPY public ./public
 
