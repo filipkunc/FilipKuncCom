@@ -8,6 +8,7 @@
     "node": ">=22"
   },
   "scripts": {
+    "setup": "git config core.hooksPath .githooks",
     "dev": "astro dev",
     "build": "astro build && npm run build:server",
     "build:server": "tsc -p src/server/tsconfig.json",
