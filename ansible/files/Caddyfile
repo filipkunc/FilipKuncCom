@@ -7,7 +7,21 @@
 }
 
 filipkunc.com, www.filipkunc.com {
-    encode zstd gzip
+    # Default encode whitelist skips application/octet-stream, but Emscripten
+    # ships its asset bundles (.data files) under that MIME type and they are
+    # very compressible. Override the match to add it.
+    encode {
+        zstd
+        gzip
+        match {
+            header Content-Type text/*
+            header Content-Type application/json*
+            header Content-Type application/javascript*
+            header Content-Type application/wasm*
+            header Content-Type application/octet-stream*
+            header Content-Type image/svg+xml*
+        }
+    }
     reverse_proxy 127.0.0.1:8080 {
         health_uri /healthz
         health_interval 10s
