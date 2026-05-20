@@ -98,6 +98,10 @@ const fullTitle = title === 'filipkunc.com' ? title : `${title} — filipkunc.co
       ul, ol { padding-left: 1.5rem; }
       img, video { max-width: 100%; height: auto; display: block; margin: 1.5rem auto; border-radius: 4px; }
       video { background: #000; }
+      a > img { transition: box-shadow 0.15s ease; }
+      a:hover > img, a:focus-visible > img {
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 60%, transparent);
+      }
       .post-list { list-style: none; padding: 0; }
       .post-list li { padding: 0.75rem 0; border-bottom: 1px solid var(--rule); }
       .post-meta { color: var(--muted); font-size: 0.9rem; }
