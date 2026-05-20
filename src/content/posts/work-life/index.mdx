@@ -1,0 +1,127 @@
+---
+title: "Work life"
+description: "A different way to look at my career than a bullet point CV."
+pubDate: 2026-05-20
+tags: ["work", "career"]
+---
+
+## High school mini jobs
+
+My first job was handing out flyers on a street corner.
+I stood there for hours while people walked past me as if I were invisible.
+By the end of the day I was convinced I really needed to use my programming skills to find something better.
+
+Luckily a classmate introduced me to a small gig writing a simple inventory management app in C++ Builder.
+It used the built-in database tools and felt completely different from the flyers.
+The work had an actual impact, and the paycheck went toward a PC upgrade I had been dreaming about for years.
+
+At home I was still on a Pentium 1 with 150 MHz and 32 MB of RAM running Windows 98.
+I remember the endless ATI vs NVIDIA arguments with classmates.
+In the end I went with a [GeForce FX 5200](https://en.wikipedia.org/wiki/GeForce_FX_series) and an AMD [Duron](https://en.wikipedia.org/wiki/Duron) at just under 1 GHz with 128 MB of RAM.
+In the early 2000s hardware was improving so fast that the jump felt enormous.
+I could finally run [Unreal Tournament](https://en.wikipedia.org/wiki/Unreal_Tournament) and [Quake III Arena](https://en.wikipedia.org/wiki/Quake_III_Arena) at decent framerates.
+I could also push my own programming further.
+
+The best of the Quake 3 engine games for me was [Jedi Academy](https://en.wikipedia.org/wiki/Star_Wars_Jedi_Knight:_Jedi_Academy), which I played a lot with my brother.
+I was surprised to find its source code now lives on [GitHub](https://github.com/grayj/Jedi-Academy).
+
+## University and first part time job
+
+I started university in 2004 expecting to spend my days deep in code.
+The reality was the opposite: very little programming, a lot of theory.
+The only courses I genuinely enjoyed were mathematics and computer graphics.
+They were not enough to keep me engaged.
+
+Money was tight at home, so I started looking for part time work.
+I landed at a small automotive software company.
+My first task was building a map application on [ESRI Shapefile](https://en.wikipedia.org/wiki/Shapefile) data with Embedded Visual C++.
+They handed me a loaner [HP iPAQ](https://en.wikipedia.org/wiki/IPAQ) so I could see it actually run on the real device.
+
+That experience convinced me to look for a full time job and drop out after the first year.
+I could have continued with the studies, but I realized I would learn more on the job than in a lecture hall.
+
+## First full time job
+
+Finding a full time job without any work experience or a degree was the hard part.
+The first calls and applications were rough on me.
+But the Prague software industry was booming in 2005-2006 and there were plenty of opportunities.
+
+The third interview turned into an offer at a company building medical software for cardiology.
+My first boss did not really believe I could program, but I just needed time to prove him wrong.
+I was also planning to start a company with a friend on the side.
+A stable paycheck made that possible.
+
+The startup dream did not work out and we parted ways in the end.
+I stayed at the medical software company for more than 7 years and learned a lot there.
+The colleagues were amazing.
+I missed them a lot, especially in the first months after moving to Austria.
+
+I asked my former boss to share [GLGraphics](https://github.com/filipkunc/GLGraphics) on GitHub.
+It was the graphics layer I built to speed up drawing of lines and shapes in the ECG software.
+It let you use OpenGL or GDI+ with the same API as `System.Drawing` in .NET.
+
+This shipped in [BTL CardioPoint](https://www.btlnet.com/cardio-point) products.
+
+## Moving to Austria and switch to English
+
+After 7 years I wanted to try something new, and ideally something abroad.
+I had a side project on GitHub called [MeshMaker](https://github.com/filipkunc/MeshMaker) that was getting some attention.
+I later ported it to [WebGL2 via Claude](https://filipkunc.com/meshmaker).
+Through the open source projects I worked on in my spare time I got a few offers out of the blue.
+
+I really wanted to improve my English and I thought I had to work in London for that.
+In the end the offer that fit was from a company in Vienna where the working language was English anyway.
+I took it because it was close to home, and I thought it would also help me cover the missing university degree.
+
+I also wanted to work at a pure software company.
+In my first job many things were slower because of medical regulations and the hardware devices we had to support.
+The first few months in Vienna were really hard.
+I quickly realized I was not used to thinking in English.
+
+I worked mostly on [XMLSpy](https://www.altova.com/xmlspy-xml-editor#xml-editor).
+It is a very mature product with a lot of legacy code, but it was still fun to work on.
+Each year we added new features and improvements with a very small team.
+
+The most interesting work was making the legacy code thread-safe as we moved heavy operations off the UI thread.
+Every UI action in debug builds tried to force race conditions and deadlocks by calling an _immutable_ lambda on all cores at the same time.
+In theory it should do the same, in practice with legacy code it didn't.
+We knew it was hard to audit all of the legacy code to make sure it was actually thread safe.
+This let us migrate to multi-threaded incrementally and surface races early on modern multi-core CPUs, before shipping to customers.
+
+I still use a similar pattern in my current job, to make an internal Node.js addon fail loudly in CI when there are races.
+Think poor man's [thread sanitizer](https://clang.llvm.org/docs/ThreadSanitizer.html).
+It is not perfect, but it is better than being completely blind.
+
+I spent more than 9 years there.
+I really liked the smaller company feel, but it was time to move on and try something new again.
+
+## Corporate world and current job
+
+I joined [Dynatrace](https://www.dynatrace.com) to work on OneAgent Node.js observability.
+I wanted to work more with cloud and web services, especially with customers paying for software as a service.
+Both my previous companies were selling desktop software with one time licenses or limited subscription models.
+
+This meant the customers always see the latest and greatest version, which is a much better experience for them and also for us as developers.
+
+It is a bit harder to share what I worked on since not everything is shipped yet.
+But I can say my interest was mostly in instrumenting Node.js code and native code.
+
+For example I was experimenting with a virtual file system for Node.js.
+It would intercept file system calls and redirect them to a custom implementation to speed up CI builds and tests.
+I stumbled upon [Microsoft Detours](https://github.com/microsoft/Detours) and [Frida](https://frida.re/), which are libraries for intercepting native calls.
+I used them to implement a prototype of this virtual file system.
+
+For the automatic patching of the source code I tried both the JavaScript way via Babel and Acorn, and the native Rust way via [oxc](https://oxc.rs/) and [swc](https://swc.rs/).
+This is the kind of project I was really excited about, and I am glad to have the opportunity to work on it.
+
+## Elephant in the room
+
+Of course I am talking about AI.
+Everyone is, and LinkedIn is filled with it.
+
+For me the surprising part is that it gave me back the projects I had shelved for years.
+Claude helped me [port my old Visual Studio 6 games to WebGL and WebAssembly](/posts/old-stuff).
+Gemini lets me [generate new sprite frames for fheroes2](/posts/gemini-game-art), filling in art skills I never had.
+
+It is scary, especially Claude Code.
+But if you approach it with child like curiosity it is genuinely awesome.
