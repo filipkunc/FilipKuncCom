@@ -155,7 +155,7 @@
     - name: systemd daemon-reload (caddy override changed)
       ansible.builtin.systemd:
         daemon_reload: true
-      when: caddy_override.changed
+      when: caddy_override.changed | default(false)
 
     - name: Caddy — enable + start
       ansible.builtin.systemd:
@@ -167,7 +167,7 @@
       ansible.builtin.systemd:
         name: caddy
         state: reloaded
-      when: caddyfile.changed or caddy_override.changed
+      when: caddyfile.changed | default(false) or caddy_override.changed | default(false)
 
     # --- app quadlet --------------------------------------------------------
 
