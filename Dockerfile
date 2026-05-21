@@ -2,7 +2,7 @@
 # The image is the only release artifact (per playground-deploy-phases.md).
 # Runtime stage has no node_modules: server is pure Node-builtins, site is static.
 
-ARG NODE_VERSION=22-alpine
+ARG NODE_VERSION=24-alpine
 
 # --- build stage -------------------------------------------------------------
 FROM node:${NODE_VERSION} AS build
