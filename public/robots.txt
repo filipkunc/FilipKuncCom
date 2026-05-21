@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://filipkunc.com/sitemap-index.xml
