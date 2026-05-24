@@ -1,16 +1,23 @@
 {
+  "local-llm-arena/arena": {
+    "stdout": "| model | empty | single | simple-3 | balanced | left-skewed | total |\n|---|---|---|---|---|---|---|\n| gemma-4-e4b-it-cpu | ✓ | ✓ | ✓ | ✓ | ✓ | 5/5 |\n| gemma-4-e4b-it-gpu | ✓ | ✓ | ✓ | ✓ | ✓ | 5/5 |\n| qwen3.5-4b-cpu | ✓ | ✓ | ✓ | ✓ | ✓ | 5/5 |\n| qwen3.5-4b-gpu | ✓ | ✓ | ✓ | ✓ | ✓ | 5/5 |\n",
+    "stderr": "",
+    "exitCode": 0,
+    "durationMs": 30,
+    "verifiedAt": "2026-05-24T14:35:45.349Z"
+  },
   "monkey-patching/js": {
     "stdout": "Hello, Filip!\n",
     "stderr": "",
     "exitCode": 0,
-    "durationMs": 31,
-    "verifiedAt": "2026-05-20T19:15:24.918Z"
+    "durationMs": 28,
+    "verifiedAt": "2026-05-24T14:35:45.378Z"
   },
   "monkey-patching/rs": {
     "stdout": "Hello, Filip!\n",
-    "stderr": "    Finished `release` profile [optimized] target(s) in 0.12s\n     Running `/home/fkunc/Projects/FilipKuncCom/.cache/verify/rs/target/release/monkey-demo hello.txt`\n",
+    "stderr": "    Finished `release` profile [optimized] target(s) in 0.13s\n     Running `/home/fkunc/Projects/FilipKuncCom/.cache/verify/rs/target/release/monkey-demo hello.txt`\n",
     "exitCode": 0,
-    "durationMs": 187,
-    "verifiedAt": "2026-05-20T19:15:25.106Z"
+    "durationMs": 185,
+    "verifiedAt": "2026-05-24T14:35:45.563Z"
   }
 }

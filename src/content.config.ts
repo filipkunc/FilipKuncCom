@@ -4,7 +4,7 @@ import { z } from 'astro/zod';
 
 const posts = defineCollection({
   loader: glob({
-    pattern: '**/*.{md,mdx}',
+    pattern: '**/index.{md,mdx}',
     base: './src/content/posts',
     // Posts are co-located in folders with their images/videos:
     //   posts/<slug>/index.mdx

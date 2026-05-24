@@ -1,0 +1,195 @@
+---
+title: "Local LLM arena: invert a binary tree"
+description: "Comparing small local models on a LeetCode-style task with deterministic unit tests as the judge."
+pubDate: 2026-05-23
+tags: ["llm", "local-llm", "llama.cpp"]
+draft: false
+---
+
+import { Code } from 'astro:components';
+import CodeFile from '../../../components/CodeFile.astro';
+import { readFileSync } from 'node:fs';
+
+export const prompt = readFileSync('src/content/posts/local-llm-arena/generator/prompt.md', 'utf8');
+export const callModelSrc = readFileSync('src/content/posts/local-llm-arena/generator/call_model.py', 'utf8');
+export const generateSrc = readFileSync('src/content/posts/local-llm-arena/generator/generate.py', 'utf8');
+export const gemmaSolution = readFileSync('src/content/posts/local-llm-arena/verify/arena/samples/gemma-4-e4b-it-gpu/solution.py', 'utf8');
+export const qwenSolution = readFileSync('src/content/posts/local-llm-arena/verify/arena/samples/qwen3.5-4b-gpu/solution.py', 'utf8');
+export const harnessSrc = readFileSync('src/content/posts/local-llm-arena/verify/arena/harness.py', 'utf8');
+
+export const scoreboard = JSON.parse(readFileSync('snippet-manifest.json', 'utf8'))['local-llm-arena/arena'];
+export const scoreboardRows = scoreboard.stdout
+  .trim()
+  .split('\n')
+  .filter((l) => l.startsWith('|'))
+  .map((l) => l.split('|').slice(1, -1).map((c) => c.trim()));
+export const scoreboardHeaders = scoreboardRows[0];
+export const scoreboardBody = scoreboardRows.slice(2);
+export const verifiedAt = scoreboard.verifiedAt.slice(0, 10);
+
+export const metricsRows = [
+  { slug: 'gemma-4-e4b-it-gpu', model: 'Gemma 4 E4B Instruct', device: 'GPU' },
+  { slug: 'gemma-4-e4b-it-cpu', model: 'Gemma 4 E4B Instruct', device: 'CPU' },
+  { slug: 'qwen3.5-4b-gpu',     model: 'Qwen3.5 4B',           device: 'GPU' },
+  { slug: 'qwen3.5-4b-cpu',     model: 'Qwen3.5 4B',           device: 'CPU' },
+].map((row) => {
+  try {
+    const m = JSON.parse(readFileSync(`src/content/posts/local-llm-arena/verify/arena/samples/${row.slug}/metrics.json`, 'utf8'));
+    return { ...row, ...m };
+  } catch {
+    return null;
+  }
+}).filter(Boolean);
+
+This post is trying to scratch an itch I've had for a while.
+Comparing small local LLMs on programming tasks without going purely by feel.
+This means the test cases are deterministic and easy to programatically run and verify.
+
+To keep the scope manageble I went with the classic [LeetCode "invert a binary tree"](https://leetcode.com/problems/invert-binary-tree/description/) problem which let even [famous programmers fail](https://x.com/mxcl/status/608682016205344768).
+
+The whole thing runs on local hardware.
+No Colab, no API keys, just a GPU and a few hundred lines of Python.
+You should be able to follow along by copy-pasting each block below.
+
+## Prerequisites
+
+- An NVIDIA GPU with recent CUDA drivers. Mine is a 5070 Ti, 16 GB. Anything that can hold a 4B Q4 quant works.
+- Python 3.11+ with `huggingface_hub` (`pip install huggingface_hub`).
+- llama.cpp built with CUDA. From a fresh checkout:
+
+  ```sh
+  git clone https://github.com/ggml-org/llama.cpp
+  cd llama.cpp
+  cmake -B build -DGGML_CUDA=ON
+  cmake --build build --config Release -j
+  ```
+
+  The binary you want is `build/bin/llama-server`.
+  If you have Unsloth Studio installed it drops its own copy at `~/.unsloth/llama.cpp/build/bin/llama-server`, which is what I use below.
+
+The models are [Unsloth's GGUFs](https://huggingface.co/unsloth) of Gemma 4 E4B Instruct and Qwen3.5 4B, both at the dynamic `UD-Q4_K_XL` quant.
+`huggingface_hub` will download them to `~/.cache/huggingface/` on first run, so no need to fetch them by hand.
+
+## The prompt
+
+Same prompt for every model, temperature 0, single sample.
+
+<CodeFile code={prompt} lang="markdown" filename="prompt.md" />
+
+## Calling the model
+
+`llama-server` is llama.cpp's HTTP server.
+Point it at a GGUF and a port, and it speaks the OpenAI chat-completions protocol:
+
+```sh
+llama-server -m gemma-4-E4B-it-UD-Q4_K_XL.gguf --port 8123 -c 8192 -ngl 99 -np 1
+```
+
+That separates model loading from orchestration.
+The Python side stays a thin HTTP client:
+
+<CodeFile code={callModelSrc} lang="python" filename="call_model.py" />
+
+`temperature=0`, `top_k=1`, `seed=42`, and `-np 1` on the server pin the sampler.
+On the same hardware and llama.cpp build, the same prompt produces byte-identical output every run.
+The function also returns llama-server's per-call `timings` block (tokens generated, tokens per second, total milliseconds), which we use for the performance table later.
+
+## Generating samples
+
+`llama-server` loads one model at a time, so the script cycles it: start pointed at the next GGUF, send the prompt, capture what comes back, shut it down, repeat for each entry in the model list.
+A background thread runs alongside each call, polling `/proc/<pid>/{status,stat}` and `nvidia-smi` to capture per-process RAM and CPU and per-GPU VRAM and utilization.
+
+Set `LLAMA_BIN` at the top of the file to your `llama-server` path before running.
+
+<CodeFile code={generateSrc} lang="python" filename="generate.py" />
+
+Run it from the same directory as `call_model.py`:
+
+```sh
+python3 generate.py
+```
+
+Each entry writes `solution.py`, `raw-response.txt`, and `metrics.json` to its own folder under `samples/`.
+
+## What the models produced
+
+### Gemma 4 E4B Instruct
+
+<CodeFile code={gemmaSolution} lang="python" filename="samples/gemma-4-e4b-it-gpu/solution.py" />
+
+### Qwen3.5 4B
+
+Qwen3 ships with a default chain-of-thought mode that emits thousands of reasoning tokens before the final answer.
+For a one-shot codegen task that's pure overhead, so `generate.py` passes `chat_template_kwargs.enable_thinking=false` to suppress it.
+
+<CodeFile code={qwenSolution} lang="python" filename="samples/qwen3.5-4b-gpu/solution.py" />
+
+## The judge
+
+The judge loads each `solution.py`, calls `invert_tree` against a small set of trees, and prints a row of ✓ or ✗ per model.
+A `-` means the file or function was missing entirely.
+
+<CodeFile code={harnessSrc} lang="python" filename="harness.py" />
+
+<figure class="scoreboard">
+  <table>
+    <thead>
+      <tr>{scoreboardHeaders.map((h) => <th>{h}</th>)}</tr>
+    </thead>
+    <tbody>
+      {scoreboardBody.map((row) => (
+        <tr>{row.map((c, j) => (j === 0 ? <th scope="row">{c}</th> : <td>{c}</td>))}</tr>
+      ))}
+    </tbody>
+  </table>
+  <figcaption><code>$ python3 harness.py</code> · captured at build, {verifiedAt}</figcaption>
+</figure>
+
+{metricsRows.length > 0 && (
+  <>
+    <h2 id="performance">Performance</h2>
+    <figure class="scoreboard">
+      <table>
+        <thead>
+          <tr>
+            <th>model</th>
+            <th>device</th>
+            <th>tokens</th>
+            <th>tok/s</th>
+            <th>gen time</th>
+            <th>memory peak</th>
+            <th>compute avg</th>
+          </tr>
+        </thead>
+        <tbody>
+          {metricsRows.map((r) => {
+            const memMib = r.device === 'GPU' ? r.vram_peak_mib : r.ram_peak_mib;
+            const computePct = r.device === 'GPU' ? r.gpu_util_avg_pct : r.cpu_util_avg_pct;
+            return (
+              <tr>
+                <th scope="row">{r.model}</th>
+                <td>{r.device}</td>
+                <td>{r.tokens_generated ?? ''}</td>
+                <td>{r.tokens_per_second ? `${r.tokens_per_second}/s` : ''}</td>
+                <td>{r.generation_seconds ? `${r.generation_seconds}s` : ''}</td>
+                <td>{memMib ? `${(memMib / 1024).toFixed(2)} GiB` : ''}</td>
+                <td>{computePct != null ? `${computePct}%` : ''}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <figcaption>
+        Captured on a Ryzen 9 3900X (12 cores / 24 threads) with a 5070 Ti (16 GB).
+        GPU rows report VRAM + <code>nvidia-smi</code> GPU%. CPU rows report process RSS + per-core CPU% (can exceed 100% across cores).
+        Samplers run at 200 ms cadence, so very short runs (sub-second) get only a handful of samples and the percentage is noisy.
+      </figcaption>
+    </figure>
+
+    <p>
+      GPU runs ~12× faster than CPU for both models on this hardware.
+      Both <code>raw-response.txt</code> and the extracted <code>solution.py</code> are byte-for-byte identical across devices for each model, and the harness verdict is 5/5 across all four runs.
+      The "tokens" column comes from llama-server's <code>timings.predicted_n</code> field, which doesn't always agree with the textual output length. Gemma reports 877 on GPU vs 733 on CPU for the same 290-byte response, and I haven't dug into why.
+    </p>
+  </>
+)}

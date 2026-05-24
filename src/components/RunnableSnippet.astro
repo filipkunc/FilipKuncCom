@@ -42,12 +42,12 @@ const verifiedAt = entry.verifiedAt.slice(0, 10);
 <figure class="runnable-snippet">
   <div class="snippet-frame">
     <div class="snippet-section">
-      <div class="snippet-label">{basename(source)}</div>
+      <div class="snippet-label code-file-label"><span>{basename(source)}</span></div>
       <Code code={code} lang={lang} />
     </div>
     {inputFiles.map((f) => (
       <div class="snippet-section">
-        <div class="snippet-label">{f.name}</div>
+        <div class="snippet-label code-file-label"><span>{f.name}</span></div>
         <pre class="snippet-plain"><code>{f.content}</code></pre>
       </div>
     ))}

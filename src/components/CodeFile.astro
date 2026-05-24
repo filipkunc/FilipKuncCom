@@ -1,0 +1,47 @@
+---
+import { Code } from 'astro:components';
+
+interface Props {
+  code: string;
+  lang: Parameters<typeof Code>[0]['lang'];
+  filename: string;
+}
+
+const { code, lang, filename } = Astro.props;
+---
+
+<figure class="code-file">
+  <div class="code-file-frame">
+    <div class="code-file-label">
+      <span>{filename}</span>
+    </div>
+    <Code code={code} lang={lang} />
+  </div>
+</figure>
+
+<style>
+  .code-file { margin: 1.25rem 0; }
+  .code-file-frame {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--bg);
+  }
+  .code-file-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.3rem 0.5rem 0.3rem 0.75rem;
+    font-size: 0.75rem;
+    color: var(--muted);
+    background: color-mix(in srgb, var(--fg) 4%, transparent);
+    border-bottom: 1px solid var(--rule);
+    font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Menlo, monospace;
+  }
+  .code-file-frame :global(pre.astro-code) {
+    margin: 0;
+    border-radius: 0;
+    font-size: 0.85em;
+  }
+</style>

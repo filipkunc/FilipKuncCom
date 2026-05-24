@@ -45,7 +45,10 @@ const fullTitle = title === 'filipkunc.com' ? title : `${title} — filipkunc.co
         --link: #7aa9ff;
         --accent: #ff6b35;
         --rule: #2a2a2e;
-        --maxw: 64ch;
+        --maxw: 72ch;
+      }
+      @media (min-width: 900px) {
+        :root { --maxw: 80ch; }
       }
       @media (prefers-color-scheme: light) {
         :root {
@@ -105,6 +108,114 @@ const fullTitle = title === 'filipkunc.com' ? title : `${title} — filipkunc.co
       .post-list { list-style: none; padding: 0; }
       .post-list li { padding: 0.75rem 0; border-bottom: 1px solid var(--rule); }
       .post-meta { color: var(--muted); font-size: 0.9rem; }
+      table {
+        border-collapse: collapse;
+        margin: 1.25rem 0;
+        font-size: 0.95em;
+      }
+      th, td {
+        padding: 0.45rem 0.75rem;
+        border: 1px solid var(--rule);
+        text-align: left;
+      }
+      th {
+        font-weight: 600;
+        background: color-mix(in srgb, var(--fg) 5%, transparent);
+      }
+      figure.scoreboard { margin: 1.5rem 0; }
+      figure.scoreboard table { width: 100%; }
+      figure.scoreboard th:not(:first-child),
+      figure.scoreboard td:not(:first-child) { text-align: center; }
+      figure.scoreboard figcaption {
+        margin-top: 0.5rem;
+        color: var(--muted);
+        font-size: 0.85em;
+      }
+      .code-wrap { position: relative; }
+      .copy-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        color: var(--muted);
+        background: color-mix(in srgb, var(--bg) 80%, var(--fg) 8%);
+        border: 1px solid var(--rule);
+        border-radius: 4px;
+        cursor: pointer;
+        opacity: 0.4;
+        transition: opacity 0.15s ease, color 0.15s ease;
+      }
+      .copy-btn svg { width: 0.95rem; height: 0.95rem; display: block; }
+      .copy-btn:hover { color: var(--fg); }
+      .copy-btn:focus-visible { opacity: 1; }
+      .copy-btn.is-copied { color: var(--accent); opacity: 1; }
+      .code-wrap > .copy-btn {
+        position: absolute;
+        top: 0.4rem;
+        right: 0.4rem;
+        width: 1.85rem;
+        height: 1.85rem;
+      }
+      .code-wrap:hover > .copy-btn { opacity: 1; }
+      .code-file-label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+      }
+      .code-file-label > .copy-btn {
+        width: 1.4rem;
+        height: 1.4rem;
+        background: transparent;
+        border-color: transparent;
+        opacity: 0.6;
+      }
+      .code-file-label > .copy-btn svg { width: 0.85rem; height: 0.85rem; }
+      .code-file:hover .code-file-label > .copy-btn,
+      .snippet-section:hover .code-file-label > .copy-btn { opacity: 1; }
     </style>
+
+    <script>
+      // Wrap every <pre> inside <main> with a div and append a Copy button.
+      // Idempotent so re-runs (e.g. dev HMR) don't double up.
+      const ICON_COPY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+      const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
+
+      document.querySelectorAll('main pre').forEach((pre) => {
+        if (pre.parentElement?.classList.contains('code-wrap')) return;
+        if (pre.parentElement?.querySelector(':scope > .code-file-label .copy-btn')) return;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'copy-btn';
+        btn.setAttribute('aria-label', 'Copy code');
+        btn.innerHTML = ICON_COPY;
+        btn.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText((pre as HTMLElement).innerText);
+            btn.innerHTML = ICON_CHECK;
+            btn.classList.add('is-copied');
+          } catch {
+            btn.setAttribute('aria-label', 'Copy failed');
+          }
+          setTimeout(() => {
+            btn.innerHTML = ICON_COPY;
+            btn.classList.remove('is-copied');
+            btn.setAttribute('aria-label', 'Copy code');
+          }, 1500);
+        });
+
+        const label = pre.parentElement?.querySelector(':scope > .code-file-label');
+        if (label) {
+          label.appendChild(btn);
+        } else {
+          const wrap = document.createElement('div');
+          wrap.className = 'code-wrap';
+          pre.parentNode?.insertBefore(wrap, pre);
+          wrap.appendChild(pre);
+          wrap.appendChild(btn);
+        }
+      });
+    </script>
   </body>
 </html>

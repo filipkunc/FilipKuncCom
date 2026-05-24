@@ -1,0 +1,14 @@
+```python
+def invert_tree(root):
+    if root is None:
+        return None
+    
+    # Swap the left and right children
+    root.left, root.right = root.right, root.left
+    
+    # Recursively invert the subtrees
+    invert_tree(root.left)
+    invert_tree(root.right)
+    
+    return root
+```

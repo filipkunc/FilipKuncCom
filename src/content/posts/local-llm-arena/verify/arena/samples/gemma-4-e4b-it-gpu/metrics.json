@@ -1,0 +1,10 @@
+{
+  "tokens_generated": 877,
+  "tokens_per_second": 150.6,
+  "generation_seconds": 5.82,
+  "ram_peak_mib": 3210,
+  "cpu_util_avg_pct": 98.6,
+  "vram_peak_mib": 5959,
+  "gpu_util_avg_pct": 79.1,
+  "samples": 28
+}

@@ -8,5 +8,7 @@ npm-debug.log*
 .env.local
 *.local
 .DS_Store
+__pycache__/
+*.pyc
 ansible/inventory.yml
 ansible/.vault_pass
