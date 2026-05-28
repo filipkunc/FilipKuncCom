@@ -2,10 +2,15 @@
 #
 # Deploy <ref> (default: HEAD) to the Hetzner box.
 #
-# Flow: resolve the ref to a committed git SHA, ship the committed tree over
-# SSH, podman-build on the box, retag :latest, and restart the user systemd
-# unit. The build artifact is content-addressed by the SHA — same script,
-# whether invoked by hand or by CI later.
+# Flow: resolve the ref to a committed git SHA, build the image LOCALLY from
+# that committed tree, ship it to the box over SSH (podman save | podman load),
+# retag :latest, and restart the user systemd unit. The artifact is
+# content-addressed by the SHA.
+#
+# The image is built locally rather than on the box because the box is small
+# and the Monaco + TypeScript client bundle needs more memory to build than it
+# has. The runtime image is tiny (static site + a builtins-only Node server),
+# so the transfer is cheap.
 #
 # Env:
 #   DEPLOY_HOST  ssh target, default deploy@filipkunc.com
@@ -32,23 +37,29 @@ if [[ "$REF" == "HEAD" ]] && ! git diff --quiet HEAD --; then
   echo "warning: working tree has uncommitted changes — deploying committed HEAD ($SHA), not your edits" >&2
 fi
 
-WORK="builds/${SHA}"
 echo "==> deploying ${SHA} (ref: ${REF}) to ${DEPLOY_HOST}"
 
-ssh "$DEPLOY_HOST" "mkdir -p '${WORK}'"
-git archive --format=tar "$SHA" | ssh "$DEPLOY_HOST" "tar -x -C '${WORK}'"
+# Skip the whole build + transfer if the box already has this SHA (rollbacks,
+# re-runs). Otherwise build locally and ship it.
+if ssh "$DEPLOY_HOST" "podman image exists '${APP}:${SHA}'"; then
+  echo "==> image ${APP}:${SHA} already on box, skipping build and transfer"
+else
+  if podman image exists "${APP}:${SHA}"; then
+    echo "==> local image ${APP}:${SHA} present, reusing"
+  else
+    echo "==> building ${APP}:${SHA} locally from the committed tree"
+    CTX=$(mktemp -d)
+    trap 'rm -rf "$CTX"' EXIT
+    git archive --format=tar "$SHA" | tar -x -C "$CTX"
+    podman build --build-arg GIT_SHA="$SHA" -t "${APP}:${SHA}" "$CTX"
+  fi
+
+  echo "==> shipping image to ${DEPLOY_HOST}"
+  podman save "${APP}:${SHA}" | gzip | ssh "$DEPLOY_HOST" "gunzip | podman load"
+fi
 
 ssh "$DEPLOY_HOST" bash <<EOSSH
 set -euo pipefail
-cd '${WORK}'
-
-# Skip build if this SHA's image already exists (rollbacks/retags via deploy).
-if podman image exists '${APP}:${SHA}'; then
-  echo "==> image ${APP}:${SHA} already present, skipping build"
-else
-  echo "==> building ${APP}:${SHA} on box"
-  podman build --build-arg GIT_SHA='${SHA}' -t '${APP}:${SHA}' .
-fi
 
 podman tag '${APP}:${SHA}' '${APP}:latest'
 
