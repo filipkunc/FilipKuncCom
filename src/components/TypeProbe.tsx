@@ -1,5 +1,11 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import type * as Monaco from 'monaco-editor';
+// Monaco's ESM build scatters its styles across ~140 per-module css imports
+// that the production build does not emit on its own. Pulling in the
+// aggregated stylesheet here gets it bundled and linked with the island, so
+// the editors are styled in the built site, not just in dev. This is a plain
+// css side-effect import, so it stays SSR-safe.
+import 'monaco-editor/min/vs/editor/editor.main.css';
 import { inferType } from '../lib/typeprobe/infer';
 import { examples } from '../lib/typeprobe/examples';
 
