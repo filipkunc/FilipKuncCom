@@ -11,13 +11,25 @@ There is a small thing that has bugged me for years.
 I fetch some JSON from an API, I write a TypeScript type for the shape I expect back, and then at runtime the two are free to disagree.
 The type was erased during compilation, so nothing actually checks that the data matches what I declared.
 
-The usual answer is to reach for a library like [Zod](https://zod.dev/) and write the shape a second time as a schema.
-Now I have a type and a schema saying the same thing, and it is on me to keep them in sync by hand.
-That always felt backwards to me.
+The usual answer is a library like [Zod](https://zod.dev/), or [JSON Schema](https://json-schema.org/specification).
+To be fair, Zod does not make me write the shape twice.
+I write the schema and let `z.infer` hand me the type.
 
-But TypeScript already knows how to check whether a value fits a type.
-That is most of what the compiler does all day.
-So I wanted to see how far I could get by borrowing that and writing no validator of my own.
+```ts
+const Root = z.object({ id: z.number(), name: z.string(), tags: z.array(z.string()) });
+type Root = z.infer<typeof Root>;
+```
+
+What puts me off is the schema language itself.
+It is a second, more verbose way to say something TypeScript already says plainly.
+
+```ts
+type Root = { id: number; name: string; tags: string[] };
+```
+
+The plain type is just nicer to read and write, especially for the nested API shapes further down this page.
+TypeScript already knows how to check a value against a type like that, it just throws the type away before runtime.
+So I wanted to see how far I could get keeping the plain type and borrowing the compiler to do the checking.
 I built this little playground (well, Claude did most of the typing) to find out.
 
 It is live.
@@ -31,22 +43,61 @@ It feels like JSON Schema, except the schema is a TypeScript type and the thing 
 ## The compiler is the validator
 
 There is no validator here, and the value pane is not really checked as JSON at all.
-Behind it sits a one line TypeScript file that you never see:
+The demo keeps three [Monaco](https://microsoft.github.io/monaco-editor/) models: the `type Root` you edit, the JSON value you edit, and a hidden TypeScript file you never see.
 
 ```ts
-const data: Root = /* your JSON, verbatim */;
+const u = (name: string) => monaco.Uri.parse(`file:///${name}`);
+const typeModel = monaco.editor.createModel(typeText, "typescript", u("root.ts"));
+const jsonModel = monaco.editor.createModel(jsonText, "json", u("value.json"));
+const dataModel = monaco.editor.createModel(hiddenSource, "typescript", u("data.ts"));
 ```
 
-JSON is valid TypeScript syntax, so your data drops straight into that initializer as a fresh object literal assigned to a typed target.
-TypeScript then checks it structurally.
-A missing field, a wrong primitive, or a `null` where the type does not allow one all turn into errors at the exact spot in the data.
-And because it is a fresh literal, TypeScript also flags properties that are not in the type at all, which is the strict mode of a schema library for free.
+The hidden file is the whole trick.
+It is just your JSON dropped into a typed assignment, rebuilt on every keystroke in the value pane:
 
-The editors are [Monaco](https://microsoft.github.io/monaco-editor/), the same one VS Code is built on, running the real TypeScript language service in a web worker.
-I ask that worker for the errors on the hidden file, shift each one up by the single header line, and paint it onto the JSON pane.
-So the squiggles you see on plain JSON come from the actual compiler and not from anything I reimplemented.
+```ts
+function hiddenFile(json: string) {
+  return `const data: Root =\n${json}\n;`;
+}
+```
 
-## Where the starting type comes from
+JSON is valid TypeScript syntax, so it sits there as a fresh object literal assigned to a typed target, and the compiler checks it structurally.
+A missing field, a wrong primitive, or a `null` where the type does not allow one all become errors.
+Because it is a fresh literal, TypeScript also flags properties that are not in the type at all, which is the strict mode of a schema library for free.
+
+Monaco runs the real TypeScript language service in a web worker, the same one VS Code uses, and that worker will hand me the errors for any file it knows about.
+So whenever a pane changes, I ask it about the hidden file and copy the results onto the JSON pane.
+
+```ts
+const getWorker = await monaco.typescript.getTypeScriptWorker();
+const client = await getWorker(dataModel.uri);
+const diagnostics = await client.getSemanticDiagnostics(dataModel.uri.toString());
+
+const markers = diagnostics.map((d) => {
+  const start = dataModel.getPositionAt(d.start);
+  const end = dataModel.getPositionAt(d.start + d.length);
+  return {
+    message: typeof d.messageText === "string" ? d.messageText : d.messageText.messageText,
+    severity: monaco.MarkerSeverity.Error,
+    // Line 1 of the hidden file is the `const data: Root =` header,
+    // so shift every position up one line. The columns line up as they are.
+    startLineNumber: start.lineNumber - 1,
+    startColumn: start.column,
+    endLineNumber: end.lineNumber - 1,
+    endColumn: end.column,
+  };
+});
+
+monaco.editor.setModelMarkers(jsonModel, "typeprobe", markers);
+```
+
+That one header line is the only bookkeeping.
+Keeping the JSON on its own lines means each diagnostic shifts up by exactly one row and the columns need no adjusting.
+Monaco's own JSON validation is switched off, so the only squiggles on the value pane are the ones TypeScript put there.
+
+(Recent Monaco exposes this worker as `monaco.typescript`. Older versions keep it under `monaco.languages.typescript`.)
+
+## How to infer the `Root` type
 
 When you load JSON, I walk the parsed value and emit a first guess at `type Root`.
 Arrays of objects are the fun case.
@@ -56,7 +107,7 @@ It is only a guess from one sample though.
 If a field happened to be `null` in this particular response, the guess is `null` and nothing more.
 You tighten it to `string | null` by hand, and the squiggles tell you right away whether the rest of the data still fits.
 
-## Getting a real function back out
+## Generating a runtime validator
 
 Squiggles are lovely while editing, but sometimes I want an actual function I can call.
 That is the "Generate validator" button, and it is the part I find most interesting, so here is the whole thing.
@@ -66,7 +117,7 @@ Once a validator is generated, "Run it against the value above" runs it in your 
 The idea is to ask the [TypeScript Compiler API](https://github.com/microsoft/TypeScript/wiki/Using-the-Compiler-API) for the resolved shape of `Root` and walk it.
 There are four small steps: stand up a compiler, resolve the type, walk it into a string of checks, then strip the types so the string runs.
 
-### A compiler with no files
+### Spinning up an in-browser compiler
 
 The compiler normally reads from disk.
 In the browser there is no disk, so I use [@typescript/vfs](https://www.npmjs.com/package/@typescript/vfs) to give it an in-memory filesystem with two files in it.
