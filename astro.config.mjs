@@ -1,5 +1,6 @@
 import { defineConfig } from 'astro/config';
 import mdx from '@astrojs/mdx';
+import react from '@astrojs/react';
 import sitemap from '@astrojs/sitemap';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -35,6 +36,8 @@ export default defineConfig({
   },
   vite: {
     plugins: [publicDirIndex],
+    // Monaco's language services ship as ES module workers.
+    worker: { format: 'es' },
   },
   image: {
     // 'constrained' = image fills its container up to its intrinsic width,
@@ -43,6 +46,7 @@ export default defineConfig({
     layout: 'constrained',
   },
   integrations: [
+    react(),
     mdx(),
     sitemap({
       // Skip embedded apps' own routes — they're not site content.

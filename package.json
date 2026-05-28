@@ -22,7 +22,16 @@
     "@astrojs/mdx": "^5.0.0",
     "@astrojs/sitemap": "^3.7.2",
     "@types/node": "^24.12.0",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
     "astro": "^6.3.0",
     "typescript": "^6.0.0"
+  },
+  "dependencies": {
+    "@astrojs/react": "^5.0.5",
+    "@typescript/vfs": "^1.6.4",
+    "monaco-editor": "^0.55.1",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
   }
 }
