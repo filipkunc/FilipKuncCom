@@ -7,6 +7,8 @@ tags: ["typescript", "compiler-api", "monaco", "json"]
 
 import TypeProbe from '../../../components/TypeProbe.tsx';
 import Mermaid from '../../../components/Mermaid.tsx';
+import Excerpt from '../../../components/Excerpt.astro';
+import RunnableSnippet from '../../../components/RunnableSnippet.astro';
 
 There is a small thing that has bugged me for years.
 I fetch some JSON from an API, I write a TypeScript type for the shape I expect back, and then at runtime the two are free to disagree.
@@ -62,17 +64,15 @@ The other turns the type into a real function you can call.
 The rest of the post walks each arrow.
 First the checker, then the inference on the left edge, then the validator on the right.
 
+Every code block below is pulled out of the demo's actual source at build time, not retyped into the post, so what you read here is the code the demo runs.
+The validator pipeline is also run once at build by a small harness, and its real output is shown near the end.
+
 ## The compiler is the validator
 
 There is no validator here, and the value pane is not really checked as JSON at all.
 The demo keeps three [Monaco](https://microsoft.github.io/monaco-editor/) models: the `type Root` you edit, the JSON value you edit, and a hidden TypeScript file you never see.
 
-```ts
-const u = (name: string) => monaco.Uri.parse(`file:///${name}`);
-const typeModel = monaco.editor.createModel(typeText, "typescript", u("root.ts"));
-const jsonModel = monaco.editor.createModel(jsonText, "json", u("value.json"));
-const dataModel = monaco.editor.createModel(hiddenSource, "typescript", u("data.ts"));
-```
+<Excerpt source="src/components/TypeProbe.tsx" region="create-models" lang="tsx" />
 
 The two panes you edit never touch each other directly.
 They both feed the hidden file, the worker checks that file, and its complaints are copied back onto the JSON pane.
@@ -94,11 +94,7 @@ They both feed the hidden file, the worker checks that file, and its complaints 
 The hidden file is the whole trick.
 It is just your JSON dropped into a typed assignment, rebuilt on every keystroke in the value pane:
 
-```ts
-function hiddenFile(json: string) {
-  return `const data: Root =\n${json}\n;`;
-}
-```
+<Excerpt source="src/lib/typeprobe/monaco-setup.ts" region="hidden-file" lang="ts" />
 
 JSON is valid TypeScript syntax, so it sits there as a fresh object literal assigned to a typed target, and the compiler checks it structurally.
 A missing field, a wrong primitive, or a `null` where the type does not allow one all become errors.
@@ -107,31 +103,10 @@ Because it is a fresh literal, TypeScript also flags properties that are not in 
 Monaco runs the real TypeScript language service in a web worker, the same one VS Code uses, and that worker will hand me the errors for any file it knows about.
 So whenever a pane changes, I ask it about the hidden file and copy the results onto the JSON pane.
 
-```ts
-const getWorker = await monaco.typescript.getTypeScriptWorker();
-const client = await getWorker(dataModel.uri);
-const diagnostics = await client.getSemanticDiagnostics(dataModel.uri.toString());
-
-const markers = diagnostics.map((d) => {
-  const start = dataModel.getPositionAt(d.start);
-  const end = dataModel.getPositionAt(d.start + d.length);
-  return {
-    message: typeof d.messageText === "string" ? d.messageText : d.messageText.messageText,
-    severity: monaco.MarkerSeverity.Error,
-    // Line 1 of the hidden file is the `const data: Root =` header,
-    // so shift every position up one line. The columns line up as they are.
-    startLineNumber: start.lineNumber - 1,
-    startColumn: start.column,
-    endLineNumber: end.lineNumber - 1,
-    endColumn: end.column,
-  };
-});
-
-monaco.editor.setModelMarkers(jsonModel, "typeprobe", markers);
-```
+<Excerpt source="src/components/TypeProbe.tsx" region="map-diagnostics" lang="tsx" />
 
 That one header line is the only bookkeeping.
-Keeping the JSON on its own lines means each diagnostic shifts up by exactly one row and the columns need no adjusting.
+Each diagnostic comes back pointing at the hidden file, so I shift it up one line to land on the matching JSON row and clamp it to the pane.
 Monaco's own JSON validation is switched off, so the only squiggles on the value pane are the ones TypeScript put there.
 
 (Recent Monaco exposes this worker as `monaco.typescript`. Older versions keep it under `monaco.languages.typescript`.)
@@ -142,58 +117,23 @@ When you load JSON, I walk the parsed value and emit a first guess at `type Root
 There is no compiler in this step, just a recursive walk over the parsed value.
 Each value describes itself: a string becomes `string`, an array describes its elements, an object describes its keys.
 
-```ts
-function describe(value: unknown): string {
-  if (value === null) return "null";
-  if (Array.isArray(value)) return arrayType(value);
-  if (isPlainObject(value)) return mergeObjects([value]);
-  return typeof value; // "string" | "number" | "boolean"
-}
-```
+<Excerpt source="src/lib/typeprobe/infer.ts" region="describe" lang="ts" />
 
 Arrays of objects are the fun case, and they are why a single `describe` is not enough.
 Two elements of the same array can disagree, so I pool every observation and unify it into one type.
 Objects merge structurally, arrays have their elements pooled, and scalars contribute their primitive to a union.
 
-```ts
-function unify(values: unknown[]): string {
-  const objects = values.filter(isPlainObject);
-  const arrays = values.filter(Array.isArray) as unknown[][];
-  const scalars = values.filter((v) => !isPlainObject(v) && !Array.isArray(v));
+<Excerpt source="src/lib/typeprobe/infer.ts" region="unify" lang="ts" />
 
-  const parts: string[] = [];
-  if (arrays.length) parts.push(arrayType(arrays.flat()));
-  if (objects.length) parts.push(mergeObjects(objects));
-  parts.push(...scalars.map(describe));
-
-  return unionOf(parts); // dedupe, and push `null` to the end so it reads `T | null`
-}
-
-function arrayType(items: unknown[]): string {
-  if (items.length === 0) return "unknown[]";
-  const element = unify(items);
-  return element.includes("|") ? `(${element})[]` : `${element}[]`;
-}
-```
+<Excerpt source="src/lib/typeprobe/infer.ts" region="array-type" lang="ts" />
 
 Merging objects is where the optional keys come from.
-A key that shows up in some elements but not others becomes optional, and a key's type is the unification of every value seen for it.
+A key that shows up in some objects but not others becomes optional, and a key's type is the unification of every value seen for it.
 
-```ts
-function mergeObjects(objects: Record<string, unknown>[]): string {
-  const keys = [...new Set(objects.flatMap(Object.keys))];
-  const fields = keys.map((key) => {
-    const present = objects.filter((obj) => key in obj);
-    const optional = present.length < objects.length;
-    const valueType = unify(present.map((obj) => obj[key]));
-    return `${quoteKey(key)}${optional ? "?" : ""}: ${valueType}`;
-  });
-  return `{ ${fields.join("; ")} }`;
-}
-```
+<Excerpt source="src/lib/typeprobe/infer.ts" region="merge-objects" lang="ts" />
 
-The real version in the demo pretty-prints with indentation and quotes keys that are not valid identifiers, but this is the whole idea.
-Then `type Root = ${describe(value)};` is the text that lands in the top pane.
+That is the whole inferrer, indentation and all.
+The text it returns is exactly what lands in the top pane when you load a sample.
 
 It is only a guess from one sample though.
 If a field happened to be `null` in this particular response, the guess is `null` and nothing more.
@@ -213,46 +153,13 @@ There are four small steps: stand up a compiler, resolve the type, walk it into 
 
 The compiler normally reads from disk.
 In the browser there is no disk, so I use [@typescript/vfs](https://www.npmjs.com/package/@typescript/vfs) to give it an in-memory filesystem with two files in it.
+The first is a tiny standard library, because the checker insists a few globals exist.
 
-```ts
-import ts from "typescript";
-import { createSystem, createVirtualTypeScriptEnvironment } from "@typescript/vfs";
+<Excerpt source="src/lib/typeprobe/generate-validator.ts" region="minimal-lib" lang="ts" />
 
-// A tiny standard library. The inferred types only use objects, arrays,
-// primitives, and unions, so the checker just needs to know these globals
-// exist. That keeps us off the network and out of the multi-megabyte real
-// lib.d.ts files.
-const MINIMAL_LIB = `
-interface Array<T> { length: number; [index: number]: T; }
-interface Boolean {}
-interface Number {}
-interface String { readonly length: number; }
-interface Object {}
-interface Function {}
-interface IArguments {}
-interface RegExp {}
-`;
+The second is the edited type text, and the two together are enough to stand up a program and pull out the checker.
 
-function makeChecker(typeText: string) {
-  const files = new Map<string, string>();
-  files.set("/lib.d.ts", MINIMAL_LIB);
-  files.set("/index.ts", typeText);
-
-  const system = createSystem(files);
-  const env = createVirtualTypeScriptEnvironment(
-    system,
-    ["/lib.d.ts", "/index.ts"],
-    ts,
-    { target: ts.ScriptTarget.ES2020, strict: true, noLib: true },
-  );
-
-  const program = env.languageService.getProgram()!;
-  return {
-    checker: program.getTypeChecker(),
-    source: program.getSourceFile("/index.ts")!,
-  };
-}
-```
+<Excerpt source="src/lib/typeprobe/generate-validator.ts" region="make-checker" lang="ts" />
 
 The `noLib` option turns off the real standard library, and the minimal stub takes its place.
 The checker only needs to know that `Array` and a handful of globals exist for `string[]` to mean something.
@@ -261,16 +168,7 @@ The checker only needs to know that `Array` and a handful of globals exist for `
 
 Now I find the `Root` declaration in the source and ask the checker what it actually is.
 
-```ts
-function findRoot(checker: ts.TypeChecker, source: ts.SourceFile) {
-  for (const statement of source.statements) {
-    if (ts.isTypeAliasDeclaration(statement) && statement.name.text === "Root") {
-      const symbol = checker.getSymbolAtLocation(statement.name)!;
-      return checker.getDeclaredTypeOfSymbol(symbol);
-    }
-  }
-}
-```
+<Excerpt source="src/lib/typeprobe/generate-validator.ts" region="find-root" lang="ts" />
 
 This is the step that pays for the whole compiler.
 `getDeclaredTypeOfSymbol` hands back the resolved type, with `string[]` already understood as an array of strings and `A | B` already flattened into a union.
@@ -281,65 +179,14 @@ I just ask what it resolved to.
 
 With a resolved type in hand, I walk it and build a string of boolean checks.
 A `Type` carries a bitmask of flags for the primitives, and the checker has helpers for the rest.
+This is the whole walker, every case it handles, straight from the source.
 
-```ts
-function check(type: ts.Type, expr: string, checker: ts.TypeChecker, depth = 0): string {
-  const F = ts.TypeFlags;
-  const flags = type.flags;
-
-  // Anything we cannot or need not check returns "true" so callers can drop it
-  // from an && chain.
-  if (flags & (F.Any | F.Unknown)) return "true";
-  if (flags & F.String) return `typeof ${expr} === "string"`;
-  if (flags & F.Number) return `typeof ${expr} === "number"`;
-  if (flags & F.Null) return `${expr} === null`;
-  if (flags & F.Undefined) return `${expr} === undefined`;
-
-  // Literal types narrow to one exact value.
-  if (flags & F.BooleanLiteral) return `${expr} === ${(type as any).intrinsicName}`;
-  if (flags & F.Boolean) return `typeof ${expr} === "boolean"`;
-  if (flags & F.StringLiteral) return `${expr} === ${JSON.stringify((type as any).value)}`;
-  if (flags & F.NumberLiteral) return `${expr} === ${(type as any).value}`;
-
-  if (type.isUnion()) {
-    const terms = type.types
-      // JSON never carries `undefined`; optional members are handled below.
-      .filter((member) => !(member.flags & F.Undefined))
-      .map((member) => check(member, expr, checker, depth))
-      .filter((term) => term !== "true");
-    if (terms.length <= 1) return terms[0] ?? "true";
-    return `(${terms.join(" || ")})`;
-  }
-
-  if (checker.isArrayType(type)) {
-    const element = checker.getTypeArguments(type as ts.TypeReference)[0];
-    // A fresh element name per level so nested arrays do not shadow `item`.
-    const item = depth === 0 ? "item" : `item${depth + 1}`;
-    return `Array.isArray(${expr}) && ${expr}.every((${item}: any) => ${check(element, item, checker, depth + 1)})`;
-  }
-
-  if (flags & F.Object) {
-    const terms = [`typeof ${expr} === "object"`, `${expr} !== null`, `!Array.isArray(${expr})`];
-    for (const prop of checker.getPropertiesOfType(type)) {
-      const propType = checker.getTypeOfSymbolAtLocation(prop, prop.valueDeclaration!);
-      const access = `${expr}.${prop.name}`;
-      const optional = prop.flags & ts.SymbolFlags.Optional;
-      const inner = check(propType, access, checker, depth);
-      // An optional member may be missing entirely; otherwise it must match.
-      terms.push(optional ? `(${access} === undefined || ${inner})` : inner);
-    }
-    return `(${terms.join(" && ")})`;
-  }
-
-  // Functions, symbols, tuples: not expected from JSON, so do not constrain them.
-  return "true";
-}
-```
+<Excerpt source="src/lib/typeprobe/generate-validator.ts" region="check" lang="ts" />
 
 Every branch is the checker doing the work.
 `isUnion` gives me the members, `isArrayType` plus `getTypeArguments` gives me the element type, and `getPropertiesOfType` plus `getTypeOfSymbolAtLocation` give me each field and its type.
 Optional fields show up as a flag on the property symbol, so they are allowed to be missing, and `undefined` is dropped from unions because JSON never carries it.
-This is the actual walker from the demo, minus the indentation it adds to keep the output readable.
+The `indent` and `depth` arguments only shape the output: `indent` keeps nested object groups readable, and `depth` names each array's element variable so a nested `.every` does not shadow the outer one.
 
 Wrapping that walk in a function body gives the validator you see in the output:
 
@@ -356,19 +203,26 @@ That output is still TypeScript.
 It has `: unknown` and a `value is Root` predicate, which the browser cannot run.
 Rather than strip the annotations with a fragile regex, I hand the string back to the compiler and let it erase the types for me.
 
-```ts
-const js = ts.transpile(code, { target: ts.ScriptTarget.ES2020 });
-const validate = new Function(`${js}\nreturn validate;`)();
-validate(myJson); // true or false
-```
+<Excerpt source="src/lib/typeprobe/generate-validator.ts" region="transpile" lang="ts" />
 
 That is exactly what the "Run it against the value above" button does.
 
 Put together it is the whole generator.
 Stand up a checker, resolve `Root`, walk it into a string, and transpile the string so it runs.
-About 150 lines, and most of them are the walk.
 This is the part a schema library cannot do from a type alone.
 The type is read, not copied.
+
+To prove the snippets above are not just for show, here is a small script that imports the very same `inferType` and `generateValidator` the demo uses, infers a type from a sample value, generates the validator, and runs it.
+The output is captured when the site is built, so if any of this stopped working the build would fail instead of shipping a wrong post.
+
+<RunnableSnippet
+  source="src/content/posts/type-json-validator/verify/ts/run.ts"
+  region="harness"
+  outputKey="type-json-validator/ts"
+  command="node run.ts"
+  lang="ts"
+  label="run.ts"
+/>
 
 ## Where it breaks
 

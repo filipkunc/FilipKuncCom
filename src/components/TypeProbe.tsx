@@ -69,6 +69,7 @@ export default function TypeProbe() {
     const jsonModel = jsonModelRef.current;
     if (!monaco || !dataModel || !jsonModel) return;
 
+    // #region map-diagnostics
     const getWorker = await monaco.typescript.getTypeScriptWorker();
     const client = await getWorker(dataModel.uri);
     const uri = dataModel.uri.toString();
@@ -105,6 +106,7 @@ export default function TypeProbe() {
       });
 
     monaco.editor.setModelMarkers(jsonModel, 'typeprobe', markers);
+    // #endregion map-diagnostics
     setErrorCount(errors);
   }, []);
 
@@ -130,11 +132,14 @@ export default function TypeProbe() {
       const seed = examples[0].json;
       const seedType = inferType(JSON.parse(seed));
 
+      // #region create-models
+      // The `type Root` the reader edits.
       const typeModel = monaco.editor.createModel(
         seedType,
         'typescript',
         monaco.Uri.parse('file:///root.ts'),
       );
+      // The plain JSON value the reader edits.
       const jsonModel = monaco.editor.createModel(
         seed,
         'json',
@@ -147,6 +152,7 @@ export default function TypeProbe() {
         'typescript',
         monaco.Uri.parse('file:///data.ts'),
       );
+      // #endregion create-models
 
       const common = {
         theme,

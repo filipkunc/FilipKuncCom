@@ -9,11 +9,13 @@
 import type {
   Type,
   TypeChecker,
+  SourceFile,
   default as TSModule,
 } from 'typescript';
 
 type TS = typeof TSModule;
 
+// #region minimal-lib
 // A tiny standard library. The inferred types are self-contained (objects,
 // arrays, primitives, unions), so the checker only needs the global types it
 // insists exist under noLib, plus Array so that `T[]` has meaning. This keeps
@@ -31,6 +33,7 @@ interface NewableFunction extends Function {}
 interface IArguments {}
 interface RegExp {}
 `;
+// #endregion minimal-lib
 
 export interface GenerateResult {
   code: string;
@@ -48,6 +51,7 @@ function access(expr: string, key: string): string {
   return isValidIdent(key) ? `${expr}.${key}` : `${expr}[${JSON.stringify(key)}]`;
 }
 
+// #region check
 // Build the boolean expression that is true exactly when `expr` matches `type`.
 // Returns 'true' for anything we cannot or need not check (any, unknown), so
 // callers can drop those terms from an && chain. `indent` is the current
@@ -134,6 +138,50 @@ function checkType(
   // Anything else (functions, symbols, tuples) is not expected from JSON.
   return 'true';
 }
+// #endregion check
+
+// #region make-checker
+// Stand up an in-memory TypeScript program over a tiny lib plus the edited type
+// text, and hand back the program and the parsed source file. There is no disk
+// in the browser, so @typescript/vfs gives the compiler a Map of files instead.
+function makeChecker(ts: TS, vfs: typeof import('@typescript/vfs'), typeText: string) {
+  const fsMap = new Map<string, string>();
+  fsMap.set('/lib.d.ts', MINIMAL_LIB);
+  fsMap.set('/index.ts', `${typeText}\n`);
+
+  const system = vfs.createSystem(fsMap);
+  const env = vfs.createVirtualTypeScriptEnvironment(
+    system,
+    ['/lib.d.ts', '/index.ts'],
+    ts,
+    { target: ts.ScriptTarget.ES2020, strict: true, noLib: true },
+  );
+
+  const program = env.languageService.getProgram();
+  if (!program) throw new Error('Could not start the TypeScript program.');
+  const source = program.getSourceFile('/index.ts');
+  if (!source) throw new Error('Could not read the type source.');
+  return { program, source };
+}
+// #endregion make-checker
+
+// #region find-root
+// Find the `Root` declaration and ask the checker what it resolved to. This is
+// the step that pays for the whole compiler: `string[]` already means an array
+// of strings and `A | B` is already a flattened union, with no syntax to parse.
+function findRoot(ts: TS, checker: TypeChecker, source: SourceFile): Type | undefined {
+  for (const statement of source.statements) {
+    if (
+      (ts.isTypeAliasDeclaration(statement) || ts.isInterfaceDeclaration(statement)) &&
+      statement.name.text === 'Root'
+    ) {
+      const symbol = checker.getSymbolAtLocation(statement.name);
+      if (symbol) return checker.getDeclaredTypeOfSymbol(symbol);
+    }
+  }
+  return undefined;
+}
+// #endregion find-root
 
 export async function generateValidator(typeText: string): Promise<GenerateResult> {
   let ts: TS;
@@ -146,29 +194,7 @@ export async function generateValidator(typeText: string): Promise<GenerateResul
   }
 
   try {
-    const compilerOptions = {
-      target: ts.ScriptTarget.ES2020,
-      strict: true,
-      noLib: true,
-    };
-
-    const fsMap = new Map<string, string>();
-    fsMap.set('/lib.d.ts', MINIMAL_LIB);
-    fsMap.set('/index.ts', `${typeText}\n`);
-
-    const system = vfs.createSystem(fsMap);
-    const env = vfs.createVirtualTypeScriptEnvironment(
-      system,
-      ['/lib.d.ts', '/index.ts'],
-      ts,
-      compilerOptions,
-    );
-
-    const program = env.languageService.getProgram();
-    if (!program) return { code: '', error: 'Could not start the TypeScript program.' };
-
-    const source = program.getSourceFile('/index.ts');
-    if (!source) return { code: '', error: 'Could not read the type source.' };
+    const { program, source } = makeChecker(ts, vfs, typeText);
 
     // Surface real type errors (e.g. the edited type references something
     // undefined) instead of emitting a broken validator.
@@ -188,17 +214,7 @@ export async function generateValidator(typeText: string): Promise<GenerateResul
     }
 
     const checker = program.getTypeChecker();
-    let rootType: Type | undefined;
-    for (const statement of source.statements) {
-      if (
-        (ts.isTypeAliasDeclaration(statement) || ts.isInterfaceDeclaration(statement)) &&
-        statement.name.text === 'Root'
-      ) {
-        const symbol = checker.getSymbolAtLocation(statement.name);
-        if (symbol) rootType = checker.getDeclaredTypeOfSymbol(symbol);
-      }
-    }
-
+    const rootType = findRoot(ts, checker, source);
     if (!rootType) {
       return { code: '', error: 'No `type Root` or `interface Root` found to validate against.' };
     }
@@ -215,8 +231,10 @@ export async function generateValidator(typeText: string): Promise<GenerateResul
     // function we can actually call.
     let validate: ((value: unknown) => boolean) | undefined;
     try {
+      // #region transpile
       const js = ts.transpile(code, { target: ts.ScriptTarget.ES2020 });
       validate = new Function(`${js}\nreturn validate;`)() as (value: unknown) => boolean;
+      // #endregion transpile
     } catch {
       validate = undefined;
     }

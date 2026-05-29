@@ -2,6 +2,7 @@
 import { Code } from 'astro:components';
 import { readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
+import { readSource, extractRegion } from '../lib/snippets';
 
 interface Props {
   source: string;
@@ -9,12 +10,17 @@ interface Props {
   lang: Parameters<typeof Code>[0]['lang'];
   command: string;
   inputs?: string[];
+  // Show only a named region of the source file (the whole file still runs).
+  region?: string;
+  // Override the displayed file label (defaults to the source's basename).
+  label?: string;
 }
 
-const { source, outputKey, lang, command, inputs = [] } = Astro.props;
+const { source, outputKey, lang, command, inputs = [], region, label } = Astro.props;
 
 const repoRoot = process.cwd();
-const code = readFileSync(join(repoRoot, source), 'utf8');
+const full = readSource(source);
+const code = region ? extractRegion(full, region) : full;
 
 const inputFiles = inputs.map((path) => ({
   name: basename(path),
@@ -42,7 +48,7 @@ const verifiedAt = entry.verifiedAt.slice(0, 10);
 <figure class="runnable-snippet">
   <div class="snippet-frame">
     <div class="snippet-section">
-      <div class="snippet-label code-file-label"><span>{basename(source)}</span></div>
+      <div class="snippet-label code-file-label"><span>{label ?? basename(source)}</span></div>
       <Code code={code} lang={lang} />
     </div>
     {inputFiles.map((f) => (

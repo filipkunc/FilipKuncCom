@@ -57,11 +57,13 @@ export function configureLanguages(monaco: typeof Monaco): void {
 // The hidden TypeScript file that the compiler actually checks. The JSON the
 // reader edits is dropped in on its own lines so that a diagnostic on TS line N
 // maps to JSON line N-1 with the column unchanged.
+// #region hidden-file
 const DATA_HEADER = 'const data: Root =';
 
 export function buildDataSource(jsonText: string): string {
   return `${DATA_HEADER}\n${jsonText.replace(/\s+$/, '')}\n;\n`;
 }
+// #endregion hidden-file
 
 // TS line 1 is the `const data: Root =` header; the JSON starts on TS line 2.
 export const JSON_LINE_OFFSET = 1;

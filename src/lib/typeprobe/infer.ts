@@ -39,6 +39,7 @@ function unionOf(parts: string[]): string {
   return ordered.join(' | ');
 }
 
+// #region describe
 // Describe a single observed value as a type string.
 function describe(value: unknown, depth: number): string {
   if (value === null) return 'null';
@@ -55,13 +56,17 @@ function describe(value: unknown, depth: number): string {
       return 'unknown';
   }
 }
+// #endregion describe
 
+// #region array-type
 function arrayType(items: unknown[], depth: number): string {
   if (items.length === 0) return 'unknown[]';
   const element = unify(items, depth);
   return element.includes('|') ? `(${element})[]` : `${element}[]`;
 }
+// #endregion array-type
 
+// #region unify
 // Unify a set of observed values into one type. Object values are merged
 // structurally, array values have their elements pooled and unified, and
 // scalars contribute their primitive type to a union.
@@ -96,7 +101,9 @@ function unify(values: unknown[], depth: number): string {
 
   return unionOf(parts);
 }
+// #endregion unify
 
+// #region merge-objects
 // Merge one or more object observations into a single object type.
 // A key absent from some observations is optional. The value type of a
 // key is the unification of every value seen for it.
@@ -125,6 +132,7 @@ function mergeObjects(objects: Record<string, unknown>[], depth: number): string
 
   return `{\n${lines.join('\n')}\n${closePad}}`;
 }
+// #endregion merge-objects
 
 export function inferType(value: unknown, rootName = 'Root'): string {
   return `type ${rootName} = ${describe(value, 0)};`;

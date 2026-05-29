@@ -3,21 +3,28 @@
     "stdout": "| model | empty | single | simple-3 | balanced | left-skewed | total |\n|---|---|---|---|---|---|---|\n| gemma-4-e4b-it-cpu | ✓ | ✓ | ✓ | ✓ | ✓ | 5/5 |\n| gemma-4-e4b-it-gpu | ✓ | ✓ | ✓ | ✓ | ✓ | 5/5 |\n| qwen3.5-4b-cpu | ✓ | ✓ | ✓ | ✓ | ✓ | 5/5 |\n| qwen3.5-4b-gpu | ✓ | ✓ | ✓ | ✓ | ✓ | 5/5 |\n",
     "stderr": "",
     "exitCode": 0,
-    "durationMs": 30,
-    "verifiedAt": "2026-05-24T14:35:45.349Z"
+    "durationMs": 29,
+    "verifiedAt": "2026-05-29T16:25:02.130Z"
   },
   "monkey-patching/js": {
     "stdout": "Hello, Filip!\n",
     "stderr": "",
     "exitCode": 0,
     "durationMs": 28,
-    "verifiedAt": "2026-05-24T14:35:45.378Z"
+    "verifiedAt": "2026-05-29T16:25:02.159Z"
   },
   "monkey-patching/rs": {
     "stdout": "Hello, Filip!\n",
-    "stderr": "    Finished `release` profile [optimized] target(s) in 0.13s\n     Running `/home/fkunc/Projects/FilipKuncCom/.cache/verify/rs/target/release/monkey-demo hello.txt`\n",
+    "stderr": "    Finished `release` profile [optimized] target(s) in 0.21s\n     Running `/home/fkunc/Projects/FilipKuncCom/.cache/verify/rs/target/release/monkey-demo hello.txt`\n",
     "exitCode": 0,
-    "durationMs": 185,
-    "verifiedAt": "2026-05-24T14:35:45.563Z"
+    "durationMs": 311,
+    "verifiedAt": "2026-05-29T16:25:02.470Z"
+  },
+  "type-json-validator/ts": {
+    "stdout": "type Root = {\n  login: string;\n  id: number;\n  name: string;\n  public_repos: number;\n  followers: number;\n};\n\nfunction validate(value: unknown): value is Root {\n  const v = value as any;\n  return (\n    typeof v === \"object\" &&\n    v !== null &&\n    !Array.isArray(v) &&\n    typeof v.login === \"string\" &&\n    typeof v.id === \"number\" &&\n    typeof v.name === \"string\" &&\n    typeof v.public_repos === \"number\" &&\n    typeof v.followers === \"number\"\n  );\n}\n\nvalidate(sample) => true\nvalidate(broken) => false\n",
+    "stderr": "",
+    "exitCode": 0,
+    "durationMs": 330,
+    "verifiedAt": "2026-05-29T16:25:02.800Z"
   }
 }

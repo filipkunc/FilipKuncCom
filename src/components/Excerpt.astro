@@ -1,0 +1,22 @@
+---
+// Show a region of a real source file (or the whole file) as a code block.
+// The code is read at build time, so it is always in sync with what ships.
+import { basename } from 'node:path';
+import { Code } from 'astro:components';
+import CodeFile from './CodeFile.astro';
+import { readSource, extractRegion } from '../lib/snippets';
+
+interface Props {
+  source: string;
+  region?: string;
+  lang: Parameters<typeof Code>[0]['lang'];
+  // Override the file label (defaults to the source's basename).
+  label?: string;
+}
+
+const { source, region, lang, label } = Astro.props;
+const full = readSource(source);
+const code = region ? extractRegion(full, region) : full;
+---
+
+<CodeFile code={code} lang={lang} filename={label ?? basename(source)} />
