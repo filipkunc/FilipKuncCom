@@ -58,28 +58,28 @@ export default function Mermaid({ chart, caption }: Props) {
     async function render() {
       try {
         const mermaid = (await import('mermaid')).default;
-        // Wait for fonts before measuring text. In the built site the bundled
-        // Monaco CSS preloads a @font-face (codicon) that is still loading when
-        // Mermaid measures its SVG labels, so it sizes nodes with transient
-        // metrics and clips long labels (e.g. "value is Root"). Dev injects that
-        // CSS later, so it never hits this. Waiting makes the metrics final.
+        // Still wait for fonts so the layout settles before render.
         if (document.fonts?.ready) {
           try {
             await document.fonts.ready;
           } catch {
-            /* ignore — fall through and render with whatever metrics we have */
+            /* ignore — render with whatever we have */
           }
         }
         if (cancelled) return;
         mermaid.initialize({
           startOnLoad: false,
-          // SVG text labels (not HTML), so the fill colors come from the theme
-          // variables above and there is nothing to sanitize.
-          securityLevel: 'strict',
+          // htmlLabels renders labels as real HTML in a <foreignObject>, so the
+          // browser lays out the text and the node box is sized to fit it. SVG
+          // text labels instead rely on Mermaid measuring glyph widths, which
+          // under-measured here and clipped long labels (e.g. "value is Root")
+          // in the built site. Labels are our own static strings, so 'loose'
+          // (required for htmlLabels) is fine.
+          securityLevel: 'loose',
           theme: 'base',
           themeVariables: themeVariables(media.matches),
           fontFamily: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-          flowchart: { curve: 'basis', htmlLabels: false, padding: 14, nodeSpacing: 40, rankSpacing: 48 },
+          flowchart: { curve: 'basis', htmlLabels: true, padding: 14, nodeSpacing: 40, rankSpacing: 48 },
         });
         // A fresh id per pass avoids colliding with the leftover <style> block
         // Mermaid injects under the previous id.
