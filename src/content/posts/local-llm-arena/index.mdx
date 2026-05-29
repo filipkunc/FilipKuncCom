@@ -9,6 +9,7 @@ draft: false
 import { Code } from 'astro:components';
 import CodeFile from '../../../components/CodeFile.astro';
 import { readFileSync } from 'node:fs';
+import { sourceUrl } from '../../../lib/snippets';
 
 export const prompt = readFileSync('src/content/posts/local-llm-arena/generator/prompt.md', 'utf8');
 export const callModelSrc = readFileSync('src/content/posts/local-llm-arena/generator/call_model.py', 'utf8');
@@ -16,6 +17,13 @@ export const generateSrc = readFileSync('src/content/posts/local-llm-arena/gener
 export const gemmaSolution = readFileSync('src/content/posts/local-llm-arena/verify/arena/samples/gemma-4-e4b-it-gpu/solution.py', 'utf8');
 export const qwenSolution = readFileSync('src/content/posts/local-llm-arena/verify/arena/samples/qwen3.5-4b-gpu/solution.py', 'utf8');
 export const harnessSrc = readFileSync('src/content/posts/local-llm-arena/verify/arena/harness.py', 'utf8');
+
+export const promptHref = sourceUrl('src/content/posts/local-llm-arena/generator/prompt.md');
+export const callModelHref = sourceUrl('src/content/posts/local-llm-arena/generator/call_model.py');
+export const generateHref = sourceUrl('src/content/posts/local-llm-arena/generator/generate.py');
+export const gemmaHref = sourceUrl('src/content/posts/local-llm-arena/verify/arena/samples/gemma-4-e4b-it-gpu/solution.py');
+export const qwenHref = sourceUrl('src/content/posts/local-llm-arena/verify/arena/samples/qwen3.5-4b-gpu/solution.py');
+export const harnessHref = sourceUrl('src/content/posts/local-llm-arena/verify/arena/harness.py');
 
 export const scoreboard = JSON.parse(readFileSync('snippet-manifest.json', 'utf8'))['local-llm-arena/arena'];
 export const scoreboardRows = scoreboard.stdout
@@ -74,7 +82,7 @@ The models are [Unsloth's GGUFs](https://huggingface.co/unsloth) of Gemma 4 E4B 
 
 Same prompt for every model, temperature 0, single sample.
 
-<CodeFile code={prompt} lang="markdown" filename="prompt.md" />
+<CodeFile code={prompt} lang="markdown" filename="prompt.md" href={promptHref} />
 
 ## Calling the model
 
@@ -88,7 +96,7 @@ llama-server -m gemma-4-E4B-it-UD-Q4_K_XL.gguf --port 8123 -c 8192 -ngl 99 -np 1
 That separates model loading from orchestration.
 The Python side stays a thin HTTP client:
 
-<CodeFile code={callModelSrc} lang="python" filename="call_model.py" />
+<CodeFile code={callModelSrc} lang="python" filename="call_model.py" href={callModelHref} />
 
 `temperature=0`, `top_k=1`, `seed=42`, and `-np 1` on the server pin the sampler.
 On the same hardware and llama.cpp build, the same prompt produces byte-identical output every run.
@@ -101,7 +109,7 @@ A background thread runs alongside each call, polling `/proc/<pid>/{status,stat}
 
 Set `LLAMA_BIN` at the top of the file to your `llama-server` path before running.
 
-<CodeFile code={generateSrc} lang="python" filename="generate.py" />
+<CodeFile code={generateSrc} lang="python" filename="generate.py" href={generateHref} />
 
 Run it from the same directory as `call_model.py`:
 
@@ -115,21 +123,21 @@ Each entry writes `solution.py`, `raw-response.txt`, and `metrics.json` to its o
 
 ### Gemma 4 E4B Instruct
 
-<CodeFile code={gemmaSolution} lang="python" filename="samples/gemma-4-e4b-it-gpu/solution.py" />
+<CodeFile code={gemmaSolution} lang="python" filename="samples/gemma-4-e4b-it-gpu/solution.py" href={gemmaHref} />
 
 ### Qwen3.5 4B
 
 Qwen3 ships with a default chain-of-thought mode that emits thousands of reasoning tokens before the final answer.
 For a one-shot codegen task that's pure overhead, so `generate.py` passes `chat_template_kwargs.enable_thinking=false` to suppress it.
 
-<CodeFile code={qwenSolution} lang="python" filename="samples/qwen3.5-4b-gpu/solution.py" />
+<CodeFile code={qwenSolution} lang="python" filename="samples/qwen3.5-4b-gpu/solution.py" href={qwenHref} />
 
 ## The judge
 
 The judge loads each `solution.py`, calls `invert_tree` against a small set of trees, and prints a row of ✓ or ✗ per model.
 A `-` means the file or function was missing entirely.
 
-<CodeFile code={harnessSrc} lang="python" filename="harness.py" />
+<CodeFile code={harnessSrc} lang="python" filename="harness.py" href={harnessHref} />
 
 <figure class="scoreboard">
   <table>
