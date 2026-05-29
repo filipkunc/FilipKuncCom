@@ -4,7 +4,7 @@
 import { basename } from 'node:path';
 import { Code } from 'astro:components';
 import CodeFile from './CodeFile.astro';
-import { readSource, extractRegion } from '../lib/snippets';
+import { readSource, locateRegion, sourceUrl } from '../lib/snippets';
 
 interface Props {
   source: string;
@@ -16,12 +16,16 @@ interface Props {
 
 const { source, region, lang, label } = Astro.props;
 const full = readSource(source);
-const code = region ? extractRegion(full, region) : full;
+
+const located = region
+  ? locateRegion(full, region)
+  : { code: full, startLine: 1, endLine: full.split('\n').length };
 
 // When several excerpts come from the same file, the bare filename repeats and
 // reads as "the same file again". Append the region so the label is a
 // breadcrumb to the part being shown.
 const filename = label ?? (region ? `${basename(source)} › ${region}` : basename(source));
+const href = sourceUrl(source, located.startLine, located.endLine);
 ---
 
-<CodeFile code={code} lang={lang} filename={filename} />
+<CodeFile code={located.code} lang={lang} filename={filename} href={href} />

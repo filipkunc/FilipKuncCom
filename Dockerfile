@@ -17,6 +17,11 @@ COPY tsconfig.json astro.config.mjs snippet-manifest.json ./
 COPY src ./src
 COPY public ./public
 
+# The build bakes the commit into "view on GitHub" source links, so the line
+# anchors are pinned to exactly what shipped. No .git here, hence the arg.
+ARG GIT_SHA=unknown
+ENV GIT_SHA=${GIT_SHA}
+
 # astro build → dist/ ; tsc → server-dist/
 RUN npm run build
 

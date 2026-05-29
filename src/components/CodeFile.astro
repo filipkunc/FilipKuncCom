@@ -5,15 +5,23 @@ interface Props {
   code: string;
   lang: Parameters<typeof Code>[0]['lang'];
   filename: string;
+  // When set, the filename links to the source (e.g. on GitHub).
+  href?: string;
 }
 
-const { code, lang, filename } = Astro.props;
+const { code, lang, filename, href } = Astro.props;
 ---
 
 <figure class="code-file">
   <div class="code-file-frame">
     <div class="code-file-label">
-      <span>{filename}</span>
+      {href ? (
+        <a class="code-file-src" href={href} target="_blank" rel="noopener noreferrer">
+          {filename} <span class="ext" aria-hidden="true">↗</span>
+        </a>
+      ) : (
+        <span>{filename}</span>
+      )}
     </div>
     <Code code={code} lang={lang} />
   </div>
@@ -44,4 +52,6 @@ const { code, lang, filename } = Astro.props;
     border-radius: 0;
     font-size: 0.85em;
   }
+  .code-file-src { color: var(--link); }
+  .code-file-src .ext { font-size: 0.85em; opacity: 0.75; }
 </style>

@@ -2,7 +2,7 @@
 import { Code } from 'astro:components';
 import { readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
-import { readSource, extractRegion } from '../lib/snippets';
+import { readSource, locateRegion, sourceUrl } from '../lib/snippets';
 
 interface Props {
   source: string;
@@ -20,10 +20,15 @@ const { source, outputKey, lang, command, inputs = [], region, label } = Astro.p
 
 const repoRoot = process.cwd();
 const full = readSource(source);
-const code = region ? extractRegion(full, region) : full;
+const located = region
+  ? locateRegion(full, region)
+  : { code: full, startLine: 1, endLine: full.split('\n').length };
+const code = located.code;
 
-// Label the shown code as a breadcrumb when it is a region of a larger file.
+// Label the shown code as a breadcrumb when it is a region of a larger file,
+// and link it to the source.
 const sourceLabel = label ?? (region ? `${basename(source)} › ${region}` : basename(source));
+const sourceHref = sourceUrl(source, located.startLine, located.endLine);
 
 const inputFiles = inputs.map((path) => ({
   name: basename(path),
@@ -51,7 +56,11 @@ const verifiedAt = entry.verifiedAt.slice(0, 10);
 <figure class="runnable-snippet">
   <div class="snippet-frame">
     <div class="snippet-section">
-      <div class="snippet-label code-file-label"><span>{sourceLabel}</span></div>
+      <div class="snippet-label code-file-label">
+        <a class="snippet-src" href={sourceHref} target="_blank" rel="noopener noreferrer">
+          {sourceLabel} <span class="ext" aria-hidden="true">↗</span>
+        </a>
+      </div>
       <Code code={code} lang={lang} />
     </div>
     {inputFiles.map((f) => (
@@ -105,6 +114,8 @@ const verifiedAt = entry.verifiedAt.slice(0, 10);
   .snippet-verified {
     font-style: italic;
   }
+  .snippet-src { color: var(--link); }
+  .snippet-src .ext { font-size: 0.85em; opacity: 0.75; }
   .snippet-frame :global(pre.astro-code) {
     margin: 0;
     border-radius: 0;

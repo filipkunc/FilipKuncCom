@@ -9,13 +9,48 @@
 // Only ever imported from .astro frontmatter, so Node's fs is fine here.
 
 import { readFileSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 import { join } from 'node:path';
 
 const REGION_START = /^\s*(?:\/\/|#|--|\/\*)\s*#region\s+(\S+)/;
 const REGION_END = /^\s*(?:\/\/|#|--|\/\*)\s*#endregion\b/;
 
+// The public repository these sources live in, for "view on GitHub" links.
+const SOURCE_REPO = 'filipkunc/FilipKuncCom';
+
 export function readSource(relPath: string): string {
   return readFileSync(join(process.cwd(), relPath), 'utf8');
+}
+
+// The git ref to pin source links to. The deploy passes the deployed commit as
+// GIT_SHA, which makes the line anchors permanent. Locally we read HEAD, and if
+// there is no git (e.g. building inside a context with no .git) we fall back to
+// the default branch so the link still resolves, just unpinned.
+let cachedRef: string | undefined;
+function sourceRef(): string {
+  if (cachedRef !== undefined) return cachedRef;
+  const env = process.env.GIT_SHA?.trim();
+  if (env && env !== 'unknown') {
+    cachedRef = env;
+    return cachedRef;
+  }
+  try {
+    cachedRef = execSync('git rev-parse HEAD', { cwd: process.cwd() }).toString().trim();
+  } catch {
+    cachedRef = 'main';
+  }
+  return cachedRef;
+}
+
+// A GitHub blob URL for a file, optionally anchored to a line range. Pinned to
+// the build's commit so the anchored lines never drift.
+export function sourceUrl(relPath: string, startLine?: number, endLine?: number): string {
+  const path = relPath.replace(/^\/+/, '');
+  let url = `https://github.com/${SOURCE_REPO}/blob/${sourceRef()}/${path}`;
+  if (startLine) {
+    url += `#L${startLine}${endLine && endLine !== startLine ? `-L${endLine}` : ''}`;
+  }
+  return url;
 }
 
 // Strip the common leading indentation so a region lifted from inside a
@@ -28,11 +63,19 @@ function dedent(lines: string[]): string[] {
   return lines.map((line) => line.slice(min));
 }
 
-// Return the text inside the named region, with the marker lines removed and
-// any nested regions' markers stripped but their content kept. Throws if the
-// region is missing or unclosed, so a renamed or deleted region fails the
-// build instead of silently showing nothing.
-export function extractRegion(code: string, region: string): string {
+export interface Region {
+  code: string;
+  // 1-based line numbers of the region's body in the original file (the lines
+  // between the markers), for anchoring a source link.
+  startLine: number;
+  endLine: number;
+}
+
+// Locate the named region: its de-indented body plus the line range it spans in
+// the original file. Markers are removed and nested regions' markers stripped
+// (their content kept). Throws if the region is missing or unclosed, so a
+// renamed or deleted region fails the build instead of silently showing nothing.
+export function locateRegion(code: string, region: string): Region {
   const lines = code.split('\n');
 
   let i = 0;
@@ -41,9 +84,10 @@ export function extractRegion(code: string, region: string): string {
     if (match && match[1] === region) break;
   }
   if (i >= lines.length) {
-    throw new Error(`extractRegion: region "${region}" not found`);
+    throw new Error(`locateRegion: region "${region}" not found`);
   }
 
+  const startLine = i + 2; // first body line (1-based) sits just after the marker
   i++; // skip the opening marker
   let depth = 1;
   const out: string[] = [];
@@ -61,10 +105,15 @@ export function extractRegion(code: string, region: string): string {
     out.push(line);
   }
   if (depth !== 0) {
-    throw new Error(`extractRegion: region "${region}" is not closed`);
+    throw new Error(`locateRegion: region "${region}" is not closed`);
   }
+  const endLine = i; // closing marker is at i+1 (1-based), so last body line is i
 
   while (out.length && out[0].trim() === '') out.shift();
   while (out.length && out[out.length - 1].trim() === '') out.pop();
-  return dedent(out).join('\n');
+  return { code: dedent(out).join('\n'), startLine, endLine };
+}
+
+export function extractRegion(code: string, region: string): string {
+  return locateRegion(code, region).code;
 }
