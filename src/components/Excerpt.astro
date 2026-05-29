@@ -17,6 +17,11 @@ interface Props {
 const { source, region, lang, label } = Astro.props;
 const full = readSource(source);
 const code = region ? extractRegion(full, region) : full;
+
+// When several excerpts come from the same file, the bare filename repeats and
+// reads as "the same file again". Append the region so the label is a
+// breadcrumb to the part being shown.
+const filename = label ?? (region ? `${basename(source)} › ${region}` : basename(source));
 ---
 
-<CodeFile code={code} lang={lang} filename={label ?? basename(source)} />
+<CodeFile code={code} lang={lang} filename={filename} />

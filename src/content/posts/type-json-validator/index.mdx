@@ -188,14 +188,11 @@ Every branch is the checker doing the work.
 Optional fields show up as a flag on the property symbol, so they are allowed to be missing, and `undefined` is dropped from unions because JSON never carries it.
 The `indent` and `depth` arguments only shape the output: `indent` keeps nested object groups readable, and `depth` names each array's element variable so a nested `.every` does not shadow the outer one.
 
-Wrapping that walk in a function body gives the validator you see in the output:
+The walker hands back one big boolean expression, and wrapping it in a type guard is the whole validator:
 
-```ts
-function validate(value: unknown): value is Root {
-  const v = value as any;
-  return /* the walked checks */;
-}
-```
+<Excerpt source="src/lib/typeprobe/generate-validator.ts" region="assemble" lang="ts" />
+
+The `${body}` is that expression spliced straight into the source, so `return (...)` is the entire walked check.
 
 ### Stripping the types so it runs
 

@@ -219,6 +219,8 @@ export async function generateValidator(typeText: string): Promise<GenerateResul
       return { code: '', error: 'No `type Root` or `interface Root` found to validate against.' };
     }
 
+    // #region assemble
+    // Walk Root into one big boolean expression, then wrap it in a type guard.
     const body = checkType(ts, checker, rootType, 'v');
     const code = [
       'function validate(value: unknown): value is Root {',
@@ -226,6 +228,7 @@ export async function generateValidator(typeText: string): Promise<GenerateResul
       `  return ${body};`,
       '}',
     ].join('\n');
+    // #endregion assemble
 
     // Strip the types with the compiler itself (no fragile regex) to get a
     // function we can actually call.

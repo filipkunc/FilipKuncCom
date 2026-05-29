@@ -22,6 +22,9 @@ const repoRoot = process.cwd();
 const full = readSource(source);
 const code = region ? extractRegion(full, region) : full;
 
+// Label the shown code as a breadcrumb when it is a region of a larger file.
+const sourceLabel = label ?? (region ? `${basename(source)} › ${region}` : basename(source));
+
 const inputFiles = inputs.map((path) => ({
   name: basename(path),
   content: readFileSync(join(repoRoot, path), 'utf8'),
@@ -48,7 +51,7 @@ const verifiedAt = entry.verifiedAt.slice(0, 10);
 <figure class="runnable-snippet">
   <div class="snippet-frame">
     <div class="snippet-section">
-      <div class="snippet-label code-file-label"><span>{label ?? basename(source)}</span></div>
+      <div class="snippet-label code-file-label"><span>{sourceLabel}</span></div>
       <Code code={code} lang={lang} />
     </div>
     {inputFiles.map((f) => (
