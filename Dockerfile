@@ -1,5 +1,5 @@
 # Multi-stage build for the Astro static site + tiny Node static server.
-# The image is the only release artifact (per playground-deploy-phases.md).
+# The image is the only release artifact.
 # Runtime stage has no node_modules: server is pure Node-builtins, site is static.
 
 ARG NODE_VERSION=24-alpine
