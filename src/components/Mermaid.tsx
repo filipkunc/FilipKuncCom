@@ -58,6 +58,19 @@ export default function Mermaid({ chart, caption }: Props) {
     async function render() {
       try {
         const mermaid = (await import('mermaid')).default;
+        // Wait for fonts before measuring text. In the built site the bundled
+        // Monaco CSS preloads a @font-face (codicon) that is still loading when
+        // Mermaid measures its SVG labels, so it sizes nodes with transient
+        // metrics and clips long labels (e.g. "value is Root"). Dev injects that
+        // CSS later, so it never hits this. Waiting makes the metrics final.
+        if (document.fonts?.ready) {
+          try {
+            await document.fonts.ready;
+          } catch {
+            /* ignore — fall through and render with whatever metrics we have */
+          }
+        }
+        if (cancelled) return;
         mermaid.initialize({
           startOnLoad: false,
           // SVG text labels (not HTML), so the fill colors come from the theme
