@@ -6,6 +6,7 @@ tags: ["typescript", "compiler-api", "monaco", "json"]
 ---
 
 import TypeProbe from '../../../components/TypeProbe.tsx';
+import Mermaid from '../../../components/Mermaid.tsx';
 
 There is a small thing that has bugged me for years.
 I fetch some JSON from an API, I write a TypeScript type for the shape I expect back, and then at runtime the two are free to disagree.
@@ -40,6 +41,27 @@ It feels like JSON Schema, except the schema is a TypeScript type and the thing 
 
 <TypeProbe client:visible />
 
+Before the code, here is the whole idea on one page.
+A JSON value comes in, a `type Root` is guessed from it, and that single type then feeds two separate things.
+One path drives the live squiggles you just saw.
+The other turns the type into a real function you can call.
+
+<Mermaid
+  client:visible
+  caption="One inferred type, two consumers: the live checker and the generated validator."
+  chart={`flowchart TD
+  J["JSON value"]
+  T["type Root"]
+  S["live squiggles"]
+  V["validate(value): value is Root"]
+  J -->|infer| T
+  T -->|"hidden file + TS worker"| S
+  T -->|"Compiler API + transpile"| V`}
+/>
+
+The rest of the post walks each arrow.
+First the checker, then the inference on the left edge, then the validator on the right.
+
 ## The compiler is the validator
 
 There is no validator here, and the value pane is not really checked as JSON at all.
@@ -51,6 +73,23 @@ const typeModel = monaco.editor.createModel(typeText, "typescript", u("root.ts")
 const jsonModel = monaco.editor.createModel(jsonText, "json", u("value.json"));
 const dataModel = monaco.editor.createModel(hiddenSource, "typescript", u("data.ts"));
 ```
+
+The two panes you edit never touch each other directly.
+They both feed the hidden file, the worker checks that file, and its complaints are copied back onto the JSON pane.
+
+<Mermaid
+  client:visible
+  caption="The two visible panes feed a hidden file, and the worker's diagnostics come back to the JSON."
+  chart={`flowchart TD
+  T["type Root pane (you edit)"]
+  J["JSON value pane (you edit)"]
+  D["hidden file: const data: Root = your JSON"]
+  W["TypeScript worker"]
+  T -->|provides Root| D
+  J -->|copied in on each keystroke| D
+  D --> W
+  W -->|diagnostics, shifted up one line| J`}
+/>
 
 The hidden file is the whole trick.
 It is just your JSON dropped into a typed assignment, rebuilt on every keystroke in the value pane:
@@ -100,8 +139,61 @@ Monaco's own JSON validation is switched off, so the only squiggles on the value
 ## How to infer the `Root` type
 
 When you load JSON, I walk the parsed value and emit a first guess at `type Root`.
-Arrays of objects are the fun case.
-A key that shows up in some elements but not others becomes optional, and a field that is sometimes `null` becomes a `T | null`.
+There is no compiler in this step, just a recursive walk over the parsed value.
+Each value describes itself: a string becomes `string`, an array describes its elements, an object describes its keys.
+
+```ts
+function describe(value: unknown): string {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return arrayType(value);
+  if (isPlainObject(value)) return mergeObjects([value]);
+  return typeof value; // "string" | "number" | "boolean"
+}
+```
+
+Arrays of objects are the fun case, and they are why a single `describe` is not enough.
+Two elements of the same array can disagree, so I pool every observation and unify it into one type.
+Objects merge structurally, arrays have their elements pooled, and scalars contribute their primitive to a union.
+
+```ts
+function unify(values: unknown[]): string {
+  const objects = values.filter(isPlainObject);
+  const arrays = values.filter(Array.isArray) as unknown[][];
+  const scalars = values.filter((v) => !isPlainObject(v) && !Array.isArray(v));
+
+  const parts: string[] = [];
+  if (arrays.length) parts.push(arrayType(arrays.flat()));
+  if (objects.length) parts.push(mergeObjects(objects));
+  parts.push(...scalars.map(describe));
+
+  return unionOf(parts); // dedupe, and push `null` to the end so it reads `T | null`
+}
+
+function arrayType(items: unknown[]): string {
+  if (items.length === 0) return "unknown[]";
+  const element = unify(items);
+  return element.includes("|") ? `(${element})[]` : `${element}[]`;
+}
+```
+
+Merging objects is where the optional keys come from.
+A key that shows up in some elements but not others becomes optional, and a key's type is the unification of every value seen for it.
+
+```ts
+function mergeObjects(objects: Record<string, unknown>[]): string {
+  const keys = [...new Set(objects.flatMap(Object.keys))];
+  const fields = keys.map((key) => {
+    const present = objects.filter((obj) => key in obj);
+    const optional = present.length < objects.length;
+    const valueType = unify(present.map((obj) => obj[key]));
+    return `${quoteKey(key)}${optional ? "?" : ""}: ${valueType}`;
+  });
+  return `{ ${fields.join("; ")} }`;
+}
+```
+
+The real version in the demo pretty-prints with indentation and quotes keys that are not valid identifiers, but this is the whole idea.
+Then `type Root = ${describe(value)};` is the text that lands in the top pane.
 
 It is only a guess from one sample though.
 If a field happened to be `null` in this particular response, the guess is `null` and nothing more.
@@ -191,43 +283,63 @@ With a resolved type in hand, I walk it and build a string of boolean checks.
 A `Type` carries a bitmask of flags for the primitives, and the checker has helpers for the rest.
 
 ```ts
-function check(type: ts.Type, expr: string, checker: ts.TypeChecker): string {
+function check(type: ts.Type, expr: string, checker: ts.TypeChecker, depth = 0): string {
   const F = ts.TypeFlags;
+  const flags = type.flags;
 
-  if (type.flags & F.String) return `typeof ${expr} === "string"`;
-  if (type.flags & F.Number) return `typeof ${expr} === "number"`;
-  if (type.flags & F.Boolean) return `typeof ${expr} === "boolean"`;
-  if (type.flags & F.Null) return `${expr} === null`;
+  // Anything we cannot or need not check returns "true" so callers can drop it
+  // from an && chain.
+  if (flags & (F.Any | F.Unknown)) return "true";
+  if (flags & F.String) return `typeof ${expr} === "string"`;
+  if (flags & F.Number) return `typeof ${expr} === "number"`;
+  if (flags & F.Null) return `${expr} === null`;
+  if (flags & F.Undefined) return `${expr} === undefined`;
+
+  // Literal types narrow to one exact value.
+  if (flags & F.BooleanLiteral) return `${expr} === ${(type as any).intrinsicName}`;
+  if (flags & F.Boolean) return `typeof ${expr} === "boolean"`;
+  if (flags & F.StringLiteral) return `${expr} === ${JSON.stringify((type as any).value)}`;
+  if (flags & F.NumberLiteral) return `${expr} === ${(type as any).value}`;
 
   if (type.isUnion()) {
-    const parts = type.types.map((t) => check(t, expr, checker));
-    return `(${parts.join(" || ")})`;
+    const terms = type.types
+      // JSON never carries `undefined`; optional members are handled below.
+      .filter((member) => !(member.flags & F.Undefined))
+      .map((member) => check(member, expr, checker, depth))
+      .filter((term) => term !== "true");
+    if (terms.length <= 1) return terms[0] ?? "true";
+    return `(${terms.join(" || ")})`;
   }
 
   if (checker.isArrayType(type)) {
     const element = checker.getTypeArguments(type as ts.TypeReference)[0];
-    return `Array.isArray(${expr}) && ${expr}.every((item) => ${check(element, "item", checker)})`;
+    // A fresh element name per level so nested arrays do not shadow `item`.
+    const item = depth === 0 ? "item" : `item${depth + 1}`;
+    return `Array.isArray(${expr}) && ${expr}.every((${item}: any) => ${check(element, item, checker, depth + 1)})`;
   }
 
-  if (type.flags & F.Object) {
-    const checks = checker.getPropertiesOfType(type).map((prop) => {
+  if (flags & F.Object) {
+    const terms = [`typeof ${expr} === "object"`, `${expr} !== null`, `!Array.isArray(${expr})`];
+    for (const prop of checker.getPropertiesOfType(type)) {
       const propType = checker.getTypeOfSymbolAtLocation(prop, prop.valueDeclaration!);
       const access = `${expr}.${prop.name}`;
       const optional = prop.flags & ts.SymbolFlags.Optional;
-      const inner = check(propType, access, checker);
-      return optional ? `(${access} === undefined || ${inner})` : inner;
-    });
-    return [`typeof ${expr} === "object"`, `${expr} !== null`, ...checks].join(" && ");
+      const inner = check(propType, access, checker, depth);
+      // An optional member may be missing entirely; otherwise it must match.
+      terms.push(optional ? `(${access} === undefined || ${inner})` : inner);
+    }
+    return `(${terms.join(" && ")})`;
   }
 
+  // Functions, symbols, tuples: not expected from JSON, so do not constrain them.
   return "true";
 }
 ```
 
 Every branch is the checker doing the work.
 `isUnion` gives me the members, `isArrayType` plus `getTypeArguments` gives me the element type, and `getPropertiesOfType` plus `getTypeOfSymbolAtLocation` give me each field and its type.
-Optional fields show up as a flag on the property symbol, so they are allowed to be missing.
-The real version in the demo handles a few more cases, like string and number literals and dropping `undefined` from unions, but this is the shape of it.
+Optional fields show up as a flag on the property symbol, so they are allowed to be missing, and `undefined` is dropped from unions because JSON never carries it.
+This is the actual walker from the demo, minus the indentation it adds to keep the output readable.
 
 Wrapping that walk in a function body gives the validator you see in the output:
 
