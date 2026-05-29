@@ -6,7 +6,8 @@ tags: ["typescript", "compiler-api", "monaco", "json"]
 ---
 
 import TypeProbe from '../../../components/TypeProbe.tsx';
-import Mermaid from '../../../components/Mermaid.tsx';
+import DiagramFlow from '../../../components/DiagramFlow.astro';
+import DiagramLoop from '../../../components/DiagramLoop.astro';
 import Excerpt from '../../../components/Excerpt.astro';
 import RunnableSnippet from '../../../components/RunnableSnippet.astro';
 
@@ -48,18 +49,7 @@ A JSON value comes in, a `type Root` is guessed from it, and that single type th
 One path drives the live squiggles you just saw.
 The other turns the type into a real function you can call.
 
-<Mermaid
-  client:visible
-  caption="One inferred type, two consumers: the live checker and the generated validator."
-  chart={`flowchart TD
-  J["JSON value"]
-  T["type Root"]
-  S["live squiggles"]
-  V["validate(value): value is Root"]
-  J -->|infer| T
-  T -->|"hidden file + TS worker"| S
-  T -->|"Compiler API + transpile"| V`}
-/>
+<DiagramFlow />
 
 The rest of the post walks each arrow.
 First the checker, then the inference on the left edge, then the validator on the right.
@@ -77,19 +67,7 @@ The demo keeps three [Monaco](https://microsoft.github.io/monaco-editor/) models
 The two panes you edit never touch each other directly.
 They both feed the hidden file, the worker checks that file, and its complaints are copied back onto the JSON pane.
 
-<Mermaid
-  client:visible
-  caption="The two visible panes feed a hidden file, and the worker's diagnostics come back to the JSON."
-  chart={`flowchart TD
-  T["type Root pane (you edit)"]
-  J["JSON value pane (you edit)"]
-  D["hidden file: const data: Root = your JSON"]
-  W["TypeScript worker"]
-  T -->|provides Root| D
-  J -->|copied in on each keystroke| D
-  D --> W
-  W -->|diagnostics, shifted up one line| J`}
-/>
+<DiagramLoop />
 
 The hidden file is the whole trick.
 It is just your JSON dropped into a typed assignment, rebuilt on every keystroke in the value pane:

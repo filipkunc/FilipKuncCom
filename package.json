@@ -30,7 +30,6 @@
   "dependencies": {
     "@astrojs/react": "^5.0.5",
     "@typescript/vfs": "^1.6.4",
-    "mermaid": "^11.15.0",
     "monaco-editor": "^0.55.1",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"

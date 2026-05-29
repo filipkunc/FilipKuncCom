@@ -1,0 +1,55 @@
+---
+// The hidden-file checking loop for the type-json-validator post. Hand-authored
+// SVG (themed by the shared figure.diagram styles in Layout.astro).
+---
+
+<figure class="diagram">
+  <svg viewBox="0 0 640 470" role="img"
+    aria-label="The type Root pane provides Root and the JSON pane is copied into a hidden file. The TypeScript worker checks that file and its diagnostics come back to the JSON pane.">
+    <defs>
+      <marker id="loop-arrow" viewBox="0 0 10 10" refX="8.5" refY="5"
+        markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" />
+      </marker>
+    </defs>
+
+    <!-- edges -->
+    <line class="edge" x1="320" y1="70" x2="320" y2="136" marker-end="url(#loop-arrow)" />
+    <path class="edge" d="M264,206 C 220,246 196,262 179,298" marker-end="url(#loop-arrow)" />
+    <path class="edge" d="M190,354 C 224,382 264,391 297,399" marker-end="url(#loop-arrow)" />
+    <path class="edge" d="M453,410 C 600,374 600,250 489,204" marker-end="url(#loop-arrow)" />
+
+    <!-- edge labels -->
+    <text class="edge-label" x="332" y="106" text-anchor="start">provides Root</text>
+    <text class="edge-label" text-anchor="middle">
+      <tspan x="120" y="368">diagnostics, shifted</tspan>
+      <tspan x="120" y="385">up one line</tspan>
+    </text>
+    <text class="edge-label" text-anchor="middle">
+      <tspan x="505" y="297">copied in on</tspan>
+      <tspan x="505" y="314">each keystroke</tspan>
+    </text>
+
+    <!-- boxes -->
+    <g class="node">
+      <rect class="box" x="195" y="16" width="250" height="54" rx="8" />
+      <text class="box-label" x="320" y="43">type Root pane (you edit)</text>
+    </g>
+    <g class="node">
+      <rect class="box" x="150" y="138" width="340" height="68" rx="8" />
+      <text class="box-label">
+        <tspan x="320" y="164">hidden file: const data:</tspan>
+        <tspan x="320" y="186">Root = your JSON</tspan>
+      </text>
+    </g>
+    <g class="node">
+      <rect class="box" x="75" y="300" width="200" height="54" rx="8" />
+      <text class="box-label" x="175" y="327">TypeScript worker</text>
+    </g>
+    <g class="node">
+      <rect class="box" x="185" y="400" width="270" height="54" rx="8" />
+      <text class="box-label" x="320" y="427">JSON value pane (you edit)</text>
+    </g>
+  </svg>
+  <figcaption>The two visible panes feed a hidden file, and the worker's diagnostics come back to the JSON.</figcaption>
+</figure>

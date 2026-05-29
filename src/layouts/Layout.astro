@@ -131,19 +131,38 @@ const fullTitle = title === 'filipkunc.com' ? title : `${title} — filipkunc.co
         color: var(--muted);
         font-size: 0.85em;
       }
-      figure.mermaid-figure { margin: 1.75rem 0; text-align: center; }
-      figure.mermaid-figure .mermaid-diagram { display: flex; justify-content: center; }
-      figure.mermaid-figure svg { max-width: 100%; height: auto; }
-      /* htmlLabels render as HTML in <foreignObject>; stop the global <p>
-         margin from leaking in and inflating node height. */
-      figure.mermaid-figure .nodeLabel p,
-      figure.mermaid-figure .edgeLabel p { margin: 0; }
-      figure.mermaid-figure .mermaid-placeholder {
-        color: var(--muted);
-        font-size: 0.9em;
-        padding: 2rem 0;
+      /* Hand-authored SVG flow diagrams. Static markup, themed by these vars,
+         no JS — see src/components/Diagram*.astro. */
+      figure.diagram { margin: 1.75rem 0; text-align: center; }
+      figure.diagram svg { max-width: 100%; height: auto; }
+      figure.diagram .box {
+        fill: color-mix(in srgb, var(--fg) 4%, var(--bg));
+        stroke: var(--rule);
+        stroke-width: 1;
       }
-      figure.mermaid-figure figcaption {
+      figure.diagram .box-label {
+        fill: var(--fg);
+        font: 15px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        text-anchor: middle;
+        dominant-baseline: middle;
+      }
+      figure.diagram .box-code {
+        font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Menlo, monospace;
+        font-size: 13.5px;
+      }
+      figure.diagram .edge { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+      figure.diagram .edge-label {
+        fill: var(--muted);
+        font: 13px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        /* A background-colored halo so an edge line behind a label is occluded
+           instead of striking through the text. */
+        paint-order: stroke;
+        stroke: var(--bg);
+        stroke-width: 4px;
+        stroke-linejoin: round;
+      }
+      figure.diagram marker path { fill: var(--accent); }
+      figure.diagram figcaption {
         margin-top: 0.75rem;
         color: var(--muted);
         font-size: 0.85em;
