@@ -43,6 +43,10 @@ export function configureLanguages(monaco: typeof Monaco): void {
   const ts = monaco.typescript;
   ts.typescriptDefaults.setCompilerOptions({
     target: ts.ScriptTarget.ES2020,
+    // Drop the DOM lib. Without this the type pane's autocomplete is flooded
+    // with browser globals (StaticRange, StereoPannerNode, ...) that have no
+    // business in a JSON shape. ES2020 alone still gives Array, string, etc.
+    lib: ['es2020'],
     strict: true,
     noImplicitAny: true,
     allowNonTsExtensions: true,

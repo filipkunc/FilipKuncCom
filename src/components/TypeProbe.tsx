@@ -163,6 +163,11 @@ export default function TypeProbe() {
         automaticLayout: true,
         tabSize: 2,
         padding: { top: 10, bottom: 10 },
+        // Render the suggest/hover widgets at document.body level so they are
+        // not clipped by the editor box's `overflow: hidden` and rounded
+        // corners. The type pane is short, so its autocomplete opens upward and
+        // would otherwise be cut off at the top.
+        fixedOverflowWidgets: true,
       } as const;
 
       const typeEditor = monaco.editor.create(typeContainerRef.current, {
@@ -267,6 +272,7 @@ export default function TypeProbe() {
         renderLineHighlight: 'none',
         automaticLayout: true,
         padding: { top: 12, bottom: 12 },
+        fixedOverflowWidgets: true,
       });
       const fit = () => {
         if (!outputContainerRef.current) return;
