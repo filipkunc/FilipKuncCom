@@ -1,0 +1,89 @@
+---
+// Two pipelines, one buffer. The compute pipeline writes the normals buffer and
+// the render pipeline reads it in place on the GPU. Copying it back to the CPU
+// is a separate, optional, and costly path. Hand-authored SVG, themed by the
+// shared figure.diagram styles in Layout.astro, with a couple of extras below.
+---
+
+<figure class="diagram pipelines">
+  <svg viewBox="0 0 940 270" role="img"
+    aria-label="The CPU uploads positions and indices. The compute pipeline writes the normals buffer on the GPU, and the render pipeline reads that same buffer in place. Reading the buffer back to the CPU is a separate, costly path.">
+    <defs>
+      <marker id="pipe-arrow" viewBox="0 0 10 10" refX="8.5" refY="5"
+        markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" />
+      </marker>
+      <marker id="pipe-arrow-muted" viewBox="0 0 10 10" refX="8.5" refY="5"
+        markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path class="muted-head" d="M0,0 L10,5 L0,10 z" />
+      </marker>
+    </defs>
+
+    <!-- edges -->
+    <line class="edge" x1="145" y1="92" x2="145" y2="148" marker-end="url(#pipe-arrow)" />
+    <line class="edge" x1="260" y1="185" x2="358" y2="185" marker-end="url(#pipe-arrow)" />
+    <line class="edge" x1="560" y1="185" x2="658" y2="185" marker-end="url(#pipe-arrow)" />
+    <path class="edge dashed" d="M540,150 C 620,120 650,106 700,94" marker-end="url(#pipe-arrow-muted)" />
+
+    <!-- edge labels -->
+    <text class="edge-label" x="156" y="124" text-anchor="start">positions + indices</text>
+    <text class="edge-label" x="309" y="176" text-anchor="middle">writes</text>
+    <text class="edge-label" x="609" y="176" text-anchor="middle">reads, in place</text>
+    <text class="edge-label muted" x="636" y="110" text-anchor="middle">readback (the bandwidth tax)</text>
+
+    <!-- boxes -->
+    <g class="node">
+      <rect class="box" x="30" y="32" width="230" height="60" rx="8" />
+      <text class="box-label" x="145" y="66">CPU: build the mesh</text>
+    </g>
+    <g class="node">
+      <rect class="box" x="30" y="150" width="230" height="70" rx="8" />
+      <text class="box-label" x="145" y="190">compute pipeline (WGSL)</text>
+    </g>
+    <g class="node">
+      <rect class="box key" x="360" y="150" width="200" height="70" rx="8" />
+      <text class="box-label">
+        <tspan x="460" y="181">normals buffer</tspan>
+        <tspan class="sub" x="460" y="201">resident on the GPU</tspan>
+      </text>
+    </g>
+    <g class="node">
+      <rect class="box" x="660" y="150" width="210" height="70" rx="8" />
+      <text class="box-label" x="765" y="190">render pipeline</text>
+    </g>
+    <g class="node">
+      <rect class="box ghost" x="600" y="32" width="270" height="60" rx="8" />
+      <text class="box-label muted" x="735" y="66">CPU memory (only if you ask)</text>
+    </g>
+  </svg>
+  <figcaption>
+    The compute and render pipelines hand off through one GPU-resident buffer. Nothing crosses back to
+    the CPU unless you copy it.
+  </figcaption>
+</figure>
+
+<style>
+  figure.pipelines .box.key {
+    fill: color-mix(in srgb, var(--accent) 16%, transparent);
+    stroke: var(--accent);
+  }
+  figure.pipelines .box.ghost {
+    stroke-dasharray: 5 5;
+    opacity: 0.7;
+  }
+  figure.pipelines .edge.dashed {
+    stroke: var(--muted);
+    stroke-dasharray: 6 5;
+  }
+  figure.pipelines .muted-head {
+    fill: var(--muted);
+  }
+  figure.pipelines .box-label.muted,
+  figure.pipelines .edge-label.muted {
+    fill: var(--muted);
+  }
+  figure.pipelines .box-label .sub {
+    font-size: 0.78em;
+    fill: var(--muted);
+  }
+</style>

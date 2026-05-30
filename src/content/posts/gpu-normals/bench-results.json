@@ -1,0 +1,60 @@
+{
+  "generatedOn": "2026-05-30",
+  "mesh": {
+    "vertices": 262144,
+    "triangles": 522242
+  },
+  "baselineLang": "js",
+  "results": [
+    {
+      "lang": "js",
+      "label": "JavaScript",
+      "device": "CPU (single thread, JS)",
+      "deviceMasked": false,
+      "ms": 13.121,
+      "throughputMVerts": 19.97896501791022,
+      "speedupVsBaseline": 1,
+      "checksumOk": true
+    },
+    {
+      "lang": "wgsl",
+      "label": "WGSL (WebGPU)",
+      "device": "nvidia blackwell",
+      "deviceMasked": true,
+      "ms": 0.023,
+      "throughputMVerts": 11397.565217391304,
+      "speedupVsBaseline": 570.4782608695652,
+      "checksumOk": true
+    },
+    {
+      "lang": "cuda",
+      "label": "CUDA",
+      "device": "NVIDIA GeForce RTX 5070 Ti",
+      "deviceMasked": false,
+      "ms": 0.024,
+      "throughputMVerts": 10922.666666666666,
+      "speedupVsBaseline": 546.7083333333334,
+      "checksumOk": true
+    },
+    {
+      "lang": "opencl",
+      "label": "OpenCL",
+      "device": "NVIDIA GeForce RTX 5070 Ti",
+      "deviceMasked": false,
+      "ms": 0.021,
+      "throughputMVerts": 12483.047619047617,
+      "speedupVsBaseline": 624.8095238095237,
+      "checksumOk": true
+    },
+    {
+      "lang": "slang",
+      "label": "Slang",
+      "device": "NVIDIA GeForce RTX 5070 Ti",
+      "deviceMasked": false,
+      "ms": 0.021,
+      "throughputMVerts": 12483.047619047617,
+      "speedupVsBaseline": 624.8095238095237,
+      "checksumOk": true
+    }
+  ]
+}

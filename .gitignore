@@ -12,3 +12,16 @@ __pycache__/
 *.pyc
 ansible/inventory.yml
 ansible/.vault_pass
+
+# Playwright
+test-results/
+playwright-report/
+.playwright/
+
+# Benchmark build artifacts (sources + results JSON are committed)
+.tools/
+bench/normals/mesh.bin
+bench/normals/run-cuda
+bench/normals/run-opencl
+bench/normals/run-slang-host
+bench/normals/run-slang.ptx

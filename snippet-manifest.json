@@ -1,30 +1,37 @@
 {
+  "gpu-normals/ts": {
+    "stdout": "mesh: 12 vertices, 20 triangles\nall normals unit length: true (max error 3.1e-8)\nnormals match normalized position: true (max error 2.7e-8)\n  normal[0] = (-0.5257, 0.8507, 0)\n  normal[1] = (0.5257, 0.8507, 0)\n  normal[2] = (-0.5257, -0.8507, 0)\n",
+    "stderr": "",
+    "exitCode": 0,
+    "durationMs": 79,
+    "verifiedAt": "2026-05-30T18:35:22.600Z"
+  },
   "local-llm-arena/arena": {
     "stdout": "| model | empty | single | simple-3 | balanced | left-skewed | total |\n|---|---|---|---|---|---|---|\n| gemma-4-e4b-it-cpu | ✓ | ✓ | ✓ | ✓ | ✓ | 5/5 |\n| gemma-4-e4b-it-gpu | ✓ | ✓ | ✓ | ✓ | ✓ | 5/5 |\n| qwen3.5-4b-cpu | ✓ | ✓ | ✓ | ✓ | ✓ | 5/5 |\n| qwen3.5-4b-gpu | ✓ | ✓ | ✓ | ✓ | ✓ | 5/5 |\n",
     "stderr": "",
     "exitCode": 0,
-    "durationMs": 29,
-    "verifiedAt": "2026-05-29T16:25:02.130Z"
+    "durationMs": 30,
+    "verifiedAt": "2026-05-30T18:35:22.630Z"
   },
   "monkey-patching/js": {
     "stdout": "Hello, Filip!\n",
     "stderr": "",
     "exitCode": 0,
-    "durationMs": 28,
-    "verifiedAt": "2026-05-29T16:25:02.159Z"
+    "durationMs": 30,
+    "verifiedAt": "2026-05-30T18:35:22.660Z"
   },
   "monkey-patching/rs": {
     "stdout": "Hello, Filip!\n",
-    "stderr": "    Finished `release` profile [optimized] target(s) in 0.21s\n     Running `/home/fkunc/Projects/FilipKuncCom/.cache/verify/rs/target/release/monkey-demo hello.txt`\n",
+    "stderr": "    Finished `release` profile [optimized] target(s) in 0.24s\n     Running `/home/fkunc/Projects/FilipKuncCom/.cache/verify/rs/target/release/monkey-demo hello.txt`\n",
     "exitCode": 0,
-    "durationMs": 311,
-    "verifiedAt": "2026-05-29T16:25:02.470Z"
+    "durationMs": 341,
+    "verifiedAt": "2026-05-30T18:35:23.001Z"
   },
   "type-json-validator/ts": {
     "stdout": "type Root = {\n  login: string;\n  id: number;\n  name: string;\n  public_repos: number;\n  followers: number;\n};\n\nfunction validate(value: unknown): value is Root {\n  const v = value as any;\n  return (\n    typeof v === \"object\" &&\n    v !== null &&\n    !Array.isArray(v) &&\n    typeof v.login === \"string\" &&\n    typeof v.id === \"number\" &&\n    typeof v.name === \"string\" &&\n    typeof v.public_repos === \"number\" &&\n    typeof v.followers === \"number\"\n  );\n}\n\nvalidate(sample) => true\nvalidate(broken) => false\n",
     "stderr": "",
     "exitCode": 0,
-    "durationMs": 330,
-    "verifiedAt": "2026-05-29T16:25:02.800Z"
+    "durationMs": 354,
+    "verifiedAt": "2026-05-30T18:35:23.355Z"
   }
 }

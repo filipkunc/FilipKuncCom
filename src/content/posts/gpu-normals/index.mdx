@@ -1,0 +1,198 @@
+---
+title: "Computing mesh normals on the GPU's other pipeline"
+description: "Years ago I had an OpenCL playground in MeshMaker that recomputed triangle-mesh normals on the GPU. This revisits that idea with WebGPU: a cloth simulation that recomputes a million normals a frame, the compute and render pipelines sharing one buffer, and the same kernel benchmarked across WGSL, CUDA, OpenCL, and Slang."
+pubDate: 2026-05-30
+tags: ["webgpu", "gpgpu", "compute-shaders", "cloth", "cuda", "slang"]
+---
+
+import ClothLab from '../../../components/ClothLab.tsx';
+import NormalsLab from '../../../components/NormalsLab.tsx';
+import DiagramPipelines from '../../../components/DiagramPipelines.astro';
+import Excerpt from '../../../components/Excerpt.astro';
+import RunnableSnippet from '../../../components/RunnableSnippet.astro';
+import BenchTable from '../../../components/BenchTable.astro';
+
+Years ago, while building [MeshMaker](https://filipkunc.com/meshmaker), I added a little corner I called the OpenCLPlayground.
+The mesh editor already drew triangles through the graphics pipeline the usual way.
+What I wanted to poke at was the other pipeline, the general-purpose one, where the GPU is just a wide pile of arithmetic and not a triangle-drawing machine.
+
+The toy problem I picked was recomputing vertex normals.
+It was never about the normals themselves.
+It was about getting data onto the compute side of the GPU, doing something with it, and handing the result straight to the renderer without dragging it back through the CPU.
+
+This post is that experiment, redone with the tools of 2026.
+Here it is, running in your browser.
+
+<ClothLab client:visible />
+
+That is a cloth, simulated and shaded entirely on the GPU.
+It moves every frame, so its normals cannot be precomputed and baked once.
+They are rebuilt from scratch each frame, and the slider runs that past a million triangles.
+Drag the resolution up and the GPU stays smooth.
+Flip the normals over to the CPU and watch the same work fall apart.
+
+The rest of the post is how this is put together, and then the same little kernel benchmarked across WGSL, CUDA, OpenCL, and Slang.
+
+## What a normal is, and why recompute it
+
+A triangle has one normal, the direction it faces, and you get it from the cross product of two of its edges.
+Smooth shading needs a normal per vertex instead, so a shared vertex looks rounded rather than faceted.
+The standard recipe is to average the face normals of every triangle that touches the vertex, weighted by area.
+That is the whole computation, and it is the same handful of lines whether it runs on a CPU core or ten thousand GPU lanes.
+
+Here it is on a static shape, so you can see what the normals actually are.
+
+<NormalsLab client:visible />
+
+That icosahedron has twelve vertices and twenty flat faces.
+Smooth per-vertex normals make it read as a rounded ball, and the orange lines are the normals themselves.
+For a shape like this the normals never change, so you would compute them once and forget about them.
+That is exactly why a static mesh is the wrong demo for the GPU.
+
+## The algorithm, on the CPU first
+
+Here is the reference version in plain TypeScript.
+It walks every triangle, computes the area-weighted face normal, and scatters it into the triangle's three vertices.
+A second pass normalizes each accumulated vertex normal back to unit length.
+
+<Excerpt source="src/lib/gpu-normals/cpu-normals.ts" region="accumulate" lang="ts" />
+
+To show this is not just for the page, a small harness imports that exact function and the same mesh generator the demos use, runs them on a bare icosahedron, and checks the result.
+The output below is captured when the site is built.
+
+<RunnableSnippet
+  source="src/content/posts/gpu-normals/verify/ts/run.ts"
+  region="harness"
+  outputKey="gpu-normals/ts"
+  command="node run.ts"
+  lang="ts"
+  label="run.ts"
+/>
+
+## The same thing on the GPU
+
+The CPU version scatters: it loops over triangles and adds into vertices.
+On the GPU that is a trap.
+Thousands of triangle threads would write the same vertex at once, and that is a data race.
+The obvious fix is an atomic add, except WGSL has no atomics on floats, so you would have to integer-encode each component and decode it in a second pass.
+
+So I flipped the loop.
+Instead of one thread per triangle scattering outward, the GPU runs one thread per vertex that gathers inward.
+Each thread walks only the triangles touching its own vertex and writes its own slot exactly once.
+No contention, no atomics.
+It needs a small vertex-to-triangle table built once on the CPU, which is cheap.
+
+The bindings declare the buffers the kernel reads and the one it writes.
+
+<Excerpt source="src/lib/gpu-normals/shaders/normals.compute.wgsl" region="bindings" lang="wgsl" />
+
+And the kernel itself reads almost line for line like the CPU loop, just inside out.
+
+<Excerpt source="src/lib/gpu-normals/shaders/normals.compute.wgsl" region="gather" lang="wgsl" />
+
+## Why the cloth, and not the icosahedron
+
+A static mesh hides the whole point.
+Its normals are computed once, so it does not matter whether that happens on the CPU, on the GPU, or by hand in advance.
+The moment the geometry moves every frame, the normals have to be rebuilt every frame, and now the cost is real and recurring.
+
+A cloth is the cleanest example I know.
+It is a grid of particles pulled on by gravity and wind, held together by distance constraints, and it never stops moving.
+The whole thing runs on the GPU as a sequence of compute passes.
+
+First a Verlet integration step moves every free particle.
+
+<Excerpt source="src/lib/gpu-cloth/shaders/cloth.compute.wgsl" region="cloth-integrate" lang="wgsl" />
+
+Then the distance constraints pull neighbours back toward their rest length.
+This has the same write-race problem as the scatter normals did: a constraint touches two particles, and neighbouring constraints share particles.
+The fix is to color the constraints so that no two in the same pass ever touch the same particle, then run one color at a time.
+For a grid the coloring is just parity, so the whole solve is eight small passes with no atomics.
+
+<Excerpt source="src/lib/gpu-cloth/shaders/cloth.compute.wgsl" region="cloth-solve" lang="wgsl" />
+
+One catch shows up only at scale.
+Distance constraints pass tension between neighbours one step at a time, so on a small sheet a handful of solver passes reach all the way to the pins, but on a million-particle sheet they fall far short and the lower half sags away as if it were heavier.
+The fix is a long-range attachment: cap each particle's distance to its nearest pin directly, using the taut-path length to that pin.
+That holds the whole sheet up in a single pass, no matter how many particles there are, so the cloth behaves the same at every resolution.
+
+<Excerpt source="src/lib/gpu-cloth/shaders/cloth.compute.wgsl" region="cloth-lra" lang="wgsl" />
+
+And then the normals, recomputed from the freshly moved positions with the very same gather kernel from above.
+
+<Excerpt source="src/lib/gpu-cloth/shaders/cloth.compute.wgsl" region="cloth-normals" lang="wgsl" />
+
+## One buffer, two pipelines
+
+This is the part I was chasing back in the MeshMaker days.
+
+<DiagramPipelines />
+
+When the compute passes finish, the new positions and normals are already sitting in GPU buffers.
+The render pipeline takes those same buffers as its vertex inputs and draws them in place.
+There is no map, no copy, no trip through CPU memory between simulating the cloth and drawing it.
+
+<Excerpt source="src/lib/gpu-cloth/shaders/cloth.render.wgsl" region="cloth-shading" lang="wgsl" />
+
+The buffers carry two usages at once, storage for the compute passes and vertex data for the render pass, and the GPU just reads them where they lie.
+That hand-off is the real product of the general-purpose pipeline.
+You are not borrowing the GPU to compute a number and bring it home.
+You are computing it where it will be consumed.
+
+## The bandwidth you do not spend
+
+Switch the demo's normals from the GPU to the CPU and the frame rate collapses, especially as you raise the resolution.
+The simulation still runs on the GPU, but now every frame has to copy the positions back to the CPU, recompute the normals in JavaScript, and upload them again.
+The reading on the demo shows the bytes moving and the milliseconds spent.
+
+That readback is the cost the GPU path never pays.
+On a discrete card the buffers live across the PCIe bus, and pulling them back to the CPU means a real transfer plus the latency of waiting for the queue to drain.
+At a million triangles that is megabytes a frame, every frame, in each direction.
+Keeping the result on the GPU, the way the compute-to-render hand-off does, is how you avoid the whole bill.
+
+## The same kernel, four ways
+
+WebGPU is the one option that runs live on this page, so it got the demo.
+Outside the browser the field is wide, and as of 2026 it is genuinely crowded.
+
+The striking thing is how little the actual kernel changes across all of these.
+Here is that per-vertex gather in CUDA, then OpenCL (the dialect MeshMaker's original playground used), then Slang.
+
+<Excerpt source="bench/normals/run-cuda.cu" region="cuda-kernel" lang="cpp" />
+
+<Excerpt source="bench/normals/run-opencl.c" region="opencl-kernel" lang="c" />
+
+<Excerpt source="bench/normals/run-slang.slang" region="slang-kernel" lang="hlsl" />
+
+Set them next to the [WGSL above](#the-same-thing-on-the-gpu) and they are the same idea four times.
+Loop over the incident triangles, cross two edges, accumulate, normalize.
+What differs between these worlds is the host code around the kernel, how you allocate and bind buffers, and whether the result can be handed to a renderer without a copy.
+The arithmetic in the middle is boringly portable.
+
+[Slang](https://shader-slang.org/) is the interesting one.
+It is not a runtime, it is a language: it moved from NVIDIA to the [Khronos Group](https://www.khronos.org/) in late 2024, and one Slang source compiles to SPIR-V for Vulkan, MSL for Metal, HLSL for Direct3D, CUDA, and PTX.
+The benchmark below compiles it to PTX and launches it through the CUDA driver.
+
+So I ran all of them, on the same mesh, on my own machine, and let them race.
+Each one compiles and runs the kernel two hundred times and reports its best.
+They all produce the same normals, which the harness checks with a shared checksum, so the only thing that varies is speed.
+
+<BenchTable />
+
+The numbers are what you would expect and still fun to see.
+A single CPU thread is the slowest by a wide margin.
+The four GPU paths land within a hair of each other, because they are all compiling nearly the same kernel down to the same hardware.
+WGSL, the one that also runs in the browser demo above, is right there with native CUDA.
+
+The whole table is reproducible.
+`npm run bench` generates the shared mesh, builds each kernel with whatever toolchains are installed, runs them, and writes the numbers this table reads.
+Anything it cannot build, it skips out loud rather than quietly dropping.
+
+## Then and now
+
+The OpenCLPlayground in MeshMaker was a side experiment that never shipped.
+Setting up an OpenCL context, sharing a buffer with OpenGL, and keeping the two pipelines in step was enough friction that it stayed a playground.
+
+The friction is mostly gone now.
+WebGPU puts the compute pipeline, the render pipeline, and the shared buffer behind one API, in the browser, with no driver to install.
+The thing I wanted years ago, computing mesh data on the general-purpose side and handing it straight to the renderer, is now a cloth you can throw a million triangles at from your phone.

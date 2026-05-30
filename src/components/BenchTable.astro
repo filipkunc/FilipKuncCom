@@ -1,0 +1,58 @@
+---
+// Renders the cross-toolchain normals benchmark from bench-results.json, which
+// `npm run bench` regenerates by compiling and running every kernel. Numbers
+// here are real captured timings, not hand-entered.
+import data from '../content/posts/gpu-normals/bench-results.json';
+
+const fmtMs = (ms: number) => (ms < 1 ? `${ms.toFixed(3)}` : ms.toFixed(2));
+const fmtSpeed = (s: number) => (s >= 2 ? `${Math.round(s)}×` : `${s.toFixed(2)}×`);
+const anyMasked = data.results.some((r) => r.deviceMasked);
+---
+
+<figure class="bench">
+  <table>
+    <thead>
+      <tr>
+        <th>Kernel</th>
+        <th>Ran on</th>
+        <th class="num">ms / frame</th>
+        <th class="num">Mverts/s</th>
+        <th class="num">vs CPU</th>
+      </tr>
+    </thead>
+    <tbody>
+      {data.results.map((r) => (
+        <tr class={r.lang === data.baselineLang ? 'baseline' : ''}>
+          <td>{r.label}{!r.checksumOk && <span class="warn" title="checksum disagreed"> ⚠</span>}</td>
+          <td class="device">{r.device}{r.deviceMasked && <span class="ast" title="name reported by the API, not the model">*</span>}</td>
+          <td class="num">{fmtMs(r.ms)}</td>
+          <td class="num">{Math.round(r.throughputMVerts).toLocaleString()}</td>
+          <td class="num">{r.lang === data.baselineLang ? '—' : fmtSpeed(r.speedupVsBaseline)}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+  <figcaption>
+    Per-vertex normals for the same {data.mesh.vertices.toLocaleString()}-vertex,{' '}
+    {data.mesh.triangles.toLocaleString()}-triangle mesh, best of 200 runs. Every kernel is the same
+    gather, and all checksums agree. Regenerate with <code>npm run bench</code> (captured {data.generatedOn}).
+    {anyMasked && (
+      <><br />* WebGPU does not expose the specific device model, only the vendor and architecture, as a
+      fingerprinting safeguard. It is the same physical GPU the native rows name in full.</>
+    )}
+  </figcaption>
+</figure>
+
+<style>
+  .bench { margin: 1.75rem 0; overflow-x: auto; }
+  .bench table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  .bench th, .bench td { padding: 0.45rem 0.7rem; border-bottom: 1px solid var(--rule); text-align: left; }
+  .bench th.num, .bench td.num { text-align: right; font-variant-numeric: tabular-nums; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  .bench thead th { color: var(--muted); font-weight: 600; border-bottom: 2px solid var(--rule); }
+  .bench tr.baseline td { color: var(--muted); }
+  .bench td.device { font-size: 0.82rem; color: var(--muted); }
+  .bench .ast { color: var(--accent); cursor: help; }
+  .bench .warn { color: var(--accent); }
+  .bench figcaption { margin-top: 0.6rem; font-size: 0.82rem; color: var(--muted); }
+  .bench figcaption code { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+</style>

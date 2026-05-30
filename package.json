@@ -15,15 +15,19 @@
     "start": "node server-dist/index.js",
     "preview": "astro preview",
     "verify": "node scripts/verify-snippets.mjs",
-    "check": "astro check && tsc -p src/server/tsconfig.json --noEmit"
+    "check": "astro check && tsc -p src/server/tsconfig.json --noEmit",
+    "test:e2e": "playwright test",
+    "bench": "node scripts/bench-normals.mjs"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.9",
     "@astrojs/mdx": "^5.0.0",
     "@astrojs/sitemap": "^3.7.2",
+    "@playwright/test": "^1.60.0",
     "@types/node": "^24.12.0",
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
+    "@webgpu/types": "^0.1.70",
     "astro": "^6.3.0",
     "typescript": "^6.0.0"
   },
