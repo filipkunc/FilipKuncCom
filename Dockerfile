@@ -16,6 +16,10 @@ RUN npm ci --no-audit --no-fund
 COPY tsconfig.json astro.config.mjs snippet-manifest.json ./
 COPY src ./src
 COPY public ./public
+# The gpu-normals post excerpts the real benchmark kernel sources at build time
+# (CUDA/OpenCL/Slang live here, outside src). Build-stage only; the runtime
+# image takes just dist + server-dist below.
+COPY bench ./bench
 
 # The build bakes the commit into "view on GitHub" source links, so the line
 # anchors are pinned to exactly what shipped. No .git here, hence the arg.
