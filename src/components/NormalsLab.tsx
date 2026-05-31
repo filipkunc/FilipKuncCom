@@ -202,35 +202,38 @@ export default function NormalsLab() {
 
       <div className="nl-stage">
         <canvas ref={canvasRef} className="nl-canvas" />
-        {status !== 'ready' && (
-          <div className="nl-overlay">
-            {status === 'probing' && <p>Initializing WebGPU…</p>}
-            {status === 'unsupported' && (
-              <div className="nl-msg">
-                <p><strong>This demo needs WebGPU.</strong></p>
-                <p>
-                  Your browser is not handing out a GPU adapter. WebGPU only runs in a secure context,
-                  so it has to be served over https or from localhost.
-                </p>
-                <p>
-                  Many Android phones still gate it: open <code>chrome://flags</code>, enable
-                  {' '}<strong>Unsafe WebGPU Support</strong>, and relaunch Chrome.
-                </p>
-                <p>
-                  Either way, the CPU walkthrough and the verified snippet below explain the same
-                  algorithm without a GPU.
-                </p>
-              </div>
-            )}
-            {status === 'error' && (
-              <div className="nl-msg">
-                <p><strong>WebGPU failed to start.</strong></p>
-                {errorMsg && <p className="nl-mono">{errorMsg}</p>}
-              </div>
-            )}
-          </div>
+        {(status === 'unsupported' || status === 'error') && (
+          <>
+            <img
+              className="nl-fallback"
+              src="/img/gpu-normals/normals.webp"
+              alt="A still frame of the normals lab: an icosphere with its per-vertex normals drawn as short orange lines."
+              loading="lazy"
+              decoding="async"
+            />
+            <span className="nl-badge">Static preview</span>
+          </>
+        )}
+        {status === 'probing' && (
+          <div className="nl-overlay"><p>Initializing WebGPU…</p></div>
         )}
       </div>
+
+      {status === 'unsupported' && (
+        <p className="nl-fallback-note">
+          <strong>The live demo needs WebGPU,</strong> and your browser is not handing out a GPU
+          adapter. WebGPU only runs in a secure context, so it has to be served over https or from
+          localhost. Many Android phones still gate it: open <code>chrome://flags</code>, enable
+          {' '}<strong>Unsafe WebGPU Support</strong>, and relaunch Chrome. The CPU walkthrough and the
+          verified snippet below explain the same algorithm without a GPU.
+        </p>
+      )}
+      {status === 'error' && (
+        <p className="nl-fallback-note">
+          <strong>WebGPU failed to start.</strong> The frame above is a still of the live lab.
+          {errorMsg && <> <span className="nl-mono">{errorMsg}</span></>}
+        </p>
+      )}
 
       <div className="nl-foot">
         <span className="nl-stats">
@@ -289,13 +292,18 @@ export default function NormalsLab() {
             radial-gradient(120% 120% at 50% 0%, color-mix(in srgb, var(--fg) 6%, transparent), transparent 70%);
         }
         .nl-canvas { display: block; width: 100%; height: 100%; }
+        .nl-fallback { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
+        .nl-badge {
+          position: absolute; top: 0.5rem; right: 0.5rem; font-size: 0.68rem; letter-spacing: 0.03em;
+          text-transform: uppercase; color: var(--muted); background: color-mix(in srgb, var(--bg) 78%, transparent);
+          border: 1px solid var(--rule); border-radius: 999px; padding: 0.18rem 0.55rem; backdrop-filter: blur(3px);
+        }
         .nl-overlay {
           position: absolute; inset: 0; display: grid; place-items: center; padding: 1.5rem;
           text-align: center; color: var(--muted);
           background: color-mix(in srgb, var(--bg) 80%, transparent);
         }
-        .nl-msg { max-width: 38ch; }
-        .nl-msg p { margin: 0.4rem 0; font-size: 0.9rem; }
+        .nl-fallback-note { font-size: 0.85rem; color: var(--muted); margin-top: 0.6rem; line-height: 1.55; }
         .nl-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 0.78rem; word-break: break-word; }
         .nl-foot {
           display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;

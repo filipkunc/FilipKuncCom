@@ -154,31 +154,37 @@ export default function ClothLab() {
           onPointerMove={(e) => pointer(e, true)}
           onPointerLeave={(e) => pointer(e, false)}
         />
-        {status !== 'ready' && (
-          <div className="cl-overlay">
-            {status === 'probing' && <p>Initializing WebGPU…</p>}
-            {status === 'unsupported' && (
-              <div className="cl-msg">
-                <p><strong>This demo needs WebGPU.</strong></p>
-                <p>
-                  Your browser is not handing out a GPU adapter. WebGPU only runs in a secure context,
-                  so it has to be served over https or from localhost.
-                </p>
-                <p>
-                  Many Android phones still gate it: open <code>chrome://flags</code>, enable
-                  {' '}<strong>Unsafe WebGPU Support</strong>, and relaunch Chrome.
-                </p>
-              </div>
-            )}
-            {status === 'error' && (
-              <div className="cl-msg">
-                <p><strong>WebGPU failed to start.</strong></p>
-                {errorMsg && <p className="cl-mono">{errorMsg}</p>}
-              </div>
-            )}
-          </div>
+        {(status === 'unsupported' || status === 'error') && (
+          <>
+            <img
+              className="cl-fallback"
+              src="/img/gpu-normals/cloth.webp"
+              alt="A still frame of the WebGPU cloth simulation: a draped sheet rippling in the wind."
+              loading="lazy"
+              decoding="async"
+            />
+            <span className="cl-badge">Static preview</span>
+          </>
+        )}
+        {status === 'probing' && (
+          <div className="cl-overlay"><p>Initializing WebGPU…</p></div>
         )}
       </div>
+
+      {status === 'unsupported' && (
+        <p className="cl-fallback-note">
+          <strong>The live demo needs WebGPU,</strong> and your browser is not handing out a GPU
+          adapter. WebGPU only runs in a secure context, so it has to be served over https or from
+          localhost. Many Android phones still gate it: open <code>chrome://flags</code>, enable
+          {' '}<strong>Unsafe WebGPU Support</strong>, and relaunch Chrome.
+        </p>
+      )}
+      {status === 'error' && (
+        <p className="cl-fallback-note">
+          <strong>WebGPU failed to start.</strong> The frame above is a still of the live simulation.
+          {errorMsg && <> <span className="cl-mono">{errorMsg}</span></>}
+        </p>
+      )}
 
       <div className="cl-readout">
         {ready && stats ? (
@@ -226,12 +232,17 @@ export default function ClothLab() {
           background: radial-gradient(120% 120% at 50% 0%, color-mix(in srgb, var(--fg) 6%, transparent), transparent 70%);
         }
         .cl-canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+        .cl-fallback { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
+        .cl-badge {
+          position: absolute; top: 0.5rem; right: 0.5rem; font-size: 0.68rem; letter-spacing: 0.03em;
+          text-transform: uppercase; color: var(--muted); background: color-mix(in srgb, var(--bg) 78%, transparent);
+          border: 1px solid var(--rule); border-radius: 999px; padding: 0.18rem 0.55rem; backdrop-filter: blur(3px);
+        }
         .cl-overlay {
           position: absolute; inset: 0; display: grid; place-items: center; padding: 1.5rem;
           text-align: center; color: var(--muted); background: color-mix(in srgb, var(--bg) 80%, transparent);
         }
-        .cl-msg { max-width: 38ch; }
-        .cl-msg p { margin: 0.4rem 0; font-size: 0.9rem; }
+        .cl-fallback-note { font-size: 0.85rem; color: var(--muted); margin-top: 0.6rem; line-height: 1.55; }
         .cl-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 0.78rem; word-break: break-word; }
         .cl-readout {
           display: flex; gap: 1.25rem; align-items: center; flex-wrap: wrap;
