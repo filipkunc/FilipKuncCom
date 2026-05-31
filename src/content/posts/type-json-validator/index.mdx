@@ -8,130 +8,92 @@ tags: ["typescript", "compiler-api", "monaco", "json"]
 import TypeProbe from '../../../components/TypeProbe.tsx';
 import DiagramFlow from '../../../components/DiagramFlow.astro';
 import DiagramLoop from '../../../components/DiagramLoop.astro';
+import DiagramTypeWalk from '../../../components/DiagramTypeWalk.astro';
 import Excerpt from '../../../components/Excerpt.astro';
 import RunnableSnippet from '../../../components/RunnableSnippet.astro';
 
-There is a small thing that has bugged me for years.
-I fetch some JSON from an API, I write a TypeScript type for the shape I expect back, and then at runtime the two are free to disagree.
-The type was erased during compilation, so nothing actually checks that the data matches what I declared.
+There is a small thing that has bugged me for years. I fetch some JSON from an API, I write a TypeScript type for the shape I expect back, and then at runtime the two are free to disagree. The type was erased during compilation, so nothing actually checks that the data matches what I declared.
 
-The usual answer is a library like [Zod](https://zod.dev/), or [JSON Schema](https://json-schema.org/specification).
-To be fair, Zod does not make me write the shape twice.
-I write the schema and let `z.infer` hand me the type.
+The usual answer is a library like [Zod](https://zod.dev/), or [JSON Schema](https://json-schema.org/specification). To be fair, Zod does not make me write the shape twice. I write the schema and let `z.infer` hand me the type.
 
 ```ts
 const Root = z.object({ id: z.number(), name: z.string(), tags: z.array(z.string()) });
 type Root = z.infer<typeof Root>;
 ```
 
-What puts me off is the schema language itself.
-It is a second, more verbose way to say something TypeScript already says plainly.
+What puts me off is the schema language itself. It is a second, more verbose way to say something TypeScript already says plainly.
 
 ```ts
 type Root = { id: number; name: string; tags: string[] };
 ```
 
-The plain type is just nicer to read and write, especially for the nested API shapes further down this page.
-TypeScript already knows how to check a value against a type like that, it just throws the type away before runtime.
-So I wanted to see how far I could get keeping the plain type and borrowing the compiler to do the checking.
-I built this little playground (well, Claude did most of the typing) to find out.
+The plain type is just nicer to read and write, especially for the nested API shapes further down this page. TypeScript already knows how to check a value against a type like that, it just throws the type away before runtime. So I wanted to see how far I could get keeping the plain type and borrowing the compiler to do the checking. I built this little playground (well, Claude did most of the typing) to find out.
 
-It is live.
-Pick a sample, or paste your own JSON into the value pane.
-The type on top starts as a guess inferred from the data, and you edit it to tighten the shape.
-The value below stays plain JSON, and it is rechecked against the type as you type.
-It feels like JSON Schema, except the schema is a TypeScript type and the thing doing the checking is the real compiler.
+It is live. Pick a sample, or paste your own JSON into the value pane. The type on top starts as a guess inferred from the data, and you edit it to tighten the shape. The value below stays plain JSON, and it is rechecked against the type as you type. It feels like JSON Schema, except the schema is a TypeScript type and the thing doing the checking is the real compiler.
 
 <TypeProbe client:visible />
 
-Before the code, here is the whole idea on one page.
-A JSON value comes in, a `type Root` is guessed from it, and that single type then feeds two separate things.
-One path drives the live squiggles you just saw.
-The other turns the type into a real function you can call.
+Before the code, here is the whole idea on one page. A JSON value comes in, a `type Root` is guessed from it, and that single type then feeds two separate things. One path drives the live squiggles you just saw. The other turns the type into a real function you can call.
 
 <DiagramFlow />
 
-The rest of the post walks each arrow.
-First the checker, then the inference on the left edge, then the validator on the right.
+The rest of the post walks each arrow. First the checker, then the inference on the left edge, then the validator on the right.
 
-Every code block below is pulled out of the demo's actual source at build time, not retyped into the post, so what you read here is the code the demo runs.
-The validator pipeline is also run once at build by a small harness, and its real output is shown near the end.
+Every code block below is pulled out of the demo's actual source at build time, not retyped into the post, so what you read here is the code the demo runs. The validator pipeline is also run once at build by a small harness, and its real output is shown near the end.
 
 ## The compiler is the validator
 
-There is no validator here, and the value pane is not really checked as JSON at all.
-The demo keeps three [Monaco](https://microsoft.github.io/monaco-editor/) models: the `type Root` you edit, the JSON value you edit, and a hidden TypeScript file you never see.
+There is no validator here, and the value pane is not really checked as JSON at all. The demo keeps three [Monaco](https://microsoft.github.io/monaco-editor/) models. The `type Root` you edit, the JSON value you edit, and a hidden TypeScript file you never see.
 
 <Excerpt source="src/components/TypeProbe.tsx" region="create-models" lang="tsx" />
 
-The two panes you edit never touch each other directly.
-They both feed the hidden file, the worker checks that file, and its complaints are copied back onto the JSON pane.
+The two panes you edit never touch each other directly. They both feed the hidden file, the worker checks that file, and its complaints are copied back onto the JSON pane.
 
 <DiagramLoop />
 
-The hidden file is the whole trick.
-It is just your JSON dropped into a typed assignment, rebuilt on every keystroke in the value pane:
+The hidden file is the whole trick. It is just your JSON dropped into a typed assignment, rebuilt on every keystroke in the value pane.
 
 <Excerpt source="src/lib/typeprobe/monaco-setup.ts" region="hidden-file" lang="ts" />
 
-JSON is valid TypeScript syntax, so it sits there as a fresh object literal assigned to a typed target, and the compiler checks it structurally.
-A missing field, a wrong primitive, or a `null` where the type does not allow one all become errors.
-Because it is a fresh literal, TypeScript also flags properties that are not in the type at all, which is the strict mode of a schema library for free.
+JSON is valid TypeScript syntax. So it sits there as a fresh object literal assigned to a typed target, and the compiler checks it structurally. A missing field, a wrong primitive, or a `null` where the type does not allow one all become errors. Because it is a fresh literal, TypeScript also flags properties that are not in the type at all. That is the strict mode of a schema library, for free.
 
-Monaco runs the real TypeScript language service in a web worker, the same one VS Code uses, and that worker will hand me the errors for any file it knows about.
-So whenever a pane changes, I ask it about the hidden file and copy the results onto the JSON pane.
+Monaco runs the real TypeScript language service in a web worker, the same one VS Code uses. That worker will hand me the errors for any file it knows about. So whenever a pane changes, I ask it about the hidden file and copy the results onto the JSON pane.
 
 <Excerpt source="src/components/TypeProbe.tsx" region="map-diagnostics" lang="tsx" />
 
-That one header line is the only bookkeeping.
-Each diagnostic comes back pointing at the hidden file, so I shift it up one line to land on the matching JSON row and clamp it to the pane.
-Monaco's own JSON validation is switched off, so the only squiggles on the value pane are the ones TypeScript put there.
+That one header line is the only bookkeeping. Each diagnostic comes back pointing at the hidden file, so I shift it up one line to land on the matching JSON row and clamp it to the pane. Monaco's own JSON validation is switched off, so the only squiggles on the value pane are the ones TypeScript put there.
 
 (Recent Monaco exposes this worker as `monaco.typescript`. Older versions keep it under `monaco.languages.typescript`.)
 
 ## How to infer the `Root` type
 
-When you load JSON, I walk the parsed value and emit a first guess at `type Root`.
-There is no compiler in this step, just a recursive walk over the parsed value.
-Each value describes itself: a string becomes `string`, an array describes its elements, an object describes its keys.
+When you load JSON, I walk the parsed value and emit a first guess at `type Root`. There is no compiler in this step, just a recursive walk over the parsed value. Each value describes itself. A string becomes `string`, an array describes its elements, an object describes its keys.
 
 <Excerpt source="src/lib/typeprobe/infer.ts" region="describe" lang="ts" />
 
-Arrays of objects are the fun case, and they are why a single `describe` is not enough.
-Two elements of the same array can disagree, so I pool every observation and unify it into one type.
-Objects merge structurally, arrays have their elements pooled, and scalars contribute their primitive to a union.
+Arrays of objects are the fun case, and they are why a single `describe` is not enough. Two elements of the same array can disagree, so I pool every observation and unify it into one type. Objects merge structurally, arrays have their elements pooled, and scalars contribute their primitive to a union.
 
 <Excerpt source="src/lib/typeprobe/infer.ts" region="unify" lang="ts" />
 
 <Excerpt source="src/lib/typeprobe/infer.ts" region="array-type" lang="ts" />
 
-Merging objects is where the optional keys come from.
-A key that shows up in some objects but not others becomes optional, and a key's type is the unification of every value seen for it.
+Merging objects is where the optional keys come from. A key that shows up in some objects but not others becomes optional, and a key's type is the unification of every value seen for it.
 
 <Excerpt source="src/lib/typeprobe/infer.ts" region="merge-objects" lang="ts" />
 
-That is the whole inferrer, indentation and all.
-The text it returns is exactly what lands in the top pane when you load a sample.
+That is the whole inferrer, indentation and all. The text it returns is exactly what lands in the top pane when you load a sample.
 
-It is only a guess from one sample though.
-If a field happened to be `null` in this particular response, the guess is `null` and nothing more.
-You tighten it to `string | null` by hand, and the squiggles tell you right away whether the rest of the data still fits.
+It is only a guess from one sample though. If a field happened to be `null` in this particular response, the guess is `null` and nothing more. You tighten it to `string | null` by hand, and the squiggles tell you right away whether the rest of the data still fits.
 
 ## Generating a runtime validator
 
-Squiggles are lovely while editing, but sometimes I want an actual function I can call.
-That is the "Generate validator" button, and it is the part I find most interesting, so here is the whole thing.
-The reader does not have to take the output on faith either.
-Once a validator is generated, "Run it against the value above" runs it in your browser and tells you what it returned.
+Squiggles are lovely while editing, but sometimes I want an actual function I can call. That is the "Generate validator" button, and it is the part I find most interesting, so here is the whole thing. The reader does not have to take the output on faith either. Once a validator is generated, "Run it against the value above" runs it in your browser and tells you what it returned.
 
-The idea is to ask the [TypeScript Compiler API](https://github.com/microsoft/TypeScript/wiki/Using-the-Compiler-API) for the resolved shape of `Root` and walk it.
-There are four small steps: stand up a compiler, resolve the type, walk it into a string of checks, then strip the types so the string runs.
+The idea is to ask the [TypeScript Compiler API](https://github.com/microsoft/TypeScript/wiki/Using-the-Compiler-API) for the resolved shape of `Root` and walk it. There are four small steps. Stand up a compiler, resolve the type, walk it into a string of checks, then strip the types so the string runs.
 
 ### Spinning up an in-browser compiler
 
-The compiler normally reads from disk.
-In the browser there is no disk, so I use [@typescript/vfs](https://www.npmjs.com/package/@typescript/vfs) to give it an in-memory filesystem with two files in it.
-The first is a tiny standard library, because the checker insists a few globals exist.
+The compiler normally reads from disk. In the browser there is no disk, so I use [@typescript/vfs](https://www.npmjs.com/package/@typescript/vfs) to give it an in-memory filesystem with two files in it. The first is a tiny standard library, because the checker insists a few globals exist.
 
 <Excerpt source="src/lib/typeprobe/generate-validator.ts" region="minimal-lib" lang="ts" />
 
@@ -139,8 +101,7 @@ The second is the edited type text, and the two together are enough to stand up 
 
 <Excerpt source="src/lib/typeprobe/generate-validator.ts" region="make-checker" lang="ts" />
 
-The `noLib` option turns off the real standard library, and the minimal stub takes its place.
-The checker only needs to know that `Array` and a handful of globals exist for `string[]` to mean something.
+The `noLib` option turns off the real standard library, and the minimal stub takes its place. The checker only needs to know that `Array` and a handful of globals exist for `string[]` to mean something.
 
 ### From a name to a resolved type
 
@@ -148,25 +109,21 @@ Now I find the `Root` declaration in the source and ask the checker what it actu
 
 <Excerpt source="src/lib/typeprobe/generate-validator.ts" region="find-root" lang="ts" />
 
-This is the step that pays for the whole compiler.
-`getDeclaredTypeOfSymbol` hands back the resolved type, with `string[]` already understood as an array of strings and `A | B` already flattened into a union.
-I never have to parse type syntax myself.
-I just ask what it resolved to.
+This is the step that pays for the whole compiler. `getDeclaredTypeOfSymbol` hands back the resolved type, with `string[]` already understood as an array of strings and `A | B` already flattened into a union. I never have to parse type syntax myself. I just ask what it resolved to.
 
 ### Walking the type into checks
 
-With a resolved type in hand, I walk it and build a string of boolean checks.
-A `Type` carries a bitmask of flags for the primitives, and the checker has helpers for the rest.
-This is the whole walker, every case it handles, straight from the source.
+With a resolved type in hand, I walk it and build a string of boolean checks. Each part of the type maps to a piece of the check, and the walk just follows the type's shape.
+
+<DiagramTypeWalk />
+
+A `Type` carries a bitmask of flags for the primitives, and the checker has helpers for the rest. This is the whole walker, every case it handles, straight from the source.
 
 <Excerpt source="src/lib/typeprobe/generate-validator.ts" region="check" lang="ts" />
 
-Every branch is the checker doing the work.
-`isUnion` gives me the members, `isArrayType` plus `getTypeArguments` gives me the element type, and `getPropertiesOfType` plus `getTypeOfSymbolAtLocation` give me each field and its type.
-Optional fields show up as a flag on the property symbol, so they are allowed to be missing, and `undefined` is dropped from unions because JSON never carries it.
-The `indent` and `depth` arguments only shape the output: `indent` keeps nested object groups readable, and `depth` names each array's element variable so a nested `.every` does not shadow the outer one.
+Every branch is the checker doing the work. `isUnion` gives me the members, `isArrayType` plus `getTypeArguments` gives me the element type, and `getPropertiesOfType` plus `getTypeOfSymbolAtLocation` give me each field and its type. Optional fields show up as a flag on the property symbol, so they are allowed to be missing, and `undefined` is dropped from unions because JSON never carries it. The `indent` and `depth` arguments only shape the output. `indent` keeps nested object groups readable. `depth` names each array's element variable so a nested `.every` does not shadow the outer one.
 
-The walker hands back one big boolean expression, and wrapping it in a type guard is the whole validator:
+The walker hands back one big boolean expression, and wrapping it in a type guard is the whole validator.
 
 <Excerpt source="src/lib/typeprobe/generate-validator.ts" region="assemble" lang="ts" />
 
@@ -174,21 +131,15 @@ The `${body}` is that expression spliced straight into the source, so `return (.
 
 ### Stripping the types so it runs
 
-That output is still TypeScript.
-It has `: unknown` and a `value is Root` predicate, which the browser cannot run.
-Rather than strip the annotations with a fragile regex, I hand the string back to the compiler and let it erase the types for me.
+That output is still TypeScript. It has `: unknown` and a `value is Root` predicate, which the browser cannot run. Rather than strip the annotations with a fragile regex, I hand the string back to the compiler and let it erase the types for me.
 
 <Excerpt source="src/lib/typeprobe/generate-validator.ts" region="transpile" lang="ts" />
 
 That is exactly what the "Run it against the value above" button does.
 
-Put together it is the whole generator.
-Stand up a checker, resolve `Root`, walk it into a string, and transpile the string so it runs.
-This is the part a schema library cannot do from a type alone.
-The type is read, not copied.
+Put together it is the whole generator. Stand up a checker, resolve `Root`, walk it into a string, and transpile the string so it runs. This is the part a schema library cannot do from a type alone. It works straight from the type you already wrote, instead of asking you to copy it into a schema.
 
-To prove the snippets above are not just for show, here is a small script that imports the very same `inferType` and `generateValidator` the demo uses, infers a type from a sample value, generates the validator, and runs it.
-The output is captured when the site is built, so if any of this stopped working the build would fail instead of shipping a wrong post.
+To prove the snippets above are not just for show, here is a small script that imports the very same `inferType` and `generateValidator` the demo uses, infers a type from a sample value, generates the validator, and runs it. The output is captured when the site is built, so if any of this stopped working the build would fail instead of shipping a wrong post.
 
 <RunnableSnippet
   source="src/content/posts/type-json-validator/verify/ts/run.ts"
@@ -201,9 +152,6 @@ The output is captured when the site is built, so if any of this stopped working
 
 ## Where it breaks
 
-This is a toy, not a library.
-The type guesser handles the JSON shapes I actually run into and not tuples, recursive types, generics, or index signatures.
-The generated validator covers objects, arrays, unions, primitives, optionals, and `null`, and stops there.
+This is a toy, not a library. The type guesser handles the JSON shapes I actually run into, and not tuples, recursive types, generics, or index signatures. The generated validator covers objects, arrays, unions, primitives, optionals, and `null`, and stops there.
 
-Replacing Zod was never the point.
-I just wanted to see that a TypeScript type already carries enough to validate real data, and that the compiler will hand that back to you if you ask nicely.
+Replacing Zod was never the point. I just wanted to see that a TypeScript type already carries enough to validate real data, and that the compiler will hand that back to you if you ask nicely.

@@ -220,6 +220,9 @@ const fullTitle = title === 'filipkunc.com' ? title : `${title} — filipkunc.co
       const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
 
       document.querySelectorAll('main pre').forEach((pre) => {
+        // Skip <pre> used as diagram art (e.g. the type-walk mapping); it is an
+        // illustration, not copyable code, and the button would overlap it.
+        if (pre.closest('figure.diagram')) return;
         if (pre.parentElement?.classList.contains('code-wrap')) return;
         if (pre.parentElement?.querySelector(':scope > .code-file-label .copy-btn')) return;
 

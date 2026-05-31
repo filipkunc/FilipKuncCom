@@ -1,0 +1,67 @@
+---
+// Walking a resolved type into a boolean check. Each part of the type maps to a
+// piece of the check: a primitive to a typeof test, an object to an && of its
+// fields, an array to Array.isArray plus a .every that runs the element's check.
+// Matching parts share a color, and the indentation on the right shows the
+// element check nested inside the array's. Built as colored monospace text
+// (set:html for exact whitespace) and themed by the shared figure.diagram CSS.
+const typeHtml = [
+  '<span class="tw-obj">type Root = {</span>',
+  '  <span class="tw-num">id: number</span>;',
+  '  <span class="tw-arr">tags: <span class="tw-str">string</span>[]</span>;',
+  '<span class="tw-obj">}</span>',
+].join('\n');
+
+const checkHtml = [
+  '<span class="tw-obj">typeof v === "object" && v !== null</span>',
+  '  && <span class="tw-num">typeof v.id === "number"</span>',
+  '  && <span class="tw-arr">Array.isArray(v.tags)</span>',
+  '       && v.tags.every(e =>',
+  '            <span class="tw-str">typeof e === "string"</span>)',
+].join('\n');
+---
+
+<figure class="diagram typewalk-diagram">
+  <div class="tw-cols">
+    <div class="tw-col">
+      <div class="tw-head">the type</div>
+      <pre class="tw-code" set:html={typeHtml}></pre>
+    </div>
+    <div class="tw-arrow" aria-hidden="true">→</div>
+    <div class="tw-col">
+      <div class="tw-head">the check it walks to</div>
+      <pre class="tw-code" set:html={checkHtml}></pre>
+    </div>
+  </div>
+  <figcaption>
+    Each part of the type maps to a piece of the check. A primitive becomes a <code>typeof</code>
+    test, an object an <code>&amp;&amp;</code> of its fields, an array an <code>Array.isArray</code>
+    plus a <code>.every</code> that runs the element's check. The walk just follows the type's shape.
+  </figcaption>
+</figure>
+
+<style>
+  figure.typewalk-diagram .tw-cols {
+    display: flex; align-items: center; justify-content: center;
+    gap: 1rem; flex-wrap: wrap; text-align: left;
+  }
+  figure.typewalk-diagram .tw-head {
+    font-size: 0.72rem; color: var(--muted); margin-bottom: 0.35rem;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  figure.typewalk-diagram .tw-code {
+    margin: 0; padding: 0.7rem 0.9rem;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 0.8rem; line-height: 1.55;
+    background: color-mix(in srgb, var(--fg) 4%, transparent);
+    border: 1px solid var(--rule); border-radius: 8px; overflow-x: auto;
+  }
+  figure.typewalk-diagram .tw-arrow { color: var(--muted); font-size: 1.4rem; }
+  figure.typewalk-diagram .tw-obj { color: var(--fg); }
+  figure.typewalk-diagram .tw-num { color: var(--link); }
+  figure.typewalk-diagram .tw-arr { color: var(--accent); }
+  figure.typewalk-diagram .tw-str { color: #2da44e; }
+  @media (max-width: 620px) {
+    figure.typewalk-diagram .tw-arrow { transform: rotate(90deg); }
+  }
+</style>
