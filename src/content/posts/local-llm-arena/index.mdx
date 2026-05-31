@@ -49,15 +49,11 @@ export const metricsRows = [
   }
 }).filter(Boolean);
 
-This post is trying to scratch an itch I've had for a while.
-Comparing small local LLMs on programming tasks without going purely by feel.
-This means the test cases are deterministic and easy to programatically run and verify.
+So, can we [invert the binary tree](https://leetcode.com/problems/invert-binary-tree/description/) using locally running LLMs?
 
-To keep the scope manageble I went with the classic [LeetCode "invert a binary tree"](https://leetcode.com/problems/invert-binary-tree/description/) problem which let even [famous programmers fail](https://x.com/mxcl/status/608682016205344768).
+I mean small models, like 4B Qwen or Gemma, and I want the answer reproducible and verifiable, not a feeling. It is a fun problem to pick because it once [got the Homebrew author turned down by Google](https://x.com/mxcl/status/608682016205344768).
 
-The whole thing runs on local hardware.
-No Colab, no API keys, just a GPU and a few hundred lines of Python.
-You should be able to follow along by copy-pasting each block below.
+I set up a small arena. Two local models, Gemma 4 E4B and Qwen3.5 4B, the same prompt for each, and a deterministic judge that just runs the unit tests. It all runs locally, a few hundred lines of Python you can copy-paste as you go.
 
 ## Prerequisites
 
@@ -153,6 +149,8 @@ A `-` means the file or function was missing entirely.
   <figcaption><code>$ python3 harness.py</code> · captured at build, {verifiedAt}</figcaption>
 </figure>
 
+Both models pass all five trees. The thing that supposedly cost a Homebrew author a job at Google is a non-event for a 4B model sitting on my desk. That is the whole result, and it is the part I keep turning over.
+
 {metricsRows.length > 0 && (
   <>
     <h2 id="performance">Performance</h2>
@@ -195,9 +193,11 @@ A `-` means the file or function was missing entirely.
     </figure>
 
     <p>
-      GPU runs ~12× faster than CPU for both models on this hardware.
-      Both <code>raw-response.txt</code> and the extracted <code>solution.py</code> are byte-for-byte identical across devices for each model, and the harness verdict is 5/5 across all four runs.
-      The "tokens" column comes from llama-server's <code>timings.predicted_n</code> field, which doesn't always agree with the textual output length. Gemma reports 877 on GPU vs 733 on CPU for the same 290-byte response, and I haven't dug into why.
+      GPU runs about 12× faster than CPU for both models on this hardware.
+      For each model both <code>raw-response.txt</code> and the extracted <code>solution.py</code> are byte-for-byte identical across CPU and GPU, which is what temperature 0 and a pinned seed are supposed to buy you.
+      The <code>tokens</code> column is the odd one.
+      It comes from llama-server's <code>timings.predicted_n</code> field, which does not always match the text the model returned.
+      Gemma reports 877 tokens on GPU and 733 on CPU for the same 290-byte response, and I haven't dug into why.
     </p>
   </>
 )}
