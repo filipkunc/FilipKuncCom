@@ -317,7 +317,31 @@ export async function create(canvas: HTMLCanvasElement, opts: CreateOptions): Pr
     device.queue.writeBuffer(cameraBuffer, 0, cameraData);
   }
 
+  // Park the loop when the canvas is off-screen or the tab is hidden, so a
+  // scrolled-away or backgrounded demo costs zero GPU. It resumes on return.
   let raf = 0;
+  let scheduled = false;
+  let onScreen = true;
+  const active = () => !destroyed && onScreen && !document.hidden;
+  function schedule() {
+    if (scheduled || !active()) return;
+    scheduled = true;
+    raf = requestAnimationFrame((t) => {
+      scheduled = false;
+      frame(t);
+    });
+  }
+  const visibilityObserver =
+    typeof IntersectionObserver !== 'undefined'
+      ? new IntersectionObserver((entries) => {
+          onScreen = entries[entries.length - 1].isIntersecting;
+          schedule();
+        })
+      : null;
+  visibilityObserver?.observe(canvas);
+  const onVisibilityChange = () => schedule();
+  document.addEventListener('visibilitychange', onVisibilityChange);
+
   let lastTime = 0;
   function frame(now: number) {
     if (destroyed) return;
@@ -338,7 +362,7 @@ export async function create(canvas: HTMLCanvasElement, opts: CreateOptions): Pr
     const encoder = device.createCommandEncoder();
     encodeScene(encoder, context!.getCurrentTexture().createView(), depthTexture!.createView());
     device.queue.submit([encoder.finish()]);
-    raf = requestAnimationFrame(frame);
+    schedule();
   }
 
   // Encode one frame into the given color/depth views. In GPU mode the compute
@@ -380,9 +404,9 @@ export async function create(canvas: HTMLCanvasElement, opts: CreateOptions): Pr
   }
 
   loadMesh(opts.mesh, opts.subdivisions);
-  raf = requestAnimationFrame(frame);
+  schedule();
 
-  return {
+  const handle: RendererHandle = {
     setMesh(name, subdivisions) {
       loadMesh(name, subdivisions);
     },
@@ -465,7 +489,10 @@ export async function create(canvas: HTMLCanvasElement, opts: CreateOptions): Pr
     },
     destroy() {
       destroyed = true;
+      liveHandles.delete(handle);
       cancelAnimationFrame(raf);
+      visibilityObserver?.disconnect();
+      document.removeEventListener('visibilitychange', onVisibilityChange);
       disposeMeshBuffers();
       cameraBuffer.destroy();
       depthTexture?.destroy();
@@ -477,7 +504,15 @@ export async function create(canvas: HTMLCanvasElement, opts: CreateOptions): Pr
       device.destroy();
     },
   };
+  liveHandles.add(handle);
+  return handle;
 }
+
+// Dev only: dispose live renderers on hot reload so editing does not pile up
+// orphaned GPUDevices across HMR updates.
+const liveHandles = new Set<RendererHandle>();
+const normalsHot = (import.meta as unknown as { hot?: { dispose(cb: () => void): void } }).hot;
+if (normalsHot) normalsHot.dispose(() => { for (const h of liveHandles) h.destroy(); });
 
 // --- minimal column-major mat4 helpers (no dependency) ---------------------
 

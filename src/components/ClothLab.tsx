@@ -17,7 +17,7 @@ export default function ClothLab() {
   const [status, setStatus] = useState<Status>('probing');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const [gridStep, setGridStep] = useState(2); // ~250k triangles
+  const [gridStep, setGridStep] = useState(0); // ~32k triangles, light on first load
   const [mode, setMode] = useState<NormalsMode>('gpu');
   const [wind, setWind] = useState(true);
   const [paused, setPaused] = useState(false);

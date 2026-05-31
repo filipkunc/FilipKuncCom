@@ -1,0 +1,82 @@
+---
+// A distance constraint ("spring") between two cloth particles. It has a fixed
+// rest length L. When the particles sit at some distance d, solving it slides
+// both ends back along the line between them until the gap is L again. Drawn
+// stretched (d > L), with both ends pulled inward. The coil is generated below.
+// Hand-authored SVG, themed by the shared figure.diagram styles in Layout.astro.
+const sx = 96;
+const ex = 384;
+const sy = 66;
+const coils = 9;
+const amp = 12;
+const lead = 16;
+const innerStart = sx + lead;
+const innerEnd = ex - lead;
+const seg = (innerEnd - innerStart) / coils;
+let coil = `${sx},${sy} ${innerStart},${sy}`;
+for (let i = 0; i < coils; i++) {
+  const x = innerStart + seg * (i + 0.5);
+  coil += ` ${x.toFixed(1)},${sy + (i % 2 === 0 ? -amp : amp)}`;
+}
+coil += ` ${innerEnd},${sy} ${ex},${sy}`;
+---
+
+<figure class="diagram spring-diagram">
+  <svg viewBox="0 0 480 184" role="img"
+    aria-label="A spring between two particles p-i and p-j, stretched so the current distance d is larger than the rest length L. Orange arrows pull both particles inward toward the rest length.">
+    <defs>
+      <marker id="spring-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path class="arrow-head" d="M0,0 L10,5 L0,10 z" />
+      </marker>
+      <marker id="dir-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path class="dir-head" d="M0,0 L10,5 L0,10 z" />
+      </marker>
+    </defs>
+
+    <polyline class="coil" points={coil} />
+
+    <circle class="particle" cx="88" cy="66" r="8" />
+    <circle class="particle" cx="392" cy="66" r="8" />
+    <text class="pt-label" x="88" y="40" text-anchor="middle">pᵢ</text>
+    <text class="pt-label" x="392" y="40" text-anchor="middle">pⱼ</text>
+
+    <!-- both ends pulled inward -->
+    <line class="correction" x1="58" y1="66" x2="82" y2="66" marker-end="url(#spring-arrow)" />
+    <line class="correction" x1="422" y1="66" x2="398" y2="66" marker-end="url(#spring-arrow)" />
+
+    <!-- unit direction n-hat, from p_j toward p_i -->
+    <line class="n-vec" x1="252" y1="92" x2="212" y2="92" marker-end="url(#dir-arrow)" />
+    <text class="n-label" x="262" y="96" text-anchor="start">n̂</text>
+
+    <!-- current distance d -->
+    <line class="dim" x1="88" y1="112" x2="392" y2="112" />
+    <line class="dim" x1="88" y1="106" x2="88" y2="118" />
+    <line class="dim" x1="392" y1="106" x2="392" y2="118" />
+    <text class="dim-label" x="240" y="130" text-anchor="middle">d (current distance)</text>
+
+    <!-- rest length L, shorter -->
+    <line class="dim rest" x1="150" y1="152" x2="330" y2="152" />
+    <line class="dim rest" x1="150" y1="146" x2="150" y2="158" />
+    <line class="dim rest" x1="330" y1="146" x2="330" y2="158" />
+    <text class="dim-label rest" x="240" y="170" text-anchor="middle">L (rest length)</text>
+  </svg>
+  <figcaption>
+    A spring holds two particles at a rest length L. When they drift to some other distance d,
+    solving it slides both ends back along the line until the gap is L again.
+  </figcaption>
+</figure>
+
+<style>
+  figure.spring-diagram .coil { fill: none; stroke: var(--fg); stroke-width: 2; stroke-linejoin: round; }
+  figure.spring-diagram .particle { fill: var(--fg); }
+  figure.spring-diagram .pt-label { fill: var(--fg); font-size: 16px; font-style: italic; }
+  figure.spring-diagram .correction { stroke: var(--accent); stroke-width: 2.5; }
+  figure.spring-diagram .arrow-head { fill: var(--accent); }
+  figure.spring-diagram .n-vec { stroke: var(--link); stroke-width: 2.5; }
+  figure.spring-diagram .dir-head { fill: var(--link); }
+  figure.spring-diagram .n-label { fill: var(--link); font-size: 15px; font-style: italic; }
+  figure.spring-diagram .dim { stroke: var(--muted); stroke-width: 1.5; }
+  figure.spring-diagram .dim-label { fill: var(--muted); font-size: 13px; }
+  figure.spring-diagram .dim.rest { stroke: var(--accent); stroke-dasharray: 4 3; }
+  figure.spring-diagram .dim-label.rest { fill: var(--accent); }
+</style>

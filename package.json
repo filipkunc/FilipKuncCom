@@ -34,8 +34,11 @@
   "dependencies": {
     "@astrojs/react": "^5.0.5",
     "@typescript/vfs": "^1.6.4",
+    "katex": "^0.17.0",
     "monaco-editor": "^0.55.1",
     "react": "^19.2.6",
-    "react-dom": "^19.2.6"
+    "react-dom": "^19.2.6",
+    "rehype-katex": "^7.0.1",
+    "remark-math": "^6.0.0"
   }
 }

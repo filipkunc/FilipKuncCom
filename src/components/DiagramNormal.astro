@@ -1,0 +1,75 @@
+---
+// Face and vertex normals of a triangle. e1 and e2 are two edges from p0; their
+// cross product is the face normal n, drawn out of the surface. Hand-authored
+// SVG, themed by the shared figure.diagram styles in Layout.astro. The normal is
+// orange to match the normals drawn in NormalsLab.
+---
+
+<figure class="diagram normal-diagram">
+  <svg viewBox="0 0 460 300" role="img"
+    aria-label="A triangle with vertices p0, p1 and p2. Two edge vectors e1 and e2 run from p0. Their cross product is the face normal n, pointing out of the triangle's surface.">
+    <defs>
+      <marker id="vec-edge" viewBox="0 0 10 10" refX="8.5" refY="5"
+        markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path class="edge-head" d="M0,0 L10,5 L0,10 z" />
+      </marker>
+      <marker id="vec-normal" viewBox="0 0 10 10" refX="8.5" refY="5"
+        markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path class="normal-head" d="M0,0 L10,5 L0,10 z" />
+      </marker>
+    </defs>
+
+    <!-- triangle face -->
+    <polygon class="face" points="110,235 340,250 255,130" />
+
+    <!-- two edge vectors from p0 -->
+    <line class="vec edge-vec" x1="110" y1="235" x2="340" y2="250" marker-end="url(#vec-edge)" />
+    <line class="vec edge-vec" x1="110" y1="235" x2="255" y2="130" marker-end="url(#vec-edge)" />
+
+    <!-- face normal from the centroid -->
+    <line class="vec normal-vec" x1="235" y1="205" x2="285" y2="70" marker-end="url(#vec-normal)" />
+
+    <!-- vertices -->
+    <circle class="vert" cx="110" cy="235" r="3.5" />
+    <circle class="vert" cx="340" cy="250" r="3.5" />
+    <circle class="vert" cx="255" cy="130" r="3.5" />
+
+    <!-- labels -->
+    <text class="pt-label" x="98" y="252" text-anchor="end">p₀</text>
+    <text class="pt-label" x="352" y="263" text-anchor="start">p₁</text>
+    <text class="pt-label" x="263" y="121" text-anchor="start">p₂</text>
+    <text class="vec-label is-edge" x="230" y="261" text-anchor="middle">e₁</text>
+    <text class="vec-label is-edge" x="166" y="176" text-anchor="end">e₂</text>
+    <text class="vec-label is-normal" x="294" y="64" text-anchor="start">n</text>
+  </svg>
+  <figcaption>
+    The face normal is the cross product of two edges. A vertex normal is the area-weighted
+    sum of the faces that touch it.
+  </figcaption>
+</figure>
+
+<style>
+  figure.normal-diagram .face {
+    fill: color-mix(in srgb, var(--accent) 10%, transparent);
+    stroke: var(--muted);
+    stroke-width: 1.25;
+  }
+  figure.normal-diagram .vec { fill: none; stroke-width: 2; }
+  figure.normal-diagram .edge-vec { stroke: var(--link); }
+  figure.normal-diagram .normal-vec { stroke: var(--accent); }
+  figure.normal-diagram .edge-head { fill: var(--link); }
+  figure.normal-diagram .normal-head { fill: var(--accent); }
+  figure.normal-diagram .vert { fill: var(--fg); }
+  figure.normal-diagram .pt-label {
+    fill: var(--fg);
+    font-size: 15px;
+    font-style: italic;
+  }
+  figure.normal-diagram .vec-label {
+    font-size: 17px;
+    font-style: italic;
+    font-weight: 600;
+  }
+  figure.normal-diagram .vec-label.is-edge { fill: var(--link); }
+  figure.normal-diagram .vec-label.is-normal { fill: var(--accent); }
+</style>

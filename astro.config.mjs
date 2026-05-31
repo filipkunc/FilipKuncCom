@@ -2,6 +2,8 @@ import { defineConfig } from 'astro/config';
 import mdx from '@astrojs/mdx';
 import react from '@astrojs/react';
 import sitemap from '@astrojs/sitemap';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -44,6 +46,12 @@ export default defineConfig({
     // emits <img srcset sizes> so the browser picks the right resolution
     // (including 2x for high-DPI screens). Applies to Markdown ![]() too.
     layout: 'constrained',
+  },
+  // KaTeX for math in posts. mdx() inherits these by default
+  // (extendMarkdownConfig), so $inline$ and $$block$$ work in .mdx too.
+  markdown: {
+    remarkPlugins: [remarkMath],
+    rehypePlugins: [rehypeKatex],
   },
   integrations: [
     react(),

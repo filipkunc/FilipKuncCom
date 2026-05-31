@@ -1,0 +1,64 @@
+---
+// Constraint coloring on the cloth grid. The cloth is a 2D plane of particles
+// joined by springs. Springs are split into batches so no two springs in a
+// batch share a particle, which lets a whole batch run in parallel with no race.
+// Here the horizontal springs are split by an even/odd rule into two batches
+// (orange and blue); the vertical springs are drawn grey to show the full mesh
+// and split the same way into their own batches. Geometry is generated below so
+// the grid stays easy to resize. Themed by the shared figure.diagram styles.
+const COLS = 5;
+const ROWS = 4;
+const X0 = 40;
+const Y0 = 40;
+const DX = 90;
+const DY = 80;
+const GAP = 7; // stop springs short of the particle dots
+const px = (c: number) => X0 + c * DX;
+const py = (r: number) => Y0 + r * DY;
+
+const hSprings: { x1: number; y1: number; x2: number; y2: number; batch: string }[] = [];
+for (let r = 0; r < ROWS; r++) {
+  for (let c = 0; c < COLS - 1; c++) {
+    hSprings.push({ x1: px(c) + GAP, y1: py(r), x2: px(c + 1) - GAP, y2: py(r), batch: c % 2 === 0 ? 'b1' : 'b2' });
+  }
+}
+const vSprings: { x1: number; y1: number; x2: number; y2: number }[] = [];
+for (let c = 0; c < COLS; c++) {
+  for (let r = 0; r < ROWS - 1; r++) {
+    vSprings.push({ x1: px(c), y1: py(r) + GAP, x2: px(c), y2: py(r + 1) - GAP });
+  }
+}
+const dots: { x: number; y: number }[] = [];
+for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) dots.push({ x: px(c), y: py(r) });
+---
+
+<figure class="diagram coloring-diagram">
+  <svg viewBox="0 0 440 350" role="img"
+    aria-label="A grid of cloth particles joined by springs. The horizontal springs alternate between two batches, orange and blue, so no two springs in a batch share a particle. The vertical springs are grey and split into their own batches the same way.">
+    {vSprings.map((s) => <line class="spring vert" x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} />)}
+    {hSprings.map((s) => <line class={`spring ${s.batch}`} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} />)}
+    {dots.map((d) => <circle class="particle" cx={d.x} cy={d.y} r="6" />)}
+
+    <!-- legend -->
+    <line class="spring b1" x1="40" y1="325" x2="74" y2="325" />
+    <text class="legend" x="82" y="329">batch 1</text>
+    <line class="spring b2" x1="168" y1="325" x2="202" y2="325" />
+    <text class="legend" x="210" y="329">batch 2</text>
+    <line class="spring vert" x1="296" y1="325" x2="330" y2="325" />
+    <text class="legend" x="338" y="329">other directions</text>
+  </svg>
+  <figcaption>
+    The cloth is a grid of particles joined by springs. An even-and-odd rule sorts the horizontal
+    springs into two batches, orange and blue, so no two springs in a batch touch the same
+    particle. The grey springs split the same way, eight batches in all.
+  </figcaption>
+</figure>
+
+<style>
+  figure.coloring-diagram .spring { stroke-width: 4; stroke-linecap: round; }
+  figure.coloring-diagram .spring.b1 { stroke: var(--accent); }
+  figure.coloring-diagram .spring.b2 { stroke: var(--link); }
+  figure.coloring-diagram .spring.vert { stroke: var(--muted); stroke-width: 2; opacity: 0.6; }
+  figure.coloring-diagram .particle { fill: var(--fg); }
+  figure.coloring-diagram .legend { fill: var(--muted); font-size: 14px; }
+</style>

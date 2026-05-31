@@ -393,7 +393,7 @@ export async function create(canvas: HTMLCanvasElement, opts: ClothCreateOptions
     const aspect = width / Math.max(height, 1);
     // A gentle three-quarter view so the out-of-plane folds read as depth.
     const model = mul(rotationY(0.4), rotationX(0.08));
-    const view = translation(0, 0.05, -5.0);
+    const view = translation(0, 0.05, -3.0);
     const proj = perspective(Math.PI / 4, aspect, 0.1, 100);
     const mvp = mul(proj, mul(view, model));
     lastInvMVP = invert(mvp); // for mapping the cursor back into the cloth's space
@@ -432,7 +432,39 @@ export async function create(canvas: HTMLCanvasElement, opts: ClothCreateOptions
     return { width, height };
   }
 
+  // Park the loop when the canvas is off-screen or the tab is hidden, so a
+  // scrolled-away or backgrounded demo costs zero GPU instead of running the full
+  // compute+render every frame. It resumes the moment the canvas comes back.
   let raf = 0;
+  let scheduled = false;
+  let inFrame = false;
+  let onScreen = true;
+  const active = () => !destroyed && onScreen && !document.hidden;
+  function schedule() {
+    if (scheduled || inFrame || !active()) return;
+    scheduled = true;
+    raf = requestAnimationFrame((t) => {
+      scheduled = false;
+      inFrame = true;
+      void frame(t)
+        .catch(() => {})
+        .finally(() => {
+          inFrame = false;
+          schedule();
+        });
+    });
+  }
+  const visibilityObserver =
+    typeof IntersectionObserver !== 'undefined'
+      ? new IntersectionObserver((entries) => {
+          onScreen = entries[entries.length - 1].isIntersecting;
+          schedule();
+        })
+      : null;
+  visibilityObserver?.observe(canvas);
+  const onVisibilityChange = () => schedule();
+  document.addEventListener('visibilitychange', onVisibilityChange);
+
   async function frame(now: number) {
     if (destroyed) return;
     if (lastNow) {
@@ -508,13 +540,12 @@ export async function create(canvas: HTMLCanvasElement, opts: ClothCreateOptions
       }
     }
 
-    if (!destroyed) raf = requestAnimationFrame((t) => void frame(t).catch(() => {}));
   }
 
   loadGrid(opts.gridStep);
-  raf = requestAnimationFrame((t) => void frame(t).catch(() => {}));
+  schedule();
 
-  return {
+  const handle: ClothHandle = {
     setGrid(step) {
       loadGrid(step);
     },
@@ -644,7 +675,10 @@ export async function create(canvas: HTMLCanvasElement, opts: ClothCreateOptions
     adapterInfo: () => ({ architecture: adapterArchitecture }),
     destroy() {
       destroyed = true;
+      liveHandles.delete(handle);
       cancelAnimationFrame(raf);
+      visibilityObserver?.disconnect();
+      document.removeEventListener('visibilitychange', onVisibilityChange);
       disposeGridBuffers();
       cameraBuffer.destroy();
       simBuffer.destroy();
@@ -660,7 +694,15 @@ export async function create(canvas: HTMLCanvasElement, opts: ClothCreateOptions
       device.destroy();
     },
   };
+  liveHandles.add(handle);
+  return handle;
 }
+
+// Dev only: dispose live renderers on hot reload so editing does not pile up
+// orphaned GPUDevices, each still holding a render loop, across HMR updates.
+const liveHandles = new Set<ClothHandle>();
+const clothHot = (import.meta as unknown as { hot?: { dispose(cb: () => void): void } }).hot;
+if (clothHot) clothHot.dispose(() => { for (const h of liveHandles) h.destroy(); });
 
 // --- minimal column-major mat4 helpers -------------------------------------
 type Mat4 = Float32Array;
