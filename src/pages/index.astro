@@ -4,14 +4,13 @@ import { getCollection } from 'astro:content';
 
 const posts = (await getCollection('posts', ({ data }) => !data.draft))
   .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime())
-  .slice(0, 5);
+  .slice(0, 10);
 ---
 
 <Layout title="filipkunc.com" description="Notes, projects, and experiments by Filip Kunc.">
   <h1>filipkunc.com</h1>
   <p>
-    Personal site of Filip Kunc: notes, projects, and experiments. Source code
-    runs on a single Hetzner box, deployed via a script you can read end-to-end.
+    Personal site of Filip Kunc. Notes, projects, and experiments.
   </p>
 
   <h2>Recent posts</h2>

@@ -26,7 +26,10 @@ const fullTitle = title === 'filipkunc.com' ? title : `${title} — filipkunc.co
   <body>
     <header>
       <nav>
-        <a href="/" class="brand">filipkunc.com</a>
+        <a href="/" class="brand">
+          <img src="/apple-touch-icon.png" alt="My dog" class="brand-avatar" width="28" height="28" />
+          filipkunc.com
+        </a>
         <span class="spacer"></span>
         <a href="/posts">posts</a>
         <a href="/meshmaker">meshmaker</a>
@@ -74,11 +77,12 @@ const fullTitle = title === 'filipkunc.com' ? title : `${title} — filipkunc.co
       a { color: var(--link); text-decoration: none; }
       a:hover { text-decoration: underline; }
       header, main, footer { max-width: var(--maxw); margin: 0 auto; padding: 1rem; }
-      header { padding-top: 1.5rem; }
-      header nav { display: flex; gap: 1.25rem; align-items: baseline; border-bottom: 1px solid var(--rule); padding-bottom: 0.75rem; }
-      header .brand { font-weight: 600; }
+      header { padding-top: 0.75rem; padding-bottom: 0.5rem; }
+      header nav { display: flex; gap: 1.25rem; align-items: center; border-bottom: 1px solid var(--rule); padding-bottom: 0.75rem; }
+      header .brand { display: inline-flex; align-items: center; gap: 0.55rem; font-weight: 600; }
+      header .brand-avatar { width: 1.75rem; height: 1.75rem; border-radius: 50%; flex: none; }
       header .spacer { flex: 1; }
-      main { padding-top: 2rem; padding-bottom: 4rem; }
+      main { padding-top: 1rem; padding-bottom: 4rem; }
       footer { color: var(--muted); border-top: 1px solid var(--rule); }
       h1, h2, h3 { line-height: 1.25; }
       h1 { font-size: 2rem; margin: 0 0 0.5rem; }

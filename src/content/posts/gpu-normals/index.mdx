@@ -1,6 +1,6 @@
 ---
 title: "Computing mesh normals on the GPU's other pipeline"
-description: "Years ago I had an OpenCL playground in MeshMaker that recomputed triangle-mesh normals on the GPU. This revisits that idea with WebGPU: a cloth simulation that recomputes a million normals a frame, the compute and render pipelines sharing one buffer, and the same kernel benchmarked across WGSL, CUDA, OpenCL, and Slang."
+description: "A WebGPU cloth simulation that rebuilds a million mesh normals a frame, and the same kernel benchmarked across WGSL, CUDA, OpenCL, and Slang."
 pubDate: 2026-05-30
 tags: ["webgpu", "gpgpu", "compute-shaders", "cloth", "cuda", "slang"]
 ---
