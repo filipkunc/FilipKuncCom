@@ -209,9 +209,16 @@ export default function NormalsLab() {
               <div className="nl-msg">
                 <p><strong>This demo needs WebGPU.</strong></p>
                 <p>
-                  Your browser does not expose it. As of early 2026 every major browser ships WebGPU,
-                  though Firefox on Linux was still catching up. The CPU walkthrough and the verified
-                  snippet below explain the same algorithm without a GPU.
+                  Your browser is not handing out a GPU adapter. WebGPU only runs in a secure context,
+                  so it has to be served over https or from localhost.
+                </p>
+                <p>
+                  Many Android phones still gate it: open <code>chrome://flags</code>, enable
+                  {' '}<strong>Unsafe WebGPU Support</strong>, and relaunch Chrome.
+                </p>
+                <p>
+                  Either way, the CPU walkthrough and the verified snippet below explain the same
+                  algorithm without a GPU.
                 </p>
               </div>
             )}

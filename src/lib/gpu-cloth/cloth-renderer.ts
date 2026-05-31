@@ -7,7 +7,7 @@
 // read back, normals are computed in JavaScript, and uploaded again, which is
 // the slow, bandwidth-heavy path the post contrasts against.
 
-import { WebGPUUnavailableError } from '../gpu-normals/webgpu-renderer';
+import { WebGPUUnavailableError, requestCompatAwareAdapter } from '../gpu-normals/webgpu-renderer';
 import { computeVertexNormals } from '../gpu-normals/cpu-normals';
 import { makeClothGrid, GRID_STEPS, type ClothGrid } from './grid';
 
@@ -68,7 +68,7 @@ const SOLVE_VARIANTS = [
 
 export async function create(canvas: HTMLCanvasElement, opts: ClothCreateOptions): Promise<ClothHandle> {
   if (!navigator.gpu) throw new WebGPUUnavailableError('navigator.gpu is not available');
-  const adapter = await navigator.gpu.requestAdapter();
+  const adapter = await requestCompatAwareAdapter();
   if (!adapter) throw new WebGPUUnavailableError('no WebGPU adapter');
   // timestamp-query lets us time the normals pass on the GPU itself. Not every
   // adapter exposes it (notably the SwiftShader fallback), so it is optional.

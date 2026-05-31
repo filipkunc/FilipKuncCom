@@ -18,6 +18,19 @@ export class WebGPUUnavailableError extends Error {
   }
 }
 
+// Acquire a WebGPU adapter, preferring the full "core" profile but falling back
+// to compatibility mode. Some mobile GPUs (the Mali in a Samsung A54, for one)
+// expose WebGPU only through the compatibility subset, so requestAdapter() with
+// no options returns null on them unless the user flips the chrome://flags
+// unsafe-webgpu override. Both labs here stay inside the compat subset, so the
+// fallback draws the same scene. Asking for "compatibility" on a desktop core
+// device still returns an adapter, so this is safe everywhere.
+export async function requestCompatAwareAdapter(): Promise<GPUAdapter | null> {
+  const core = await navigator.gpu.requestAdapter();
+  if (core) return core;
+  return navigator.gpu.requestAdapter({ featureLevel: 'compatibility' });
+}
+
 export type ComputeMode = 'gpu' | 'cpu';
 
 export interface CreateOptions {
@@ -59,7 +72,7 @@ export async function create(canvas: HTMLCanvasElement, opts: CreateOptions): Pr
   if (!navigator.gpu) {
     throw new WebGPUUnavailableError('navigator.gpu is not available in this browser');
   }
-  const adapter = await navigator.gpu.requestAdapter();
+  const adapter = await requestCompatAwareAdapter();
   if (!adapter) {
     throw new WebGPUUnavailableError('no WebGPU adapter (the GPU may be blocked or unsupported)');
   }
@@ -123,9 +136,21 @@ export async function create(canvas: HTMLCanvasElement, opts: CreateOptions): Pr
   });
 
   const linesModule = await compile('normal-lines.render', normalLinesSrc);
+  // The positions and normals buffers feed the line pipeline as per-instance
+  // attributes (one instance per vertex), not as vertex-stage storage buffers,
+  // so this works in compatibility mode where vertex-stage storage is forbidden.
+  const lineInstanceLayout = (shaderLocation: number): GPUVertexBufferLayout => ({
+    arrayStride: 12,
+    stepMode: 'instance',
+    attributes: [{ shaderLocation, offset: 0, format: 'float32x3' }],
+  });
   const linesPipeline = await device.createRenderPipelineAsync({
     layout: 'auto',
-    vertex: { module: linesModule, entryPoint: 'vs' },
+    vertex: {
+      module: linesModule,
+      entryPoint: 'vs',
+      buffers: [lineInstanceLayout(0), lineInstanceLayout(1)],
+    },
     fragment: { module: linesModule, entryPoint: 'fs', targets: [{ format }] },
     primitive: { topology: 'line-list' },
     depthStencil: { format: depthFormat, depthWriteEnabled: true, depthCompare: 'less' },
@@ -141,6 +166,13 @@ export async function create(canvas: HTMLCanvasElement, opts: CreateOptions): Pr
     layout: meshPipeline.getBindGroupLayout(0),
     entries: [{ binding: 0, resource: { buffer: cameraBuffer } }],
   });
+  // The line pipeline now reads positions/normals as vertex buffers, so its only
+  // bind-group resource is the shared camera uniform, which never changes per
+  // mesh. Build it once rather than rebuilding it on every mesh load.
+  const linesBindGroup = device.createBindGroup({
+    layout: linesPipeline.getBindGroupLayout(0),
+    entries: [{ binding: 0, resource: { buffer: cameraBuffer } }],
+  });
 
   // --- per-mesh state ------------------------------------------------------
   let mesh: Mesh;
@@ -152,7 +184,6 @@ export async function create(canvas: HTMLCanvasElement, opts: CreateOptions): Pr
   let adjTrisBuffer: GPUBuffer;
   let metaBuffer: GPUBuffer;
   let computeBindGroup: GPUBindGroup;
-  let linesBindGroup: GPUBindGroup;
   let indexCount = 0;
   let vertexCount = 0;
   let triangleCount = 0;
@@ -231,14 +262,6 @@ export async function create(canvas: HTMLCanvasElement, opts: CreateOptions): Pr
         { binding: 3, resource: { buffer: adjTrisBuffer } },
         { binding: 4, resource: { buffer: normalsBuffer } },
         { binding: 5, resource: { buffer: metaBuffer } },
-      ],
-    });
-    linesBindGroup = device.createBindGroup({
-      layout: linesPipeline.getBindGroupLayout(0),
-      entries: [
-        { binding: 0, resource: { buffer: cameraBuffer } },
-        { binding: 1, resource: { buffer: positionsBuffer } },
-        { binding: 2, resource: { buffer: normalsBuffer } },
       ],
     });
 
@@ -347,7 +370,10 @@ export async function create(canvas: HTMLCanvasElement, opts: CreateOptions): Pr
     if (showNormals) {
       pass.setPipeline(linesPipeline);
       pass.setBindGroup(0, linesBindGroup);
-      pass.draw(vertexCount * 2);
+      pass.setVertexBuffer(0, positionsBuffer);
+      pass.setVertexBuffer(1, normalsBuffer);
+      // 2 vertices (base, tip) per instance, one instance per mesh vertex.
+      pass.draw(2, vertexCount);
     }
 
     pass.end();
