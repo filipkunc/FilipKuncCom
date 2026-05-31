@@ -61,7 +61,7 @@ const runners = [
     lang: 'opencl', label: 'OpenCL', available: !!(cuda.path && cuda.hasCc && existsSync(join(cuda.path || '', 'include/CL/cl.h'))),
     why: 'needs an OpenCL header + ICD loader',
     build: () => sh(`cc -O3 -I${cuda.path}/include run-opencl.c -o run-opencl -L${cuda.path}/lib64 -lOpenCL`),
-    run: () => sh('./run-opencl mesh.bin'),
+    run: () => sh('./run-opencl mesh.bin run-opencl.cl'),
   },
   {
     lang: 'slang', label: 'Slang', available: !!(slangc && cuda.path && cuda.hasCc),

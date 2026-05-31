@@ -7,36 +7,29 @@
 #define CL_TARGET_OPENCL_VERSION 120
 #include <CL/cl.h>
 
-// #region opencl-kernel
-static const char* KERNEL =
-"__kernel void vertexNormals(__global const float* pos, __global const uint* indices,\n"
-"                            __global const uint* adjStart, __global const uint* adjTris,\n"
-"                            __global float* normals, uint vertexCount) {\n"
-"  uint v = get_global_id(0);\n"
-"  if (v >= vertexCount) return;\n"
-"  float3 n = (float3)(0.0f, 0.0f, 0.0f);\n"
-"  for (uint i = adjStart[v]; i < adjStart[v + 1]; ++i) {\n"
-"    uint t = adjTris[i];\n"
-"    uint a = indices[3*t], b = indices[3*t+1], c = indices[3*t+2];\n"
-"    float3 pa = (float3)(pos[3*a], pos[3*a+1], pos[3*a+2]);\n"
-"    float3 pb = (float3)(pos[3*b], pos[3*b+1], pos[3*b+2]);\n"
-"    float3 pc = (float3)(pos[3*c], pos[3*c+1], pos[3*c+2]);\n"
-"    n += cross(pb - pa, pc - pa);\n"
-"  }\n"
-"  float len = length(n);\n"
-"  if (len > 0.0f) n /= len;\n"
-"  normals[3*v] = n.x; normals[3*v+1] = n.y; normals[3*v+2] = n.z;\n"
-"}\n";
-// #endregion opencl-kernel
-
 static void* readArray(FILE* f, size_t n, size_t elem) {
   void* p = malloc(n * elem);
   if (!p || fread(p, elem, n, f) != n) { fprintf(stderr, "short read\n"); exit(1); }
   return p;
 }
 
+// Read the whole kernel source from disk. The kernel lives in run-opencl.cl so
+// it reads as real OpenCL, not an escaped C string; we hand it to OpenCL with
+// clCreateProgramWithSource at runtime.
+static char* readFileText(const char* path) {
+  FILE* f = fopen(path, "rb");
+  if (!f) { fprintf(stderr, "cannot open %s\n", path); exit(1); }
+  fseek(f, 0, SEEK_END); long n = ftell(f); fseek(f, 0, SEEK_SET);
+  char* buf = malloc(n + 1);
+  if (!buf || fread(buf, 1, n, f) != (size_t)n) { fprintf(stderr, "short read %s\n", path); exit(1); }
+  buf[n] = '\0';
+  fclose(f);
+  return buf;
+}
+
 int main(int argc, char** argv) {
   const char* path = argc > 1 ? argv[1] : "mesh.bin";
+  const char* kernelPath = argc > 2 ? argv[2] : "run-opencl.cl";
   FILE* f = fopen(path, "rb");
   if (!f) { fprintf(stderr, "cannot open %s\n", path); return 1; }
   uint32_t V = 0, T = 0;
@@ -53,7 +46,8 @@ int main(int argc, char** argv) {
   cl_context ctx = clCreateContext(NULL, 1, &device, NULL, NULL, NULL);
   cl_command_queue q = clCreateCommandQueue(ctx, device, CL_QUEUE_PROFILING_ENABLE, NULL);
 
-  cl_program prog = clCreateProgramWithSource(ctx, 1, &KERNEL, NULL, NULL);
+  char* kernelSource = readFileText(kernelPath);
+  cl_program prog = clCreateProgramWithSource(ctx, 1, (const char**)&kernelSource, NULL, NULL);
   if (clBuildProgram(prog, 1, &device, "", NULL, NULL) != CL_SUCCESS) {
     char log[8192]; clGetProgramBuildInfo(prog, device, CL_PROGRAM_BUILD_LOG, sizeof(log), log, NULL);
     fprintf(stderr, "build failed:\n%s\n", log); return 1;
