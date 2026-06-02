@@ -1,0 +1,12 @@
+# The same alloc_bench.cpp the post compiles with clang++ (symlinked in, so there
+# is one source of truth), linked with tcmalloc as the malloc. Run it with the
+# "new-only" arg to time new/delete going through tcmalloc's per-CPU caches.
+cc_binary(
+    name = "alloc_bench",
+    srcs = [
+        "alloc_bench.cpp",
+        "arena.h",
+    ],
+    malloc = "@tcmalloc//tcmalloc",
+)
+

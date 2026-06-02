@@ -17,7 +17,8 @@
     "verify": "node scripts/verify-snippets.mjs",
     "check": "astro check && tsc -p src/server/tsconfig.json --noEmit",
     "test:e2e": "playwright test",
-    "bench": "node scripts/bench-normals.mjs"
+    "bench": "node scripts/bench-normals.mjs",
+    "bench:alloc": "node scripts/bench-allocators.mjs"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.9",

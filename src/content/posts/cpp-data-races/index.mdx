@@ -1,0 +1,215 @@
+---
+title: "Making C++ data races show up on purpose"
+description: "Forcing C++ data races by running the same code on every core, through volatile, atomics, mutexes, and condition variables, then a bump allocator benchmarked against new/delete and tcmalloc."
+pubDate: 2026-06-02
+tags: ["cpp", "concurrency", "data-races", "atomics", "lock-free"]
+---
+
+import Excerpt from '../../../components/Excerpt.astro';
+import RunnableSnippet from '../../../components/RunnableSnippet.astro';
+import AllocBench from '../../../components/AllocBench.astro';
+
+A data race is the bug that passes every test on your machine and then corrupts memory on a customer's. It does not show up because the broken interleaving is rare. Two threads have to touch the same memory in the same instant, and on a quiet dev box they almost never do.
+
+Years ago I worked on making a large legacy C++ app thread-safe, and the team's trick for this was to stop waiting for the rare case and force it. In debug builds, [every UI action ran the same work on all cores at once](/posts/work-life), so a race that happened once in a million natural runs happened on almost every one. I have rebuilt that harness in every job since. This post is that harness pointed at the usual concurrency tools, one at a time, to watch each one fail when it is used the way the internet usually shows it.
+
+Here is the whole thing.
+
+<Excerpt source="src/content/posts/cpp-data-races/code/hammer.h" region="hammer" lang="cpp" />
+
+It does not reason about races. It parks every thread on one flag, releases them together, and lets them all hit the shared state in the same instant. That is enough to turn most races from rare into routine.
+
+Every output below is captured at build time by `npm run verify`, built with `clang++ -std=c++23` on my 12-core, 24-thread Ryzen 9 3900X. The command under each snippet shows its exact flags. The numbers move from run to run, the conclusions do not.
+
+## A plain int is not safe
+
+The smallest possible shared state is one integer that several threads increment.
+
+<RunnableSnippet
+  source="src/content/posts/cpp-data-races/code/counter.cpp"
+  region="counter"
+  outputKey="cpp-data-races/counter"
+  command="clang++ -O2 counter.cpp && ./a.out"
+  lang="cpp"
+/>
+
+Twenty-four threads each add one a hundred thousand times, so the counter should reach 2.4 million. It reaches a small fraction of that. `counter++` is not one step, it is three: load the value, add one, store it back. While one thread holds the old value in a register, a dozen others load the same old value, and every one of them stores back a number that is already stale. The lost increments are not a rounding error, they are most of the work.
+
+## Marking it volatile is not the fix
+
+Search for this bug and the top answer is often "make it `volatile`". So here is the exact same counter with that one word added.
+
+<RunnableSnippet
+  source="src/content/posts/cpp-data-races/code/volatile_counter.cpp"
+  region="volatile"
+  outputKey="cpp-data-races/volatile"
+  command="clang++ -O2 volatile_counter.cpp && ./a.out"
+  lang="cpp"
+/>
+
+It loses just as many increments. `volatile` was designed for memory that changes outside the program, like a hardware register or a signal handler's flag. It tells the compiler not to cache the value in a register and not to drop the load or the store. It says nothing about other threads, and it does not make the read-modify-write happen as one step. The three steps are still three steps, and other threads still slip between them.
+
+## Atomics, and the wrong way to use them
+
+`std::atomic<int32_t>` is the right type, but only a single operation on it is indivisible. The common mistake is to assume that because the variable is atomic, anything you write with it is safe. Spell the increment as a load and then a store and you are back to two operations with a gap between them.
+
+<RunnableSnippet
+  source="src/content/posts/cpp-data-races/code/atomic_counter.cpp"
+  region="atomic-wrong"
+  outputKey="cpp-data-races/atomic-wrong"
+  command="clang++ -O2 atomic_counter.cpp && ./a.out wrong"
+  lang="cpp"
+/>
+
+It loses almost as much as the plain int did. The fix is `fetch_add`, which does the whole read-modify-write as one step the hardware cannot split.
+
+<RunnableSnippet
+  source="src/content/posts/cpp-data-races/code/atomic_counter.cpp"
+  region="atomic-right"
+  outputKey="cpp-data-races/atomic-fix"
+  command="clang++ -O2 atomic_counter.cpp && ./a.out right"
+  lang="cpp"
+/>
+
+It lands on the exact total, every time. Atomicity is a property of an operation, not of a variable.
+
+The subtler trap with atomics is memory ordering. The default ordering is sequentially consistent and always correct, but reach for `std::memory_order_relaxed` to publish a pointer and you can let a reader see the pointer before the data it points at. The dangerous part is that this rarely reproduces on x86, whose hardware does not reorder those accesses, so the bug ships and only wakes up on a phone's ARM core. When in doubt, leave the ordering at the default and only loosen it once a benchmark says it matters and you can prove the ordering holds.
+
+## A mutex makes it correct, and adds a new way to fail
+
+A mutex sidesteps the question of which operations are atomic. Hold the lock, do whatever you want to the shared state, release it.
+
+```cpp
+std::mutex m;
+{
+    std::lock_guard<std::mutex> lk(m);   // locked here
+    counter++;                           // any code is safe inside
+}                                        // unlocked here, even on an exception
+```
+
+That is correct under any number of threads. The new failure mode is the deadlock. Take two mutexes in one order on one thread and the opposite order on another, and each thread ends up holding the lock the other is waiting for. Neither ever moves.
+
+<RunnableSnippet
+  source="src/content/posts/cpp-data-races/code/deadlock.cpp"
+  region="deadlock"
+  outputKey="cpp-data-races/deadlock"
+  command="clang++ -O2 deadlock.cpp && ./a.out deadlock"
+  lang="cpp"
+/>
+
+The small sleep between the two locks is only there to make the deadlock certain instead of occasional, and a watchdog turns the hang into a printed line so the program can finish. The fix is to never let two threads disagree about lock order. `std::scoped_lock` takes all the mutexes it is given at once, using an algorithm that cannot deadlock. The same opposing-order work, run through the harness on every thread, now never hangs.
+
+<RunnableSnippet
+  source="src/content/posts/cpp-data-races/code/deadlock.cpp"
+  region="scoped-fix"
+  outputKey="cpp-data-races/scoped-lock"
+  command="clang++ -O2 deadlock.cpp && ./a.out scoped"
+  lang="cpp"
+/>
+
+## Condition variables and the lost wakeup
+
+A condition variable lets a thread sleep until something is true. The trap is to wait on the notification instead of on the condition. A notification is not stored anywhere, so one that arrives before the wait is gone for good.
+
+<RunnableSnippet
+  source="src/content/posts/cpp-data-races/code/condvar.cpp"
+  region="cv-wrong"
+  outputKey="cpp-data-races/condvar-wrong"
+  command="clang++ -O2 condvar.cpp && ./a.out wrong"
+  lang="cpp"
+/>
+
+The producer sets the flag and notifies while the consumer is still on its way to the wait. By the time the consumer calls `cv.wait(lk)`, the notification has already come and gone, and the wait blocks forever. The fix is the predicate overload, which checks the condition before it ever sleeps and again on every wakeup.
+
+<RunnableSnippet
+  source="src/content/posts/cpp-data-races/code/condvar.cpp"
+  region="cv-right"
+  outputKey="cpp-data-races/condvar-fix"
+  command="clang++ -O2 condvar.cpp && ./a.out right"
+  lang="cpp"
+/>
+
+Because the flag is already true, the second consumer sees it and never waits at all. The same overload also covers spurious wakeups, where the wait returns with nothing actually ready, since it simply rechecks the predicate and goes back to sleep. The rule is to always wait on a condition, never on the signal.
+
+## ThreadSanitizer, so you do not have to get lucky
+
+The harness makes races likely. It does not make them certain, and it can only find a race in code you thought to point it at. For the real thing there is [ThreadSanitizer](https://clang.llvm.org/docs/ThreadSanitizer.html), built into Clang and GCC. It does not need the race to actually corrupt anything. It watches the memory accesses as they happen and reports any two that touch the same location from different threads without ordering between them.
+
+Here is the same counter race, two threads this time, built with `-fsanitize=thread`.
+
+<RunnableSnippet
+  source="src/content/posts/cpp-data-races/code/tsan_counter.cpp"
+  region="tsan"
+  outputKey="cpp-data-races/tsan"
+  command="clang++ -fsanitize=thread -g tsan_counter.cpp && ./a.out"
+  lang="cpp"
+/>
+
+It names the conflicting write and read, the line each one is on, and the variable they fight over. The report above is trimmed to those stable lines, the full one also prints both threads' stack traces. This is the tool the old debug-build harness was a stand-in for. Run it in CI over a test suite that exercises the threaded paths and it catches races the harness would only find if it happened to hammer the right spot. The two go together: the harness drives many threads through the code, ThreadSanitizer watches what they touch.
+
+## A faster allocator with placement new
+
+The second half of this post builds something real with these tools. Calling `new` for every small object goes through the general allocator, which can free any block in any order and stay thread-safe, and pays for all of that on every call. Plenty of code needs none of it. If you allocate a heap of objects for one phase of work and throw them all away at the end, a bump allocator is far faster: keep one big buffer and a cursor, hand out the next slice on each call, and move the cursor back to the start once the phase is done.
+
+<Excerpt source="src/content/posts/cpp-data-races/code/arena.h" region="arena-single" lang="cpp" />
+
+There is no per-object free, and that is the point. A bump allocator is fast because it barely does anything per call. It gives up freeing objects one at a time, and that is what buys the speed.
+
+The arena hands out raw bytes. To turn those bytes into an object you use placement new, which runs a constructor at an address you already own instead of allocating. It pairs with an explicit destructor call, since there is no `delete` to run one for you.
+
+<Excerpt source="src/content/posts/cpp-data-races/code/arena_race.cpp" region="arena-use" lang="cpp" />
+
+## The cursor is a data race
+
+`next_ += n` is the counter bug wearing a different hat. It is a read-modify-write on shared state, so the same harness that lost increments now hands the same slice to two threads at once.
+
+<RunnableSnippet
+  source="src/content/posts/cpp-data-races/code/arena_race.cpp"
+  region="probe"
+  outputKey="cpp-data-races/arena-unsafe"
+  command="clang++ -O2 arena_race.cpp && ./a.out unsafe"
+  lang="cpp"
+/>
+
+The fix is the one that fixed the counter. The cursor is the only mutable state, so bumping it with `fetch_add` is all the arena needs, and it stays lock-free. There is no compare-exchange loop and no ABA problem, because the cursor only ever moves forward, it is never rewound to memory still in use.
+
+<RunnableSnippet
+  source="src/content/posts/cpp-data-races/code/arena.h"
+  region="arena-atomic"
+  outputKey="cpp-data-races/arena-atomic"
+  command="clang++ -O2 arena_race.cpp && ./a.out atomic"
+  lang="cpp"
+/>
+
+## Measure
+
+So there are three ways to hand out a block: plain `new`/`delete`, the shared arena bumping its cursor with `fetch_add`, and one private arena per thread. Here they are as the thread count climbs. The arenas never free a single block, they recycle the whole buffer at once when it fills, so they are timed the way they are actually used. The two tcmalloc columns come in a moment.
+
+<AllocBench />
+
+The shared arena removed the lock but not the sharing. Every allocation is a `fetch_add` on the one cursor, a single cache line every core fights over, so its throughput collapses the moment more than one thread is bumping it, dropping below plain `new`. Lock-free does not mean contention-free.
+
+## The fastest lock is the one you never take
+
+The arena that scales is the one where threads share nothing. Give each thread its own buffer and there is no lock, no atomic, and no shared cache line to fight over.
+
+<Excerpt source="src/content/posts/cpp-data-races/code/alloc_bench.cpp" region="thread-local" lang="cpp" />
+
+Its throughput keeps climbing with the thread count, close to linear until the threads fill the machine and the rise tapers, while the shared arena collapses. The one cost is ownership. Each thread resets only its own buffer, so a slice handed out on one thread cannot be used by another. That fits work where a thread allocates and finishes with its own objects, and rules out handing them off.
+
+## What to use instead
+
+The first two columns are the real lesson. Plain `new`/`delete` already scales, because a modern `malloc` keeps a separate cache per thread and only synchronizes when one thread frees another's memory. The `tcmalloc (gperftools)` column makes it louder. It is the exact same binary, with the [gperftools](https://github.com/gperftools/gperftools) build of tcmalloc swapped in at load time, nothing recompiled.
+
+```sh
+# point LD_PRELOAD at libtcmalloc (find yours with: ldconfig -p | grep libtcmalloc)
+LD_PRELOAD=/usr/lib64/libtcmalloc.so.4 ./alloc_bench
+```
+
+It tracks the system allocator and pulls clearly ahead at the higher thread counts. It still does not catch the thread-local arena, and that is the whole point: tcmalloc is solving the hard problem, freeing any block in any order and staying safe to share, while the arena gives all of that up. The way it scales is the same trick the arena uses, a per-thread cache: each thread serves most allocations from its own free list and only takes a lock on a shared central heap when that cache misses, which is why more threads keep helping instead of hurting.
+
+The third column is the one that should win and does not. Google's own [tcmalloc](https://github.com/google/tcmalloc), the newer rewrite, is a different library: Bazel-only and statically linked rather than preloaded, so the post [builds the same source against it](https://github.com/filipkunc/FilipKuncCom/tree/main/bench/tcmalloc). It runs at about half the speed of the others, and not for any reason you would guess. It was not the build, which is `-O3` with assertions off. It was not the per-CPU caches it is famous for, since turning them off changed nothing. A profile put the time somewhere more interesting: every allocation and free runs through a sampling-and-hooks dispatch, `FreeWithHooksOrPerThread` and `alloc_small_sampled_hooks_or_perthread`, the always-on machinery behind tcmalloc's heap profiler. It spends a few nanoseconds per call deciding whether to record the allocation, every time, even with sampling turned off. On a real server that buys continuous heap profiling for almost nothing. On a loop that does nothing but allocate and free, it is pure tax. The fancier allocator is slower here precisely because it is doing more, and what it is doing has nothing to do with this benchmark. Measure your own workload before you assume the sophisticated one wins.
+
+That is why a general-purpose custom allocator is a fight you lose. The moment it has to free any block in any order and stay safe to share, it is doing tcmalloc's and jemalloc's job, and they have spent years on exactly that. A shared free list of your own ends up where the shared arena sat on the table. The custom allocator that wins is the narrow one. Give up freeing objects one at a time, or give up sharing across threads, and you are left doing so little per call that nothing general-purpose can catch you.
+
+So the practical takeaway is small. Keep the harness and run ThreadSanitizer, because that is what finds the bug. For general allocation, measure first, then reach for tcmalloc or jemalloc before writing your own. Write an allocator by hand only when you can give something up, and let that be the reason it is faster.

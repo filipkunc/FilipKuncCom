@@ -1,0 +1,6 @@
+# C++23 for std::print, optimized, to match the clang++ -O3 build of the same
+# source in the post's verify pipeline.
+build --cxxopt=-std=c++23
+build --host_cxxopt=-std=c++23
+build -c opt
+build --copt=-O3

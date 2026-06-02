@@ -25,3 +25,6 @@ bench/normals/run-cuda
 bench/normals/run-opencl
 bench/normals/run-slang-host
 bench/normals/run-slang.ptx
+
+# Bazel convenience symlinks for the tcmalloc bench
+bench/tcmalloc/bazel-*

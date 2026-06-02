@@ -1,0 +1,222 @@
+{
+  "generatedOn": "2026-06-02",
+  "cpuThreads": 24,
+  "block": 64,
+  "iters": 1000000,
+  "bestOf": 5,
+  "tcmalloc": true,
+  "tcmallocPath": "/lib64/libtcmalloc.so.4",
+  "percpu": true,
+  "threadCounts": [
+    1,
+    2,
+    4,
+    8,
+    16,
+    24
+  ],
+  "impls": [
+    {
+      "key": "new",
+      "label": "new / delete"
+    },
+    {
+      "key": "tcmalloc",
+      "label": "tcmalloc (gperftools)"
+    },
+    {
+      "key": "percpu",
+      "label": "tcmalloc (Google)"
+    },
+    {
+      "key": "atomic",
+      "label": "shared arena"
+    },
+    {
+      "key": "threadlocal",
+      "label": "thread-local arena"
+    }
+  ],
+  "results": [
+    {
+      "impl": "new",
+      "threads": 1,
+      "nsPerOp": 6.968,
+      "mops": 143.52
+    },
+    {
+      "impl": "atomic",
+      "threads": 1,
+      "nsPerOp": 5.111,
+      "mops": 195.65
+    },
+    {
+      "impl": "threadlocal",
+      "threads": 1,
+      "nsPerOp": 2.21,
+      "mops": 452.56
+    },
+    {
+      "impl": "new",
+      "threads": 2,
+      "nsPerOp": 3.525,
+      "mops": 283.65
+    },
+    {
+      "impl": "atomic",
+      "threads": 2,
+      "nsPerOp": 22.048,
+      "mops": 45.36
+    },
+    {
+      "impl": "threadlocal",
+      "threads": 2,
+      "nsPerOp": 1.113,
+      "mops": 898.51
+    },
+    {
+      "impl": "new",
+      "threads": 4,
+      "nsPerOp": 1.735,
+      "mops": 576.27
+    },
+    {
+      "impl": "atomic",
+      "threads": 4,
+      "nsPerOp": 44.232,
+      "mops": 22.61
+    },
+    {
+      "impl": "threadlocal",
+      "threads": 4,
+      "nsPerOp": 0.562,
+      "mops": 1780.92
+    },
+    {
+      "impl": "new",
+      "threads": 8,
+      "nsPerOp": 0.926,
+      "mops": 1080.46
+    },
+    {
+      "impl": "atomic",
+      "threads": 8,
+      "nsPerOp": 43.348,
+      "mops": 23.07
+    },
+    {
+      "impl": "threadlocal",
+      "threads": 8,
+      "nsPerOp": 0.334,
+      "mops": 2994
+    },
+    {
+      "impl": "new",
+      "threads": 16,
+      "nsPerOp": 0.825,
+      "mops": 1211.42
+    },
+    {
+      "impl": "atomic",
+      "threads": 16,
+      "nsPerOp": 34.058,
+      "mops": 29.36
+    },
+    {
+      "impl": "threadlocal",
+      "threads": 16,
+      "nsPerOp": 0.23,
+      "mops": 4356.2
+    },
+    {
+      "impl": "new",
+      "threads": 24,
+      "nsPerOp": 0.615,
+      "mops": 1625.2
+    },
+    {
+      "impl": "atomic",
+      "threads": 24,
+      "nsPerOp": 25.757,
+      "mops": 38.83
+    },
+    {
+      "impl": "threadlocal",
+      "threads": 24,
+      "nsPerOp": 0.159,
+      "mops": 6305.28
+    },
+    {
+      "impl": "tcmalloc",
+      "threads": 1,
+      "nsPerOp": 6.039,
+      "mops": 165.6
+    },
+    {
+      "impl": "tcmalloc",
+      "threads": 2,
+      "nsPerOp": 3.015,
+      "mops": 331.67
+    },
+    {
+      "impl": "tcmalloc",
+      "threads": 4,
+      "nsPerOp": 1.571,
+      "mops": 636.35
+    },
+    {
+      "impl": "tcmalloc",
+      "threads": 8,
+      "nsPerOp": 0.924,
+      "mops": 1082.29
+    },
+    {
+      "impl": "tcmalloc",
+      "threads": 16,
+      "nsPerOp": 0.599,
+      "mops": 1669.22
+    },
+    {
+      "impl": "tcmalloc",
+      "threads": 24,
+      "nsPerOp": 0.42,
+      "mops": 2381.03
+    },
+    {
+      "impl": "percpu",
+      "threads": 1,
+      "nsPerOp": 14.824,
+      "mops": 67.46
+    },
+    {
+      "impl": "percpu",
+      "threads": 2,
+      "nsPerOp": 7.522,
+      "mops": 132.94
+    },
+    {
+      "impl": "percpu",
+      "threads": 4,
+      "nsPerOp": 3.907,
+      "mops": 255.93
+    },
+    {
+      "impl": "percpu",
+      "threads": 8,
+      "nsPerOp": 2.241,
+      "mops": 446.24
+    },
+    {
+      "impl": "percpu",
+      "threads": 16,
+      "nsPerOp": 1.368,
+      "mops": 730.8
+    },
+    {
+      "impl": "percpu",
+      "threads": 24,
+      "nsPerOp": 1.064,
+      "mops": 939.81
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+# Builds the allocator benchmark statically linked against Google's tcmalloc
+# (the per-CPU, restartable-sequences design), so the post can measure it rather
+# than just describe it. tcmalloc is Bazel-only and links into the binary, it is
+# not a preloadable .so, which is why this lives in its own little workspace.
+# bzlmod pulls Abseil and the rest transitively from the Bazel Central Registry.
+module(name = "alloc_bench_tcmalloc", version = "0.0.0")
+
+bazel_dep(name = "tcmalloc", version = "0.0.0-20250927-12f2552")
