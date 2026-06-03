@@ -1,0 +1,46 @@
+---
+title: "Header-only C and C++ libraries"
+description: "My favorite C and C++ header-only libraries."
+pubDate: 2026-06-03
+tags: ["cpp", "c", "header-only", "libraries"]
+---
+
+import Excerpt from '../../../components/Excerpt.astro';
+import RunnableSnippet from '../../../components/RunnableSnippet.astro';
+
+I think in 2026 the most painful part of C and C++ development is the build and project management. I know [CMake](https://cmake.org/) exists, but so does [Meson](https://mesonbuild.com/), [Bazel](https://bazel.build/), [Buck2](https://buck2.build/) and so many others claiming they are the best.
+
+Older projects still use manually maintained Visual Studio `.vcxproj` files, Xcode `.xcodeproj` and even makefiles.
+
+For library development this is very painful, especially if the task you need to solve is very small and self-contained, like parsing a JSON file.
+
+I remember in the past I was frequently recreating project files from scratch by simply dropping all `.cpp` and `.h` files into a folder and opening it in an IDE.
+
+I think the [`#pragma comment(lib, "opengl32.lib")`](https://learn.microsoft.com/en-us/cpp/preprocessor/comment-c-cpp?view=msvc-180#lib) stays forever in my head because of this. I just hated to have to specify which libraries to link against in the project settings.
+
+I do believe this is the Rust killer feature honestly, having [`Cargo.toml`](https://doc.rust-lang.org/cargo/reference/manifest.html) which is the standard and simple way to specify dependencies, build and project settings in one sane format. I really wish C and C++ had something like that, but I don't see it happening anytime soon.
+
+So, what solutions do we have in the meantime? Let's say you want to quickly prototype something and need the basics, well in the table below are libraries I used in the past which are ["header-only"](https://en.wikipedia.org/wiki/Header-only) and solve this in a very simple way. You simply drop the header file on disk and `#include` it in one of the source files.
+
+| Library | Description |
+| --- | --- |
+| [stb](https://github.com/nothings/stb) | stb single-file public domain libraries for C/C++ |
+| [cpp-httplib](https://github.com/yhirose/cpp-httplib) | A C++ header-only HTTP/HTTPS server and client library |
+| [json.hpp](https://github.com/nlohmann/json) | JSON for Modern C++ |
+| [pugixml](https://github.com/zeux/pugixml) | Light-weight, simple and fast XML parser for C++ with XPath support |
+| [magic_enum](https://github.com/Neargye/magic_enum) | A header only C++ library which provides static reflection for enums |
+
+When prototyping or starting small I usually pick one or two of these, but it is important to understand that they work best if they are used only in a single place in the project.
+
+What I mean is the following pattern:
+
+<Excerpt source="src/content/posts/header-only-libs/code/magic_enum_example.hpp" lang="cpp" />
+
+<Excerpt source="src/content/posts/header-only-libs/code/magic_enum_example.cpp" lang="cpp" />
+
+<RunnableSnippet
+  source="src/content/posts/header-only-libs/code/main.cpp"
+  outputKey="header-only-libs/cpp"
+  command="clang++ -std=c++23 -O2 -I. magic_enum_example.cpp main.cpp && ./a.out"
+  lang="cpp"
+/>
