@@ -33,7 +33,7 @@ for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) dots.push({ x: px(
 ---
 
 <figure class="diagram coloring-diagram">
-  <svg viewBox="0 0 440 350" role="img"
+  <svg viewBox="0 0 480 350" role="img"
     aria-label="A grid of cloth particles joined by springs. The horizontal springs alternate between two batches, orange and blue, so no two springs in a batch share a particle. The vertical springs are grey and split into their own batches the same way.">
     {vSprings.map((s) => <line class="spring vert" x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} />)}
     {hSprings.map((s) => <line class={`spring ${s.batch}`} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} />)}

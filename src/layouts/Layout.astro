@@ -22,6 +22,22 @@ const fullTitle = title === 'filipkunc.com' ? title : `${title} — filipkunc.co
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <title>{fullTitle}</title>
+    <script is:inline>
+      // Resolve the active theme before first paint to avoid a flash: an explicit
+      // choice in localStorage wins, otherwise fall back to the OS preference.
+      (function () {
+        try {
+          var saved = localStorage.getItem('theme');
+          var theme =
+            saved === 'light' || saved === 'dark'
+              ? saved
+              : window.matchMedia('(prefers-color-scheme: light)').matches
+                ? 'light'
+                : 'dark';
+          document.documentElement.dataset.theme = theme;
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <header>
@@ -33,6 +49,10 @@ const fullTitle = title === 'filipkunc.com' ? title : `${title} — filipkunc.co
         <span class="spacer"></span>
         <a href="/posts">posts</a>
         <a href="/meshmaker">meshmaker</a>
+        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle dark and light theme" title="Toggle theme">
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
       </nav>
     </header>
     <main>
@@ -44,6 +64,8 @@ const fullTitle = title === 'filipkunc.com' ? title : `${title} — filipkunc.co
 
     <style is:global>
       :root {
+        /* Dark palette: the default, and the fallback when JS is off and the OS
+           expresses no light preference. */
         --bg: #0e0e10;
         --fg: #e9e9ea;
         --muted: #8a8a8e;
@@ -55,8 +77,20 @@ const fullTitle = title === 'filipkunc.com' ? title : `${title} — filipkunc.co
       @media (min-width: 900px) {
         :root { --maxw: 80ch; }
       }
+      /* Light palette. The inline head script resolves the active theme to an
+         explicit data-theme, so [data-theme="light"] is the live toggle path.
+         The media query is the JS-off fallback: honor the OS only when the
+         visitor has expressed no choice (no data-theme attribute). */
+      :root[data-theme="light"] {
+        --bg: #fafafa;
+        --fg: #1a1a1c;
+        --muted: #5a5a5e;
+        --link: #2b5fb8;
+        --accent: #c34a16;
+        --rule: #e2e2e6;
+      }
       @media (prefers-color-scheme: light) {
-        :root {
+        :root:not([data-theme]) {
           --bg: #fafafa;
           --fg: #1a1a1c;
           --muted: #5a5a5e;
@@ -67,6 +101,8 @@ const fullTitle = title === 'filipkunc.com' ? title : `${title} — filipkunc.co
       }
       * { box-sizing: border-box; }
       html { color-scheme: dark light; }
+      :root[data-theme="dark"] { color-scheme: dark; }
+      :root[data-theme="light"] { color-scheme: light; }
       body {
         margin: 0;
         background: var(--bg);
@@ -82,6 +118,32 @@ const fullTitle = title === 'filipkunc.com' ? title : `${title} — filipkunc.co
       header .brand { display: inline-flex; align-items: center; gap: 0.55rem; font-weight: 600; }
       header .brand-avatar { width: 1.75rem; height: 1.75rem; border-radius: 50%; flex: none; }
       header .spacer { flex: 1; }
+      .theme-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2rem;
+        height: 2rem;
+        padding: 0;
+        color: var(--muted);
+        background: transparent;
+        border: 1px solid var(--rule);
+        border-radius: 50%;
+        cursor: pointer;
+        transition: color 0.15s ease, border-color 0.15s ease;
+      }
+      .theme-toggle:hover { color: var(--fg); border-color: var(--fg); }
+      .theme-toggle:focus-visible { color: var(--fg); }
+      .theme-toggle svg { width: 1.05rem; height: 1.05rem; display: block; }
+      /* Show the icon for the theme you'd switch TO: sun while dark, moon while light. */
+      .theme-toggle .icon-moon { display: none; }
+      .theme-toggle .icon-sun { display: block; }
+      :root[data-theme="light"] .theme-toggle .icon-sun { display: none; }
+      :root[data-theme="light"] .theme-toggle .icon-moon { display: block; }
+      @media (prefers-color-scheme: light) {
+        :root:not([data-theme]) .theme-toggle .icon-sun { display: none; }
+        :root:not([data-theme]) .theme-toggle .icon-moon { display: block; }
+      }
       main { padding-top: 1rem; padding-bottom: 4rem; }
       footer { color: var(--muted); border-top: 1px solid var(--rule); }
       h1, h2, h3 { line-height: 1.25; }
@@ -98,6 +160,27 @@ const fullTitle = title === 'filipkunc.com' ? title : `${title} — filipkunc.co
       code:not(pre code) {
         background: color-mix(in srgb, var(--fg) 8%, transparent);
         padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.92em;
+      }
+      /* Shiki bakes the dark palette inline (see astro.config defaultColor) and
+         stashes the light palette in --shiki-light* vars. Swap to it when the
+         light theme is active, either via the toggle or (JS off) the OS. */
+      :root[data-theme="light"] .astro-code,
+      :root[data-theme="light"] .astro-code span {
+        color: var(--shiki-light) !important;
+        background-color: var(--shiki-light-bg) !important;
+        font-style: var(--shiki-light-font-style) !important;
+        font-weight: var(--shiki-light-font-weight) !important;
+        text-decoration: var(--shiki-light-text-decoration) !important;
+      }
+      @media (prefers-color-scheme: light) {
+        :root:not([data-theme]) .astro-code,
+        :root:not([data-theme]) .astro-code span {
+          color: var(--shiki-light) !important;
+          background-color: var(--shiki-light-bg) !important;
+          font-style: var(--shiki-light-font-style) !important;
+          font-weight: var(--shiki-light-font-weight) !important;
+          text-decoration: var(--shiki-light-text-decoration) !important;
+        }
       }
       blockquote {
         margin: 1.25rem 0; padding: 0.5rem 1rem;
@@ -216,6 +299,25 @@ const fullTitle = title === 'filipkunc.com' ? title : `${title} — filipkunc.co
       .code-file:hover .code-file-label > .copy-btn,
       .snippet-section:hover .code-file-label > .copy-btn { opacity: 1; }
     </style>
+
+    <script>
+      // Sun/moon theme toggle. The active theme lives on <html data-theme>, set
+      // before paint by the inline head script. Clicking flips it and remembers
+      // the choice; visitors who never choose keep following the OS preference.
+      const themeToggle = document.getElementById('theme-toggle');
+      themeToggle?.addEventListener('click', () => {
+        const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+        document.documentElement.dataset.theme = next;
+        try { localStorage.setItem('theme', next); } catch {}
+      });
+      window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', (e) => {
+        let saved = null;
+        try { saved = localStorage.getItem('theme'); } catch {}
+        if (saved !== 'light' && saved !== 'dark') {
+          document.documentElement.dataset.theme = e.matches ? 'light' : 'dark';
+        }
+      });
+    </script>
 
     <script>
       // Wrap every <pre> inside <main> with a div and append a Copy button.

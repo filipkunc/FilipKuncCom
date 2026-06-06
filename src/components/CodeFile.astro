@@ -1,5 +1,6 @@
 ---
 import { Code } from 'astro:components';
+import { CODE_THEMES, CODE_DEFAULT_COLOR } from '../lib/code-theme';
 
 interface Props {
   code: string;
@@ -23,7 +24,7 @@ const { code, lang, filename, href } = Astro.props;
         <span>{filename}</span>
       )}
     </div>
-    <Code code={code} lang={lang} />
+    <Code code={code} lang={lang} themes={CODE_THEMES} defaultColor={CODE_DEFAULT_COLOR} />
   </div>
 </figure>
 

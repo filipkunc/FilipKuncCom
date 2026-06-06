@@ -52,6 +52,14 @@ export default defineConfig({
   markdown: {
     remarkPlugins: [remarkMath],
     rehypePlugins: [rehypeKatex],
+    // Dual syntax-highlight themes. Shiki bakes the dark palette inline (the
+    // site is dark-first, so this keeps the existing look with no regression)
+    // and exposes the light palette as --shiki-light* custom properties. CSS in
+    // Layout.astro swaps to those when the light theme is active.
+    shikiConfig: {
+      themes: { light: 'github-light', dark: 'github-dark' },
+      defaultColor: 'dark',
+    },
   },
   integrations: [
     react(),

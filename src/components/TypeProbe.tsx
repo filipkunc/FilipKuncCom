@@ -51,13 +51,26 @@ export default function TypeProbe() {
   const [copied, setCopied] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean } | { error: string } | null>(null);
 
-  // Track the OS color scheme, like the rest of the site.
+  // Follow the site theme. It lives on <html data-theme>, set by the header
+  // sun/moon toggle (and the inline head script); fall back to the OS
+  // preference if the attribute is somehow absent.
   useEffect(() => {
+    const resolveDark = () => {
+      const attr = document.documentElement.dataset.theme;
+      if (attr === 'dark') return true;
+      if (attr === 'light') return false;
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    };
+    setDark(resolveDark());
+    const observer = new MutationObserver(() => setDark(resolveDark()));
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    setDark(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setDark(e.matches);
+    const handler = () => setDark(resolveDark());
     mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
+    return () => {
+      observer.disconnect();
+      mq.removeEventListener('change', handler);
+    };
   }, []);
 
   // Ask the TypeScript worker to check the hidden data file, then translate its
