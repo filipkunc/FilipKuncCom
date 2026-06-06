@@ -1,0 +1,23 @@
+[project]
+name = "codesearch-semantic"
+version = "0.1.0"
+description = "AST-aware chunking + code embeddings + an HNSW vector index over a source tree."
+requires-python = ">=3.12"
+dependencies = [
+    "sentence-transformers>=3.3",
+    "faiss-cpu>=1.9",         # IndexHNSWFlat lives here
+    "tree-sitter>=0.23",      # AST-aware chunking
+    "tree-sitter-language-pack>=0.7",
+    "numpy>=2.0",
+    "torch>=2.9",
+]
+
+# Pull torch from the CUDA build index so the embedding pass runs on the GPU.
+# Swap to the default index (or cpu) if you have no NVIDIA card.
+[tool.uv.sources]
+torch = { index = "pytorch-cu130" }
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true

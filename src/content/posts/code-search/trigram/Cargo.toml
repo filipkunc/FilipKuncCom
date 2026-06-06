@@ -1,0 +1,14 @@
+[package]
+name = "trigram"
+version = "0.1.0"
+edition = "2021"
+
+# Dependency-free on purpose: the whole point is to read the index and the
+# regex-to-trigram translation end to end, not to wire up crates.
+
+[[bin]]
+name = "trigram"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3

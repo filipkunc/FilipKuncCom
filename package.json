@@ -18,7 +18,8 @@
     "check": "astro check && tsc -p src/server/tsconfig.json --noEmit",
     "test:e2e": "playwright test",
     "bench": "node scripts/bench-normals.mjs",
-    "bench:alloc": "node scripts/bench-allocators.mjs"
+    "bench:alloc": "node scripts/bench-allocators.mjs",
+    "bench:codesearch": "node scripts/bench-codesearch.mjs"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.9",

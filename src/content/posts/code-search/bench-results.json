@@ -1,0 +1,190 @@
+{
+  "corpus": {
+    "files": 48948,
+    "lines": 17245832,
+    "bytes": 808185410
+  },
+  "tools": [
+    {
+      "name": "ripgrep",
+      "family": "noindex",
+      "queries": [
+        {
+          "id": "MakeCallback",
+          "ms": 87.5,
+          "matches": 87
+        },
+        {
+          "id": "uv_async_init",
+          "ms": 89.94,
+          "matches": 31
+        },
+        {
+          "id": "napi_create_function",
+          "ms": 84.32,
+          "matches": 16
+        },
+        {
+          "id": "napi-regex",
+          "ms": 84.53,
+          "matches": 88
+        },
+        {
+          "id": "common-word",
+          "ms": 160.18,
+          "matches": 21746
+        }
+      ]
+    },
+    {
+      "name": "git grep",
+      "family": "noindex",
+      "queries": [
+        {
+          "id": "MakeCallback",
+          "ms": 290.88,
+          "matches": 87
+        },
+        {
+          "id": "uv_async_init",
+          "ms": 288.73,
+          "matches": 31
+        },
+        {
+          "id": "napi_create_function",
+          "ms": 286.23,
+          "matches": 16
+        },
+        {
+          "id": "napi-regex",
+          "ms": 1135.44,
+          "matches": 88
+        },
+        {
+          "id": "common-word",
+          "ms": 384.41,
+          "matches": 21746
+        }
+      ]
+    },
+    {
+      "name": "trigram (ours)",
+      "family": "ours",
+      "buildMs": 33120,
+      "indexBytes": 234437408,
+      "queries": [
+        {
+          "id": "MakeCallback",
+          "ms": 88.53,
+          "matches": 87,
+          "candidates": 119,
+          "candidatePct": 0.25,
+          "filterMs": 0.45
+        },
+        {
+          "id": "uv_async_init",
+          "ms": 22.89,
+          "matches": 31,
+          "candidates": 39,
+          "candidatePct": 0.08,
+          "filterMs": 0.36
+        },
+        {
+          "id": "napi_create_function",
+          "ms": 33.81,
+          "matches": 16,
+          "candidates": 31,
+          "candidatePct": 0.06,
+          "filterMs": 0.89
+        },
+        {
+          "id": "napi-regex",
+          "ms": 39.15,
+          "matches": 88,
+          "candidates": 97,
+          "candidatePct": 0.2,
+          "filterMs": 0.36
+        },
+        {
+          "id": "common-word",
+          "ms": 911.54,
+          "matches": 21667,
+          "candidates": 21794,
+          "candidatePct": 45.51,
+          "filterMs": 1.04
+        }
+      ]
+    },
+    {
+      "name": "google/codesearch",
+      "family": "index",
+      "buildMs": 4716,
+      "indexBytes": 70255091,
+      "queries": [
+        {
+          "id": "MakeCallback",
+          "ms": 16.86,
+          "matches": 85
+        },
+        {
+          "id": "uv_async_init",
+          "ms": 6.13,
+          "matches": 30
+        },
+        {
+          "id": "napi_create_function",
+          "ms": 10.04,
+          "matches": 16
+        },
+        {
+          "id": "napi-regex",
+          "ms": 9.81,
+          "matches": 87
+        },
+        {
+          "id": "common-word",
+          "ms": 420.6,
+          "matches": 21633
+        }
+      ]
+    },
+    {
+      "name": "zoekt",
+      "family": "index",
+      "buildMs": 59859,
+      "indexBytes": 1489169368,
+      "queries": [
+        {
+          "id": "MakeCallback",
+          "ms": 65.59,
+          "matches": 85
+        },
+        {
+          "id": "uv_async_init",
+          "ms": 64.08,
+          "matches": 30
+        },
+        {
+          "id": "napi_create_function",
+          "ms": 61.74,
+          "matches": 16
+        },
+        {
+          "id": "napi-regex",
+          "ms": 69.88,
+          "matches": 87
+        },
+        {
+          "id": "common-word",
+          "ms": 273.31,
+          "matches": 23572
+        }
+      ]
+    }
+  ],
+  "generatedOn": "2026-06-05",
+  "host": {
+    "cpu": "AMD Ryzen 9 3900X 12-Core Processor",
+    "cores": 24
+  }
+}

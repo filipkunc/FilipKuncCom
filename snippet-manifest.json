@@ -1,121 +1,128 @@
 {
+  "code-search/trigram": {
+    "stdout": "hello                       ->  ell AND hel AND llo\nGoogle.*Search              ->  Goo AND Sea AND arc AND ear AND gle AND ogl AND oog AND rch\n(Path|PathFragment).*=      ->  (Fra AND Pat AND agm AND ath AND ent AND gme AND hFr AND men AND rag AND thF OR Pat AND ath)\nnapi_create_[a-z]+          ->  _cr AND api AND ate AND cre AND eat AND i_c AND nap AND pi_ AND rea AND te_\nab                          ->  ALL\n",
+    "stderr": "",
+    "exitCode": 0,
+    "durationMs": 781,
+    "verifiedAt": "2026-06-05T21:52:10.441Z"
+  },
   "cpp-data-races/arena-atomic": {
     "stdout": "AtomicArena (fetch_add)   : 0 slices handed to more than one thread\n",
     "stderr": "",
     "exitCode": 0,
-    "durationMs": 1832,
-    "verifiedAt": "2026-06-03T22:47:05.150Z"
+    "durationMs": 1918,
+    "verifiedAt": "2026-06-05T21:52:12.359Z"
   },
   "cpp-data-races/arena-unsafe": {
-    "stdout": "Arena       (next_ += n)  : 6297 slices handed to more than one thread\n",
+    "stdout": "Arena       (next_ += n)  : 7637 slices handed to more than one thread\n",
     "stderr": "",
     "exitCode": 0,
-    "durationMs": 1890,
-    "verifiedAt": "2026-06-03T22:47:07.040Z"
+    "durationMs": 1859,
+    "verifiedAt": "2026-06-05T21:52:14.218Z"
   },
   "cpp-data-races/atomic-fix": {
     "stdout": "24 threads, 100000 increments each, expected total 2400000\n\n  fetch_add(1)      : 2400000   (lost 0)\n",
     "stderr": "",
     "exitCode": 0,
-    "durationMs": 1711,
-    "verifiedAt": "2026-06-03T22:47:08.751Z"
+    "durationMs": 1724,
+    "verifiedAt": "2026-06-05T21:52:15.942Z"
   },
   "cpp-data-races/atomic-wrong": {
-    "stdout": "24 threads, 100000 increments each, expected total 2400000\n\n  store(load() + 1) : 190647   (lost 2209353)\n",
+    "stdout": "24 threads, 100000 increments each, expected total 2400000\n\n  store(load() + 1) : 262501   (lost 2137499)\n",
     "stderr": "",
     "exitCode": 0,
-    "durationMs": 1834,
-    "verifiedAt": "2026-06-03T22:47:10.585Z"
+    "durationMs": 1810,
+    "verifiedAt": "2026-06-05T21:52:17.752Z"
   },
   "cpp-data-races/condvar-fix": {
     "stdout": "notify-before-wait again, cv.wait(lk, [] { return ready; })\n  consumer woke immediately: the predicate was already true, so it never waited\n",
     "stderr": "",
     "exitCode": 0,
-    "durationMs": 1946,
-    "verifiedAt": "2026-06-03T22:47:12.533Z"
+    "durationMs": 1974,
+    "verifiedAt": "2026-06-05T21:52:19.726Z"
   },
   "cpp-data-races/condvar-wrong": {
     "stdout": "notify sent before the wait, cv.wait(lk) with no predicate\n  LOST WAKEUP: the notify happened before the wait, so the wait never returns\n",
     "stderr": "",
     "exitCode": 0,
-    "durationMs": 2425,
-    "verifiedAt": "2026-06-03T22:47:14.958Z"
+    "durationMs": 2585,
+    "verifiedAt": "2026-06-05T21:52:22.311Z"
   },
   "cpp-data-races/counter": {
-    "stdout": "24 threads, 100000 increments each, expected total 2400000\n\n  trial 1: counter = 183552  (lost 2216448, 92%)\n  trial 2: counter = 100000  (lost 2300000, 96%)\n  trial 3: counter = 102200  (lost 2297800, 96%)\n  ...\n\nlost increments in 10 of 10 trials\ncounter reached 5% of the expected total on average\n",
+    "stdout": "24 threads, 100000 increments each, expected total 2400000\n\n  trial 1: counter = 201039  (lost 2198961, 92%)\n  trial 2: counter = 158675  (lost 2241325, 93%)\n  trial 3: counter = 155614  (lost 2244386, 94%)\n  ...\n\nlost increments in 10 of 10 trials\ncounter reached 7% of the expected total on average\n",
     "stderr": "",
     "exitCode": 0,
-    "durationMs": 1790,
-    "verifiedAt": "2026-06-03T22:47:16.748Z"
+    "durationMs": 2005,
+    "verifiedAt": "2026-06-05T21:52:24.316Z"
   },
   "cpp-data-races/deadlock": {
     "stdout": "opposite lock orders (thread 1: a then b, thread 2: b then a)\n  DEADLOCK: nobody finished in 500 ms.\n            thread 1 holds a and waits for b, thread 2 holds b and waits for a\n",
     "stderr": "",
     "exitCode": 0,
-    "durationMs": 2470,
-    "verifiedAt": "2026-06-03T22:47:19.218Z"
+    "durationMs": 2429,
+    "verifiedAt": "2026-06-05T21:52:26.745Z"
   },
   "cpp-data-races/scoped-lock": {
     "stdout": "two locks taken with std::scoped_lock(c, d), on every thread\n  finished: every thread took both locks, no deadlock in any run\n",
     "stderr": "",
     "exitCode": 0,
-    "durationMs": 2415,
-    "verifiedAt": "2026-06-03T22:47:21.634Z"
+    "durationMs": 2578,
+    "verifiedAt": "2026-06-05T21:52:29.323Z"
   },
   "cpp-data-races/tsan": {
     "stdout": "WARNING: ThreadSanitizer: data race\n  Write of size 4 by thread T2:\n    tsan_counter.cpp:13\n  Previous write of size 4 by thread T1:\n    tsan_counter.cpp:12\n  Location is global 'counter' of size 4\nSUMMARY: ThreadSanitizer: data race in tsan_counter.cpp:13\n",
     "stderr": "",
     "exitCode": 0,
-    "durationMs": 1353,
-    "verifiedAt": "2026-06-03T22:47:22.987Z"
+    "durationMs": 1349,
+    "verifiedAt": "2026-06-05T21:52:30.672Z"
   },
   "cpp-data-races/volatile": {
-    "stdout": "24 threads, 100000 increments each, expected total 2400000\n\n  trial 1: counter = 168856  (lost 2231144, 93%)\n  trial 2: counter = 181994  (lost 2218006, 92%)\n  trial 3: counter = 169251  (lost 2230749, 93%)\n  ...\n\nlost increments in 10 of 10 trials, exactly like the plain int\ncounter reached 8% of the expected total on average\n",
+    "stdout": "24 threads, 100000 increments each, expected total 2400000\n\n  trial 1: counter = 214541  (lost 2185459, 91%)\n  trial 2: counter = 207754  (lost 2192246, 91%)\n  trial 3: counter = 279701  (lost 2120299, 88%)\n  ...\n\nlost increments in 10 of 10 trials, exactly like the plain int\ncounter reached 9% of the expected total on average\n",
     "stderr": "",
     "exitCode": 0,
-    "durationMs": 1825,
-    "verifiedAt": "2026-06-03T22:47:24.812Z"
+    "durationMs": 1822,
+    "verifiedAt": "2026-06-05T21:52:32.494Z"
   },
   "gpu-normals/ts": {
     "stdout": "mesh: 12 vertices, 20 triangles\nall normals unit length: true (max error 3.1e-8)\nnormals match normalized position: true (max error 2.7e-8)\n  normal[0] = (-0.5257, 0.8507, 0)\n  normal[1] = (0.5257, 0.8507, 0)\n  normal[2] = (-0.5257, -0.8507, 0)\n",
     "stderr": "",
     "exitCode": 0,
-    "durationMs": 73,
-    "verifiedAt": "2026-06-03T22:47:24.885Z"
+    "durationMs": 80,
+    "verifiedAt": "2026-06-05T21:52:32.574Z"
   },
   "header-only-libs/cpp": {
     "stdout": "Color for index 0: Red\nColor for index 1: Green\nColor for index 2: Blue\n",
     "stderr": "",
     "exitCode": 0,
-    "durationMs": 1448,
-    "verifiedAt": "2026-06-03T22:47:26.333Z"
+    "durationMs": 1443,
+    "verifiedAt": "2026-06-05T21:52:34.017Z"
   },
   "local-llm-arena/arena": {
     "stdout": "| model | empty | single | simple-3 | balanced | left-skewed | total |\n|---|---|---|---|---|---|---|\n| gemma-4-e4b-it-cpu | ✓ | ✓ | ✓ | ✓ | ✓ | 5/5 |\n| gemma-4-e4b-it-gpu | ✓ | ✓ | ✓ | ✓ | ✓ | 5/5 |\n| qwen3.5-4b-cpu | ✓ | ✓ | ✓ | ✓ | ✓ | 5/5 |\n| qwen3.5-4b-gpu | ✓ | ✓ | ✓ | ✓ | ✓ | 5/5 |\n",
     "stderr": "",
     "exitCode": 0,
-    "durationMs": 26,
-    "verifiedAt": "2026-06-03T22:47:26.359Z"
+    "durationMs": 28,
+    "verifiedAt": "2026-06-05T21:52:34.045Z"
   },
   "monkey-patching/js": {
     "stdout": "Hello, Filip!\n",
     "stderr": "",
     "exitCode": 0,
-    "durationMs": 30,
-    "verifiedAt": "2026-06-03T22:47:26.389Z"
+    "durationMs": 31,
+    "verifiedAt": "2026-06-05T21:52:34.076Z"
   },
   "monkey-patching/rs": {
     "stdout": "Hello, Filip!\n",
-    "stderr": "    Finished `release` profile [optimized] target(s) in 0.07s\n     Running `/home/fkunc/Projects/FilipKuncCom/.cache/verify/rs/target/release/monkey-demo hello.txt`\n",
+    "stderr": "    Finished `release` profile [optimized] target(s) in 0.17s\n     Running `/home/fkunc/Projects/FilipKuncCom/.cache/verify/rs/target/release/monkey-demo hello.txt`\n",
     "exitCode": 0,
-    "durationMs": 129,
-    "verifiedAt": "2026-06-03T22:47:26.518Z"
+    "durationMs": 225,
+    "verifiedAt": "2026-06-05T21:52:34.302Z"
   },
   "type-json-validator/ts": {
     "stdout": "type Root = {\n  login: string;\n  id: number;\n  name: string;\n  public_repos: number;\n  followers: number;\n};\n\nfunction validate(value: unknown): value is Root {\n  const v = value as any;\n  return (\n    typeof v === \"object\" &&\n    v !== null &&\n    !Array.isArray(v) &&\n    typeof v.login === \"string\" &&\n    typeof v.id === \"number\" &&\n    typeof v.name === \"string\" &&\n    typeof v.public_repos === \"number\" &&\n    typeof v.followers === \"number\"\n  );\n}\n\nvalidate(sample) => true\nvalidate(broken) => false\n",
     "stderr": "",
     "exitCode": 0,
-    "durationMs": 324,
-    "verifiedAt": "2026-06-03T22:47:26.842Z"
+    "durationMs": 391,
+    "verifiedAt": "2026-06-05T21:52:34.693Z"
   }
 }

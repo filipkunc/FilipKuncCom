@@ -1,0 +1,265 @@
+{
+  "model": "jinaai/jina-code-embeddings-0.5b",
+  "dim": 896,
+  "scope": "Node first-party source (src + lib)",
+  "files": 861,
+  "chunks": 13741,
+  "chunkSeconds": 2.8,
+  "embedSeconds": 65.9,
+  "indexBuildSeconds": 0.2,
+  "indexBytes": 52985854,
+  "gpu": "NVIDIA GeForce RTX 5070 Ti",
+  "generatedOn": "2026-06-05",
+  "examples": [
+    {
+      "query": "where do we validate a TLS certificate",
+      "ms": 514.8,
+      "results": [
+        {
+          "path": "lib/tls.js",
+          "start": 425,
+          "end": 464,
+          "score": 0.697,
+          "text": "  if (net.isIP(hostname)) {\n    valid = ips.includes(canonicalizeIP(hostname));\n    if (!valid)\n      reason = `IP: ${hostname} is not in the cert's list: ` + ips.join(', ');\n  } else if (dnsNames.length > 0 || subject?.CN) {\n    const hostParts = splitHost(hostname);\n    const wildcard = (pattern) => check(hostParts, pattern, true);\n\n    if (dnsNames.length > 0) {\n      valid = dnsNames.some(wildcard);\n      if (!valid)\n        reason =\n          `Host: ${hostname}. is not in the cert's altnames: ${altNames}`;\n    } else {\n      // Match against Common Name only if no supported identifiers exist.\n      const cn = subject.CN;\n\n      if (ArrayIsArray(cn))\n        valid = cn.some(wildcard);\n      else if (cn)\n        valid = wildcard(cn);\n\n      if (!valid)\n        reason = `Host: ${hostname}. is not cert's CN: ${cn}`;\n    }\n  } else {\n    reason = 'Cert does not contain a DNS name';\n  }\n\n  if (!valid) {\n    return new ERR_TLS_CERT_ALTNAME_INVALID(reason, hostname, cert);\n  }\n};\n\nexports.createSecureContext = tlsCommon.createSecureContext;\nexports.SecureContext = tlsCommon.SecureContext;\nexports.TLSSocket = tlsWrap.TLSSocket;\nexports.Server = tlsWrap.Server;\nexports.createServer = tlsWrap.createServer;\nexports.connect = tlsWrap.connect;"
+        },
+        {
+          "path": "src/quic/tlscontext.cc",
+          "start": 413,
+          "end": 439,
+          "score": 0.686,
+          "text": "                                          X509_STORE_CTX* ctx) {\n  // This callback is invoked by OpenSSL for each certificate in the\n  // client's chain during the TLS handshake. The preverify_ok\n  // parameter reflects OpenSSL's own chain validation result for\n  // the current certificate. Failures include:\n  //   - Expired or not-yet-valid certificates\n  //   - Self-signed certificates not in the trusted CA list\n  //   - Broken chain (signature verification failure)\n  //   - Untrusted CA (chain does not terminate at a configured CA)\n  //   - Revoked certificates (if CRL is configured)\n  //   - Invalid basic constraints or key usage\n  //\n  // If preverify_ok is 1, validation passed for this cert and we\n  // always continue. If it is 0, the behavior depends on the\n  // reject_unauthorized option:\n  //   - true (default): return 0 to abort the handshake immediately,\n  //     avoiding wasted work on an untrusted client.\n  //   - false: return 1 to let the handshake complete. The validation\n  //     error is still recorded by OpenSSL and will be reported to JS\n  //     via VerifyPeerIdentity() in the handshake callback, allowing\n  //     the application to make its own decision.\n  //\n  // Note that even when preverify_ok is 1 (chain validation passed),\n  // the application may need to perform additional verification after\n  // the handshake — for example, checking the certificate's common\n  // name or subject alternative names against an allowlist, verifying\n  // application-specific fields or extensions, or enforcing certificate"
+        },
+        {
+          "path": "src/quic/tlscontext.cc",
+          "start": 913,
+          "end": 952,
+          "score": 0.635,
+          "text": "  {\n    TransportParams tp(ngtcp2_conn_get_local_transport_params(*session_));\n    // Preflight to get the encoded size.\n    ssize_t size = tp.EncodedSize();\n    if (size > 0) {\n      MaybeStackBuffer<uint8_t, 512> buf(size);\n      ssize_t written = tp.EncodeInto(buf.out(), size);\n      if (written > 0) {\n        ngtcp2_vec vec = {buf.out(), static_cast<size_t>(written)};\n        if (!ossl_context_.set_transport_params(vec)) {\n          validation_error_ = \"Failed to set transport parameters\";\n          ossl_context_.reset();\n          return;\n        }\n      }\n    }\n  }\n}\n\nstd::optional<TLSSession::PeerIdentityValidationError>\nTLSSession::VerifyPeerIdentity(Environment* env) {\n  // We are just temporarily wrapping the ssl, not taking ownership.\n  SSLPointerRef ssl(ossl_context_);\n  int err = ssl->verifyPeerCertificate().value_or(X509_V_ERR_UNSPECIFIED);\n  if (err == X509_V_OK) return std::nullopt;\n  Local<Value> reason;\n  Local<Value> code;\n  if (!crypto::GetValidationErrorReason(env, err).ToLocal(&reason) ||\n      !crypto::GetValidationErrorCode(env, err).ToLocal(&code)) {\n    // Getting the validation error details failed. We'll return a value but\n    // the fields will be empty.\n    return PeerIdentityValidationError{};\n  }\n  return PeerIdentityValidationError{reason, code};\n}\n\nMaybeLocal<Object> TLSSession::cert(Environment* env) const {\n  SSLPointerRef ssl(ossl_context_);\n  return crypto::X509Certificate::GetCert(env, ssl);\n}"
+        },
+        {
+          "path": "lib/internal/tls/secure-context.js",
+          "start": 129,
+          "end": 179,
+          "score": 0.629,
+          "text": "function configSecureContext(context, options = kEmptyObject, name = 'options') {\n  validateObject(options, name);\n\n  const {\n    allowPartialTrustChain,\n    ca,\n    cert,\n    ciphers = getDefaultCiphers(),\n    clientCertEngine,\n    crl,\n    dhparam,\n    ecdhCurve = getDefaultEcdhCurve(),\n    key,\n    passphrase,\n    pfx,\n    privateKeyIdentifier,\n    privateKeyEngine,\n    sessionIdContext,\n    sessionTimeout,\n    sigalgs,\n    ticketKeys,\n  } = options;\n\n  // Set the cipher list and cipher suite before anything else because\n  // @SECLEVEL=<n> changes the security level and that affects subsequent\n  // operations.\n  if (ciphers !== undefined && ciphers !== null)\n    validateString(ciphers, `${name}.ciphers`);\n\n  // Work around an OpenSSL API quirk. cipherList is for TLSv1.2 and below,\n  // cipherSuites is for TLSv1.3 (and presumably any later versions). TLSv1.3\n  // cipher suites all have a standard name format beginning with TLS_, so split\n  // the ciphers and pass them to the appropriate API.\n  const {\n    cipherList,\n    cipherSuites,\n  } = processCiphers(ciphers, `${name}.ciphers`);\n\n  if (cipherSuites !== '')\n    context.setCipherSuites(cipherSuites);\n  context.setCiphers(cipherList);\n\n  if (cipherList === '' &&\n      context.getMinProto() < TLS1_3_VERSION &&\n      context.getMaxProto() > TLS1_2_VERSION) {\n    context.setMinProto(TLS1_3_VERSION);\n  }\n\n  // Add CA before the cert to be able to load cert's issuer in C++ code.\n  // NOTE(@jasnell): ca, cert, and key are permitted to be falsy, so do not\n  // change the checks to !== undefined checks."
+        },
+        {
+          "path": "src/quic/tlscontext.cc",
+          "start": 579,
+          "end": 609,
+          "score": 0.626,
+          "text": "  {\n    ClearErrorOnReturn clear_error_on_return;\n    for (const auto& cert : options_.certs) {\n      uv_buf_t buf = cert;\n      if (buf.len > 0) {\n        BIOPointer bio = crypto::NodeBIO::NewFixed(buf.base, buf.len);\n        CHECK(bio);\n        cert_.reset();\n        issuer_.reset();\n        if (crypto::SSL_CTX_use_certificate_chain(\n                ctx.get(), std::move(bio), &cert_, &issuer_) == 0) {\n          validation_error_ = \"Invalid certificate\";\n          return SSLCtxPointer();\n        }\n      }\n    }\n  }\n\n  {\n    ClearErrorOnReturn clear_error_on_return;\n    for (const auto& key : options_.keys) {\n      if (key.GetKeyType() != crypto::KeyType::kKeyTypePrivate) {\n        validation_error_ = \"Invalid key\";\n        return SSLCtxPointer();\n      }\n      if (!SSL_CTX_use_PrivateKey(ctx.get(), key.GetAsymmetricKey().get())) {\n        validation_error_ = \"Invalid key\";\n        return SSLCtxPointer();\n      }\n    }\n  }"
+        },
+        {
+          "path": "src/quic/tlscontext.cc",
+          "start": 412,
+          "end": 413,
+          "score": 0.617,
+          "text": "int TLSContext::OnVerifyClientCertificate(int preverify_ok,\n                                          X509_STORE_CTX* ctx) {"
+        },
+        {
+          "path": "lib/internal/quic/quic.js",
+          "start": 4843,
+          "end": 4881,
+          "score": 0.616,
+          "text": "function processTlsOptions(tls, forServer) {\n  const {\n    servername,\n    alpn,\n    ciphers = DEFAULT_CIPHERS,\n    groups = DEFAULT_GROUPS,\n    keylog = false,\n    verifyClient = false,\n    rejectUnauthorized = true,\n    enableEarlyData = true,\n    tlsTrace = false,\n    sni,\n    // Client-only: identity options are specified directly (no sni map)\n    keys,\n    certs,\n    ca,\n    crl,\n    verifyPrivateKey = false,\n  } = tls;\n\n  if (servername !== undefined) {\n    validateString(servername, 'options.servername');\n  }\n  if (ciphers !== undefined) {\n    validateString(ciphers, 'options.ciphers');\n  }\n  if (groups !== undefined) {\n    validateString(groups, 'options.groups');\n  }\n  validateBoolean(keylog, 'options.keylog');\n  validateBoolean(verifyClient, 'options.verifyClient');\n  validateBoolean(rejectUnauthorized, 'options.rejectUnauthorized');\n  validateBoolean(enableEarlyData, 'options.enableEarlyData');\n  validateBoolean(tlsTrace, 'options.tlsTrace');\n\n  // Encode the ALPN option to wire format (length-prefixed protocol names).\n  // Server: array of protocol names. Client: single protocol name.\n  // If not specified, the C++ default (h3) is used.\n  let encodedAlpn;"
+        },
+        {
+          "path": "src/crypto/crypto_common.cc",
+          "start": 49,
+          "end": 84,
+          "score": 0.601,
+          "text": "namespace crypto {\n\nSSLSessionPointer GetTLSSession(const unsigned char* buf, size_t length) {\n  return SSLSessionPointer(d2i_SSL_SESSION(nullptr, &buf, length));\n}\n\nMaybeLocal<Value> GetValidationErrorReason(Environment* env, int err) {\n  auto reason = std::string(X509Pointer::ErrorReason(err).value_or(\"\"));\n  if (reason == \"\") return Undefined(env->isolate());\n\n  // Suggest --use-system-ca if the error indicates a certificate issue\n  bool suggest_system_ca =\n      (err == X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE) ||\n      (err == X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT) ||\n      ((err == X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT) &&\n       !env->options()->use_system_ca);\n\n  if (suggest_system_ca) {\n    reason.append(\"; if the root CA is installed locally, \"\n                  \"try running Node.js with --use-system-ca\");\n  }\n  return OneByteString(env->isolate(), reason);\n}\n\nMaybeLocal<Value> GetValidationErrorCode(Environment* env, int err) {\n  if (err == 0) return Undefined(env->isolate());\n  auto error = X509Pointer::ErrorCode(err);\n  return OneByteString(env->isolate(), error);\n}\n\nMaybeLocal<Value> GetCert(Environment* env, const SSLPointer& ssl) {\n  if (auto cert = ssl.getCertificate()) {\n    return X509Certificate::toObject(env, cert);\n  }\n  return Undefined(env->isolate());\n}"
+        }
+      ]
+    },
+    {
+      "query": "convert a buffer to a string with an encoding",
+      "ms": 514.4,
+      "results": [
+        {
+          "path": "lib/string_decoder.js",
+          "start": 42,
+          "end": 87,
+          "score": 0.584,
+          "text": "const {\n  encodingsMap,\n  normalizeEncoding,\n} = require('internal/util');\nconst {\n  ERR_INVALID_ARG_TYPE,\n  ERR_INVALID_THIS,\n  ERR_UNKNOWN_ENCODING,\n} = require('internal/errors').codes;\n\nconst kNativeDecoder = Symbol('kNativeDecoder');\n\n/**\n * StringDecoder provides an interface for efficiently splitting a series of\n * buffers into a series of JS strings without breaking apart multibyte\n * characters.\n * @param {string} [encoding]\n */\nfunction StringDecoder(encoding) {\n  this.encoding = normalizeEncoding(encoding);\n  if (this.encoding === undefined) {\n    throw new ERR_UNKNOWN_ENCODING(encoding);\n  }\n  this[kNativeDecoder] = Buffer.alloc(kSize);\n  this[kNativeDecoder][kEncodingField] = encodingsMap[this.encoding];\n}\n\n/**\n * Returns a decoded string, omitting any incomplete multi-bytes\n * characters at the end of the Buffer, or TypedArray, or DataView\n * @param {string | Buffer | TypedArray | DataView} buf\n * @returns {string}\n * @throws {TypeError} Throws when buf is not in one of supported types\n */\nStringDecoder.prototype.write = function write(buf) {\n  if (typeof buf === 'string')\n    return buf;\n  if (!ArrayBufferIsView(buf))\n    throw new ERR_INVALID_ARG_TYPE('buf',\n                                   ['Buffer', 'TypedArray', 'DataView'],\n                                   buf);\n  if (!this[kNativeDecoder]) {\n    throw new ERR_INVALID_THIS('StringDecoder');\n  }\n  return decode(this[kNativeDecoder], buf);\n};"
+        },
+        {
+          "path": "src/string_bytes.h",
+          "start": 70,
+          "end": 97,
+          "score": 0.577,
+          "text": "  // Write the bytes from the string or buffer into the char*\n  // returns the number of bytes written, which will always be\n  // <= buflen.  Use StorageSize/Size first to know how much\n  // memory to allocate.\n  static size_t Write(v8::Isolate* isolate,\n                      char* buf,\n                      size_t buflen,\n                      v8::Local<v8::Value> val,\n                      enum encoding enc);\n\n  // Take the bytes in the src, and turn it into a Buffer or String.\n  static v8::MaybeLocal<v8::Value> Encode(v8::Isolate* isolate,\n                                          const char* buf,\n                                          size_t buflen,\n                                          enum encoding encoding);\n\n  // Like Encode(..., UTF8) but does not re-validate. Input must be valid UTF-8.\n  static v8::MaybeLocal<v8::Value> EncodeValidUtf8(v8::Isolate* isolate,\n                                                   const char* buf,\n                                                   size_t buflen);\n\n  // Warning: This reverses endianness on BE platforms, even though the\n  // signature using uint16_t implies that it should not.\n  // However, the brokenness is already public API and can't therefore\n  // be changed easily.\n  static v8::MaybeLocal<v8::Value> Encode(v8::Isolate* isolate,\n                                          const uint16_t* buf,\n                                          size_t buflen);"
+        },
+        {
+          "path": "src/string_bytes.h",
+          "start": 99,
+          "end": 114,
+          "score": 0.563,
+          "text": "  static v8::MaybeLocal<v8::Value> Encode(v8::Isolate* isolate,\n                                          const char* buf,\n                                          enum encoding encoding);\n\n private:\n  static size_t WriteUCS2(v8::Isolate* isolate,\n                          char* buf,\n                          size_t buflen,\n                          v8::Local<v8::String> str);\n};\n\n}  // namespace node\n\n#endif  // defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS\n\n#endif  // SRC_STRING_BYTES_H_"
+        },
+        {
+          "path": "src/string_bytes.cc",
+          "start": 773,
+          "end": 801,
+          "score": 0.559,
+          "text": "MaybeLocal<Value> StringBytes::Encode(Isolate* isolate,\n                                      const uint16_t* buf,\n                                      size_t buflen) {\n  if (buflen == 0) return String::Empty(isolate);\n  CHECK_BUFLEN_IN_RANGE(buflen);\n\n  // Node's \"ucs2\" encoding expects LE character data inside a\n  // Buffer, so we need to reorder on BE platforms.  See\n  // https://nodejs.org/api/buffer.html regarding Node's \"ucs2\"\n  // encoding specification\n  if constexpr (IsBigEndian()) {\n    return EncodeTwoByteString(isolate, buflen, [buf, buflen](uint16_t* dst) {\n      size_t nbytes = buflen * sizeof(uint16_t);\n      memcpy(dst, buf, nbytes);\n      CHECK(nbytes::SwapBytes16(reinterpret_cast<char*>(dst), nbytes));\n    });\n  } else {\n    return ExternTwoByteString::NewFromCopy(isolate, buf, buflen);\n  }\n}\n\nMaybeLocal<Value> StringBytes::Encode(Isolate* isolate,\n                                      const char* buf,\n                                      enum encoding encoding) {\n  const size_t len = strlen(buf);\n  return Encode(isolate, buf, len, encoding);\n}\n\n}  // namespace node"
+        },
+        {
+          "path": "src/crypto/crypto_util.cc",
+          "start": 424,
+          "end": 462,
+          "score": 0.558,
+          "text": "Local<ArrayBuffer> ByteSource::ToArrayBuffer(Environment* env) {\n  std::unique_ptr<BackingStore> store = ReleaseToBackingStore(env);\n  return ArrayBuffer::New(env->isolate(), std::move(store));\n}\n\nMaybeLocal<Uint8Array> ByteSource::ToBuffer(Environment* env) {\n  Local<ArrayBuffer> ab = ToArrayBuffer(env);\n  return Buffer::New(env, ab, 0, ab->ByteLength());\n}\n\nByteSource ByteSource::FromBIO(const BIOPointer& bio) {\n  CHECK(bio);\n  BUF_MEM* bptr = bio;\n  auto out = DataPointer::Alloc(bptr->length);\n  memcpy(out.get(), bptr->data, bptr->length);\n  return ByteSource::Allocated(out.release());\n}\n\nByteSource ByteSource::FromEncodedString(Environment* env,\n                                         Local<String> key,\n                                         enum encoding enc) {\n  size_t length = 0;\n  ByteSource out;\n\n  if (StringBytes::Size(env->isolate(), key, enc).To(&length) && length > 0) {\n    auto buf = DataPointer::Alloc(length);\n    size_t actual = StringBytes::Write(\n        env->isolate(), static_cast<char*>(buf.get()), length, key, enc);\n    out = ByteSource::Allocated(buf.resize(actual).release());\n  }\n\n  return out;\n}\n\nByteSource ByteSource::FromStringOrBuffer(Environment* env,\n                                          Local<Value> value) {\n  return IsAnyBufferSource(value) ? FromBuffer(value)\n                                  : FromString(env, value.As<String>());\n}"
+        },
+        {
+          "path": "src/node_file.cc",
+          "start": 2655,
+          "end": 2668,
+          "score": 0.552,
+          "text": "  if (!is_async && value->IsString()) {\n    auto string = value.As<String>();\n    if ((enc == ASCII || enc == LATIN1) && string->IsExternalOneByte()) {\n      auto ext = string->GetExternalOneByteStringResource();\n      buf = const_cast<char*>(ext->data());\n      len = ext->length();\n    } else if (enc == UCS2 && string->IsExternalTwoByte()) {\n      if constexpr (IsLittleEndian()) {\n        auto ext = string->GetExternalStringResource();\n        buf = reinterpret_cast<char*>(const_cast<uint16_t*>(ext->data()));\n        len = ext->length() * sizeof(*ext->data());\n      }\n    }\n  }"
+        },
+        {
+          "path": "lib/buffer.js",
+          "start": 515,
+          "end": 571,
+          "score": 0.551,
+          "text": "function fromString(string, encoding) {\n  let ops;\n  if (!encoding || encoding === 'utf8' || typeof encoding !== 'string') {\n    ops = encodingOps.utf8;\n  } else {\n    ops = getEncodingOps(encoding);\n    if (ops === undefined)\n      throw new ERR_UNKNOWN_ENCODING(encoding);\n  }\n\n  return string.length === 0 ? new FastBuffer() : fromStringFast(string, ops);\n}\n\nfunction fromArrayBuffer(obj, byteOffset, length) {\n  // Convert byteOffset to integer\n  if (byteOffset === undefined) {\n    byteOffset = 0;\n  } else {\n    byteOffset = +byteOffset;\n    if (NumberIsNaN(byteOffset))\n      byteOffset = 0;\n  }\n\n  const maxLength = obj.byteLength - byteOffset;\n\n  if (maxLength < 0)\n    throw new ERR_BUFFER_OUT_OF_BOUNDS('offset');\n\n  if (length !== undefined) {\n    // Convert length to non-negative integer.\n    length = +length;\n    if (length > 0) {\n      if (length > maxLength)\n        throw new ERR_BUFFER_OUT_OF_BOUNDS('length');\n    } else {\n      length = 0;\n    }\n  }\n\n  return new FastBuffer(obj, byteOffset, length);\n}\n\nfunction fromArrayLike(obj) {\n  const { length } = obj;\n  if (length <= 0)\n    return new FastBuffer();\n  if (length < (Buffer.poolSize >>> 1)) {\n    if (length > (poolSize - poolOffset))\n      createPool();\n    const b = new FastBuffer(allocPool, poolOffset, length);\n    TypedArrayPrototypeSet(b, obj, 0);\n    poolOffset += length;\n    alignPool();\n    return b;\n  }\n  return new FastBuffer(obj);\n}"
+        },
+        {
+          "path": "src/string_bytes.cc",
+          "start": 709,
+          "end": 737,
+          "score": 0.551,
+          "text": "    case UCS2: {\n      buflen = keep_buflen_in_range(buflen);\n      size_t str_len = buflen / 2;\n      if constexpr (IsBigEndian()) {\n        return EncodeTwoByteString(\n            isolate, str_len, [buf, str_len](uint16_t* dst) {\n              for (size_t i = 0, k = 0; k < str_len; i += 2, k += 1) {\n                // The input is in *little endian*, because that's what Node.js\n                // expects, so the high byte comes after the low byte.\n                const uint8_t hi = static_cast<uint8_t>(buf[i + 1]);\n                const uint8_t lo = static_cast<uint8_t>(buf[i + 0]);\n                dst[k] = static_cast<uint16_t>(hi) << 8 | lo;\n              }\n            });\n      }\n      if (reinterpret_cast<uintptr_t>(buf) % 2 != 0) {\n        return EncodeTwoByteString(\n            isolate, str_len, [buf, buflen](uint16_t* dst) {\n              memcpy(dst, buf, buflen);\n            });\n      }\n      return ExternTwoByteString::NewFromCopy(\n          isolate, reinterpret_cast<const uint16_t*>(buf), str_len);\n    }\n\n    default:\n      UNREACHABLE(\"unknown encoding\");\n  }\n}"
+        }
+      ]
+    },
+    {
+      "query": "where are worker threads created and started",
+      "ms": 522.7,
+      "results": [
+        {
+          "path": "src/node_messaging.cc",
+          "start": 54,
+          "end": 54,
+          "score": 0.741,
+          "text": "namespace worker {"
+        },
+        {
+          "path": "src/node_worker.cc",
+          "start": 55,
+          "end": 55,
+          "score": 0.741,
+          "text": "namespace worker {"
+        },
+        {
+          "path": "src/node_worker.h",
+          "start": 17,
+          "end": 17,
+          "score": 0.741,
+          "text": "namespace worker {"
+        },
+        {
+          "path": "src/node_worker.cc",
+          "start": 296,
+          "end": 296,
+          "score": 0.73,
+          "text": "void Worker::Run() {"
+        },
+        {
+          "path": "lib/internal/cluster/primary.js",
+          "start": 161,
+          "end": 213,
+          "score": 0.686,
+          "text": "cluster.fork = function(env) {\n  cluster.setupPrimary();\n  const id = ++ids;\n  const workerProcess = createWorkerProcess(id, env);\n  const worker = new Worker({\n    id: id,\n    process: workerProcess,\n  });\n\n  worker.on('message', function(message, handle) {\n    cluster.emit('message', this, message, handle);\n  });\n\n  worker.process.once('exit', (exitCode, signalCode) => {\n    /*\n     * Remove the worker from the workers list only\n     * if it has disconnected, otherwise we might\n     * still want to access it.\n     */\n    if (!worker.isConnected()) {\n      removeHandlesForWorker(worker);\n      removeWorker(worker);\n    }\n\n    worker.exitedAfterDisconnect = !!worker.exitedAfterDisconnect;\n    worker.state = 'dead';\n    worker.emit('exit', exitCode, signalCode);\n    cluster.emit('exit', worker, exitCode, signalCode);\n  });\n\n  worker.process.once('disconnect', () => {\n    /*\n     * Now is a good time to remove the handles\n     * associated with this worker because it is\n     * not connected to the primary anymore.\n     */\n    removeHandlesForWorker(worker);\n\n    /*\n     * Remove the worker from the workers list only\n     * if its process has exited. Otherwise, we might\n     * still want to access it.\n     */\n    if (worker.isDead())\n      removeWorker(worker);\n\n    worker.exitedAfterDisconnect = !!worker.exitedAfterDisconnect;\n    worker.state = 'disconnected';\n    worker.emit('disconnect');\n    cluster.emit('disconnect', worker);\n  });\n\n  worker.process.on('internalMessage', internal(worker, onmessage));"
+        },
+        {
+          "path": "lib/internal/worker.js",
+          "start": 376,
+          "end": 420,
+          "score": 0.678,
+          "text": "    // Use this to cache the Worker's loopStart value once available.\n    this[kLoopStartTime] = -1;\n    this[kIsOnline] = false;\n    this.performance = {\n      eventLoopUtilization: FunctionPrototypeBind(eventLoopUtilization, this),\n    };\n    // Actually start the new thread now that everything is in place.\n    this[kHandle].startThread();\n\n    process.nextTick(() => process.emit('worker', this));\n    if (workerThreadsChannel.hasSubscribers) {\n      workerThreadsChannel.publish({\n        worker: this,\n      });\n    }\n  }\n\n  [kOnExit](code, customErr, customErrReason) {\n    debug(`[${threadId}] hears end event for Worker ${this.threadId}`);\n    drainMessagePort(this[kPublicPort]);\n    drainMessagePort(this[kPort]);\n    destroyMainThreadPort(this.threadId);\n    this.removeAllListeners('message');\n    this.removeAllListeners('messageerrors');\n    this[kPublicPort].unref();\n    this[kPort].unref();\n    this[kDispose]();\n    if (customErr) {\n      debug(`[${threadId}] failing with custom error ${customErr} \\\n        and with reason ${customErrReason}`);\n      this.emit('error', new errorCodes[customErr](customErrReason));\n    }\n    this.emit('exit', code);\n    this.removeAllListeners();\n  }\n\n  [kOnCouldNotSerializeErr]() {\n    this.emit('error', new ERR_WORKER_UNSERIALIZABLE_ERROR());\n  }\n\n  [kOnErrorMessage](serialized) {\n    // This is what is called for uncaught exceptions.\n    const error = deserializeError(serialized);\n    this.emit('error', error);\n  }"
+        },
+        {
+          "path": "src/node_worker.cc",
+          "start": 164,
+          "end": 165,
+          "score": 0.674,
+          "text": "  explicit WorkerThreadData(Worker* w)\n    : w_(w) {"
+        },
+        {
+          "path": "lib/internal/worker.js",
+          "start": 206,
+          "end": 206,
+          "score": 0.659,
+          "text": "class Worker extends EventEmitter {"
+        }
+      ]
+    },
+    {
+      "query": "parse command line options and flags",
+      "ms": 523.6,
+      "results": [
+        {
+          "path": "lib/internal/test_runner/utils.js",
+          "start": 267,
+          "end": 267,
+          "score": 0.611,
+          "text": "function parseCommandLine() {"
+        },
+        {
+          "path": "src/node.cc",
+          "start": 980,
+          "end": 1000,
+          "score": 0.593,
+          "text": "  if (!(flags & ProcessInitializationFlags::kDisableCLIOptions)) {\n    // Parse the options coming from the config file.\n    // This is done before parsing the command line options\n    // as the cli flags are expected to override the config file ones.\n    std::vector<std::string> extra_argv =\n        per_process::config_reader.GetNamespaceFlags();\n    // [0] is expected to be the program name, fill it in from the real argv.\n    extra_argv.insert(extra_argv.begin(), argv->at(0));\n    // Parse the extra argv coming from the config file\n    ExitCode exit_code = ProcessGlobalArgsInternal(\n        &extra_argv, nullptr, errors, kDisallowedInEnvvar);\n    if (exit_code != ExitCode::kNoFailure) return exit_code;\n    // Parse options coming from the command line.\n    exit_code =\n        ProcessGlobalArgsInternal(argv, exec_argv, errors, kDisallowedInEnvvar);\n    if (exit_code != ExitCode::kNoFailure) return exit_code;\n  }\n\n  // Set the process.title immediately after processing argv if --title is set.\n  if (!per_process::cli_options->title.empty())\n    uv_set_process_title(per_process::cli_options->title.c_str());"
+        },
+        {
+          "path": "lib/internal/util/parse_args/parse_args.js",
+          "start": 364,
+          "end": 408,
+          "score": 0.593,
+          "text": "  const tokens = argsToTokens(args, options);\n\n  // Phase 2: process tokens into parsed option values and positionals\n  const result = {\n    values: { __proto__: null },\n    positionals: [],\n  };\n  if (returnTokens) {\n    result.tokens = tokens;\n  }\n  ArrayPrototypeForEach(tokens, (token) => {\n    if (token.kind === 'option') {\n      if (strict) {\n        checkOptionUsage(parseConfig, token);\n        checkOptionLikeValue(token);\n      }\n      storeOption(token, options, result.values, parseConfig.allowNegative);\n    } else if (token.kind === 'positional') {\n      if (!allowPositionals) {\n        throw new ERR_PARSE_ARGS_UNEXPECTED_POSITIONAL(token.value);\n      }\n      ArrayPrototypePush(result.positionals, token.value);\n    }\n  });\n\n  // Phase 3: fill in default values for missing args\n  ArrayPrototypeForEach(ObjectEntries(options), ({ 0: longOption,\n                                                   1: optionConfig }) => {\n    const mustSetDefault = useDefaultValueOption(longOption,\n                                                 optionConfig,\n                                                 result.values);\n    if (mustSetDefault) {\n      storeDefaultOption(longOption,\n                         objectGetOwn(optionConfig, 'default'),\n                         result.values);\n    }\n  });\n\n\n  return result;\n};\n\nmodule.exports = {\n  parseArgs,\n};"
+        },
+        {
+          "path": "src/node_options.cc",
+          "start": 2040,
+          "end": 2056,
+          "score": 0.578,
+          "text": "void GetOptionsAsFlags(const FunctionCallbackInfo<Value>& args) {\n  Isolate* isolate = args.GetIsolate();\n  Local<Context> context = isolate->GetCurrentContext();\n  Environment* env = Environment::GetCurrent(context);\n\n  if (!env->has_run_bootstrapping_code()) {\n    // No code because this is an assertion.\n    THROW_ERR_OPTIONS_BEFORE_BOOTSTRAPPING(\n        isolate, \"Should not query options before bootstrapping is done\");\n  }\n  env->set_has_serialized_options(true);\n\n  Mutex::ScopedLock lock(per_process::cli_options_mutex);\n  IterateCLIOptionsScope s(env);\n\n  std::vector<std::string> flags;\n  PerProcessOptions* opts = per_process::cli_options.get();"
+        },
+        {
+          "path": "lib/internal/util/parse_args/parse_args.js",
+          "start": 160,
+          "end": 185,
+          "score": 0.569,
+          "text": "/**\n * Store the default option value in `values`.\n * @param {string} longOption - long option name e.g. 'foo'\n * @param {string\n *         | boolean\n *         | string[]\n *         | boolean[]} optionValue - default value from option config\n * @param {object} values - option values returned in `values` by parseArgs\n */\nfunction storeDefaultOption(longOption, optionValue, values) {\n  if (longOption === '__proto__') {\n    return; // No. Just no.\n  }\n\n  values[longOption] = optionValue;\n}\n\n/**\n * Process args and turn into identified tokens:\n * - option (along with value, if any)\n * - positional\n * - option-terminator\n * @param {string[]} args - from parseArgs({ args }) or mainArgs\n * @param {object} options - option configs, from parseArgs({ options })\n * @returns {any[]}\n */"
+        },
+        {
+          "path": "src/node_options.h",
+          "start": 654,
+          "end": 693,
+          "score": 0.564,
+          "text": "  std::unordered_multimap<std::string, Implication> implications_;\n\n  template <typename OtherOptions>\n  friend class OptionsParser;\n\n  friend void GetCLIOptionsValues(\n      const v8::FunctionCallbackInfo<v8::Value>& args);\n  friend void GetCLIOptionsInfo(\n      const v8::FunctionCallbackInfo<v8::Value>& args);\n  friend std::string GetBashCompletion();\n  friend std::unordered_map<std::string, OptionMappingDetails>\n  MapEnvOptionsFlagInputType();\n  friend std::unordered_map<std::string, OptionMappingDetails>\n  MapOptionsByNamespace(std::string namespace_name);\n  friend std::vector<std::string> MapAvailableNamespaces();\n  friend void GetEnvOptionsInputType(\n      const v8::FunctionCallbackInfo<v8::Value>& args);\n  friend void GetOptionsAsFlags(\n      const v8::FunctionCallbackInfo<v8::Value>& args);\n};\n\nusing StringVector = std::vector<std::string>;\ntemplate <class OptionsType, class = Options>\nvoid Parse(StringVector* const args,\n           StringVector* const exec_args,\n           StringVector* const v8_args,\n           OptionsType* const options,\n           OptionEnvvarSettings required_env_settings,\n           StringVector* const errors);\n\n}  // namespace options_parser\n\nnamespace per_process {\n\nextern Mutex cli_options_mutex;\nextern NODE_EXTERN_PRIVATE std::shared_ptr<PerProcessOptions> cli_options;\n\n}  // namespace per_process\n\nvoid HandleEnvOptions(std::shared_ptr<EnvironmentOptions> env_options);"
+        },
+        {
+          "path": "src/node_options-inl.h",
+          "start": 29,
+          "end": 29,
+          "score": 0.554,
+          "text": "namespace options_parser {"
+        },
+        {
+          "path": "src/node_options.h",
+          "start": 401,
+          "end": 401,
+          "score": 0.554,
+          "text": "namespace options_parser {"
+        }
+      ]
+    }
+  ],
+  "repo": "nodejs/node",
+  "ref": "be7ea272e34b1f53f52d872649cb4140132e3bc4"
+}

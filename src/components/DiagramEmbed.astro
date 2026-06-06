@@ -1,0 +1,69 @@
+---
+// Why embeddings find code that shares no words with the query. Every code chunk
+// is a point in vector space; so is the question. The question "validate a TLS
+// certificate" lands among the certificate-handling chunks (lib/tls.js,
+// tlscontext.cc) and far from the buffer or worker code, so its nearest
+// neighbours are the answer. Files shown are real hits from the post's index.
+// Hand-authored SVG, themed by the shared figure.diagram CSS variables.
+---
+
+<figure class="diagram embed-diagram">
+  <svg viewBox="0 0 720 340" role="img"
+    aria-label="A 2D sketch of the embedding space. The question 'validate a TLS certificate' sits among the certificate-handling code chunks, far from the buffer-encoding and worker-thread chunks, so its nearest neighbours are the relevant code even though they share no words.">
+    <rect class="vs-frame" x="14" y="14" width="692" height="266" rx="12" />
+
+    <!-- nearest-neighbour ring around the answer cluster -->
+    <circle class="vs-ring" cx="232" cy="158" r="88" />
+    <text class="vs-cap" x="232" y="58" text-anchor="middle">nearest 8</text>
+
+    <!-- answer cluster: TLS / certificate code -->
+    <circle class="vs-dot ans" cx="272" cy="132" r="5" />
+    <circle class="vs-dot ans" cx="198" cy="138" r="5" />
+    <circle class="vs-dot ans" cx="288" cy="186" r="5" />
+    <circle class="vs-dot ans" cx="190" cy="194" r="5" />
+    <circle class="vs-dot ans" cx="246" cy="214" r="5" />
+    <!-- the query -->
+    <path class="vs-q" d="M232,144 L246,158 L232,172 L218,158 Z" />
+    <text class="vs-q-label" x="232" y="192" text-anchor="middle">the question</text>
+    <text class="vs-cap ans" x="232" y="266" text-anchor="middle">lib/tls.js · tlscontext.cc</text>
+
+    <!-- buffer / encoding cluster -->
+    <circle class="vs-dot enc" cx="520" cy="96" r="5" />
+    <circle class="vs-dot enc" cx="552" cy="112" r="5" />
+    <circle class="vs-dot enc" cx="508" cy="126" r="5" />
+    <text class="vs-cap enc" x="528" y="74" text-anchor="middle">string_decoder.js · buffer.js</text>
+
+    <!-- worker cluster -->
+    <circle class="vs-dot" cx="566" cy="216" r="5" />
+    <circle class="vs-dot" cx="594" cy="232" r="5" />
+    <circle class="vs-dot" cx="552" cy="240" r="5" />
+    <text class="vs-cap" x="572" y="262" text-anchor="middle">node_worker.cc</text>
+
+    <!-- options cluster -->
+    <circle class="vs-dot" cx="424" cy="232" r="5" />
+    <circle class="vs-dot" cx="448" cy="218" r="5" />
+    <text class="vs-cap" x="436" y="256" text-anchor="middle">node_options.cc</text>
+
+    <text class="vs-axis" x="360" y="304" text-anchor="middle">embedding space (sketched in 2D; the real one has 896 dimensions)</text>
+  </svg>
+  <figcaption>
+    Every dot is a code chunk, placed by what it does. The question “validate a TLS certificate” lands among
+    the certificate code and nowhere near the buffer or worker chunks, so its nearest neighbours are the
+    answer, even though they share no words with it.
+  </figcaption>
+</figure>
+
+<style>
+  figure.embed-diagram text { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  figure.embed-diagram .vs-frame { fill: color-mix(in srgb, var(--fg) 2%, transparent); stroke: var(--rule); }
+  figure.embed-diagram .vs-dot { fill: var(--muted); }
+  figure.embed-diagram .vs-dot.ans { fill: var(--accent); }
+  figure.embed-diagram .vs-dot.enc { fill: var(--link); }
+  figure.embed-diagram .vs-ring { fill: none; stroke: var(--accent); stroke-dasharray: 5 5; opacity: 0.6; }
+  figure.embed-diagram .vs-q { fill: var(--bg); stroke: var(--accent); stroke-width: 2.2; }
+  figure.embed-diagram .vs-cap { fill: var(--muted); font-size: 11.5px; }
+  figure.embed-diagram .vs-cap.ans { fill: var(--accent); }
+  figure.embed-diagram .vs-cap.enc { fill: var(--link); }
+  figure.embed-diagram .vs-q-label { fill: var(--accent); font-size: 11.5px; font-weight: 600; }
+  figure.embed-diagram .vs-axis { fill: var(--muted); font-size: 10.5px; opacity: 0.85; }
+</style>

@@ -1,0 +1,58 @@
+---
+// The trigram index as a pruning funnel, using the post's measured numbers for
+// `MakeCallback`: ten trigrams ANDed together cut 47,890 files to 119 candidates
+// in under half a millisecond, and only then does the real regex run, confirming
+// 87 matches. Hand-authored SVG so it renders server-side and themes via the
+// shared figure.diagram CSS variables.
+---
+
+<figure class="diagram trigram-diagram">
+  <svg viewBox="0 0 760 200" role="img"
+    aria-label="MakeCallback compiles to ten trigrams. Intersecting their posting lists narrows 47,890 files to 119 candidates in under half a millisecond, and the regex then confirms 87 matches.">
+    <defs>
+      <marker id="tg-arrow" viewBox="0 0 10 10" refX="8.5" refY="5"
+        markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" />
+      </marker>
+    </defs>
+
+    <text class="tg-query" x="380" y="30" text-anchor="middle">MakeCallback → Mak ∧ ake ∧ keC ∧ eCa ∧ Cal ∧ all ∧ llb ∧ lba ∧ bac ∧ ack</text>
+
+    <!-- edges -->
+    <line class="edge" x1="207" y1="116" x2="281" y2="116" marker-end="url(#tg-arrow)" />
+    <line class="edge" x1="477" y1="116" x2="551" y2="116" marker-end="url(#tg-arrow)" />
+    <text class="edge-label" x="244" y="100" text-anchor="middle">intersect</text>
+    <text class="edge-label" x="244" y="146" text-anchor="middle">0.45 ms</text>
+    <text class="edge-label" x="514" y="100" text-anchor="middle">run regex</text>
+
+    <!-- boxes -->
+    <g class="node">
+      <rect class="box" x="15" y="88" width="192" height="58" rx="8" />
+      <text class="box-label" x="111" y="112">47,890 files</text>
+      <text class="box-sub" x="111" y="131">the whole tree</text>
+    </g>
+    <g class="node">
+      <rect class="box" x="283" y="88" width="192" height="58" rx="8" />
+      <text class="box-label" x="379" y="112">119 candidates</text>
+      <text class="box-sub" x="379" y="131">0.25% survive</text>
+    </g>
+    <g class="node">
+      <rect class="box" x="553" y="88" width="192" height="58" rx="8" />
+      <text class="box-label" x="649" y="112">87 matches</text>
+      <text class="box-sub" x="649" y="131">confirmed by regex</text>
+    </g>
+  </svg>
+  <figcaption>
+    The trigram AND does the cheap work, throwing out 99.75% of the tree before the real regex runs, so the
+    expensive matcher only ever opens 119 files.
+  </figcaption>
+</figure>
+
+<style>
+  figure.trigram-diagram .tg-query {
+    fill: var(--muted); font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12.5px;
+  }
+  figure.trigram-diagram .box-sub {
+    fill: var(--muted); font-size: 12px; text-anchor: middle;
+  }
+</style>

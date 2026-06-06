@@ -1,0 +1,112 @@
+---
+title: "Fast code search"
+description: "How code search gets fast: ripgrep's scanning tricks, the trigram index behind Google Code Search and Zoekt built from scratch in Rust, and the embedding-and-HNSW half that finds code by meaning, all benchmarked on the Node.js source."
+pubDate: 2026-06-05
+tags: ["search", "code", "tools", "development"]
+---
+
+import Excerpt from '../../../components/Excerpt.astro';
+import RunnableSnippet from '../../../components/RunnableSnippet.astro';
+import CodeSearchBench from '../../../components/CodeSearchBench.astro';
+import SemanticBench from '../../../components/SemanticBench.astro';
+import DiagramTrigram from '../../../components/DiagramTrigram.astro';
+import DiagramEmbed from '../../../components/DiagramEmbed.astro';
+
+My first attempt at faster search in large codebases was [Lucene](https://lucene.apache.org/), which handles indexing and search nicely. I wanted a small website that showed parts of a codebase and its documentation based on a search term. Later I found a Visual Studio extension from the Chromium engineers called [VsChromium](https://github.com/chromium/vs-chromium). It does real-time search as you type across multi-million-line codebases, and I got used to never waiting for a result.
+
+This post is about where that speed comes from. There are two separate problems hiding under "code search". One is finding an exact string or pattern, which is what grep does, and the interesting question is how to do it over gigabytes without reading every byte. The other is finding code by what it *means*, where the query shares no words with the answer, which no amount of regex will ever do. I will build a working piece of each, then benchmark everything against a real checkout of the [Node.js](https://github.com/nodejs/node) source.
+
+That tree is a good stress test. It is about 49,000 files and 17 million lines, but only a fraction of that is Node's own code. The `deps/` directory alone is V8, ICU, OpenSSL and zlib, so "search the codebase" already means deciding what the codebase even is.
+
+## Scanning without an index
+
+The baseline is to read every file and run the pattern against it. [ripgrep](https://github.com/BurntSushi/ripgrep) is the fast version of that idea, and it is worth seeing why it wins before reaching for anything cleverer. Its author Andrew Gallant [wrote it all down](https://blog.burntsushi.net/ripgrep/): nothing in the hot path is wasteful.
+
+The regex engine is built on finite automata rather than backtracking, so matching is linear in the length of the text with no catastrophic blowup on adversarial patterns. Before that engine even runs, the library pulls the literal strings out of a pattern, including from alternations and optional groups, and uses them as a prefilter. A search for `MakeCallback` becomes a fast scan for the bytes `MakeCallback` using SIMD, and the full automaton only wakes up where that substring is found. When there are many literals to look for at once, it reaches for a SIMD algorithm called [Teddy](https://github.com/BurntSushi/aho-corasick) that packs sixteen-byte comparisons, an idea it borrows from Intel's [Hyperscan](https://github.com/intel/hyperscan). UTF-8 decoding is folded into the automaton itself, so Unicode matching costs nothing extra. On top of that ripgrep walks directories in parallel and skips anything in `.gitignore` by default.
+
+The result is that for a one-off search, an index is often not worth it. ripgrep scans the whole 0.8 GB Node tree for `MakeCallback` in under a tenth of a second, and `git grep` does the same over tracked files, a little slower because it prefilters less.
+
+The catch is the word "one-off". A scanner re-reads everything on every query. If you are serving search to a team, or the corpus does not fit in cache, or you want results before the user finishes typing, paying once to build an index starts to pay off.
+
+## What a trigram index actually does
+
+The trick that makes indexed regex search possible is due to Russ Cox, who built the engine behind the original Google Code Search and [wrote up the technique](https://swtch.com/~rsc/regexp/regexp4.html). The idea is to index every three-byte substring, every *trigram*, and record which files contain it. Two-byte grams are too common to narrow anything down and four-byte grams are too numerous to store, so three is the sweet spot.
+
+Given that index, a regular expression can be turned into a boolean query over trigrams that every match must satisfy. A search for the literal `hello` must appear in files that contain `hel` and `ell` and `llo`. You intersect those three posting lists, and only the survivors get the real regex. The genuinely clever part is that this composes through regex operators. To see it, the smallest thing worth building is the analysis itself.
+
+I wrote a small trigram indexer in Rust to make this concrete. It is a teaching tool, not a ripgrep rival, and the whole thing is dependency-free so you can read it end to end. A trigram query is a tiny boolean algebra:
+
+<Excerpt source="src/content/posts/code-search/trigram/src/query.rs" region="query" lang="rust" />
+
+The analysis walks the regex and, for each subexpression, tracks the exact strings it can match (while that set stays small), how it can start and end, and the trigram query it implies. Concatenation is where the composition happens. When two literals sit next to each other their match queries combine, and the strings that straddle the boundary contribute their own trigrams. When a `.*` sits between them, it severs that boundary, and each side is forced to contribute its trigrams independently:
+
+<Excerpt source="src/content/posts/code-search/trigram/src/query.rs" region="concat" lang="rust" />
+
+That severing is what produces Russ Cox's canonical example. The pattern `Google.*Search` cannot share a trigram across the wildcard, so it compiles to the eight trigrams of `Google` and `Search`, all required. Running the indexer's `explain` command shows the translation directly:
+
+<RunnableSnippet
+  source="src/content/posts/code-search/verify/trigram/run.sh"
+  outputKey="code-search/trigram"
+  command="trigram explain '<regex>'"
+  lang="bash"
+/>
+
+The last two lines show the limits. A wide character class like `[a-z]` carries no single trigram, so `napi_create_[a-z]+` keeps only the trigrams of the fixed prefix. And `ab` is shorter than a trigram, so it compiles to `ALL`: the index cannot help, and you fall back to scanning. This is the rule that keeps the whole scheme correct. When the analysis is unsure, it returns `ALL` and lets the regex pass sort it out. It may scan a few files it did not need to, but it will never skip a file that matches.
+
+Evaluating the query is set algebra over the posting lists, each one binary-searched out of the memory-mapped index rather than parsed up front:
+
+<Excerpt source="src/content/posts/code-search/trigram/src/main.rs" region="evaluate" lang="rust" />
+
+Built against the Node tree, this little indexer covers about 48,000 files in a 234 MB index. The payoff is the pruning. A search for `MakeCallback` turns into ten trigrams, intersects their posting lists in under half a millisecond, and hands back 119 candidate files out of 48,000. That is the whole point: the regex only ever runs on 0.25% of the tree, and the 87 files it confirms are exactly what ripgrep finds. Russ Cox measured a [~100x speedup](https://swtch.com/~rsc/regexp/regexp4.html) on the Linux kernel, where the same trick cut one search from scanning roughly 37,000 files to 25.
+
+<DiagramTrigram />
+
+## The production indexers
+
+Two production systems descend from that article. The reference implementation is Russ Cox's own [google/codesearch](https://github.com/google/codesearch), the `cindex` and `csearch` tools that the regexp article ships with. It uses the trigram index more or less as described, but stores the posting lists with variable-length integer encoding instead of raw offsets, which is why its index is a third the size of my naive one and its queries land in single-digit milliseconds.
+
+[Zoekt](https://github.com/sourcegraph/zoekt), the engine Sourcegraph runs, builds a *positional* trigram index that records where in each file every trigram occurs. That costs more space but means a substring query only has to intersect two posting lists, the one for the opening trigram and the one for the closing trigram, with positions confirming the rest. Its [design doc](https://github.com/sourcegraph/zoekt/blob/main/doc/design.md) shows a query like `(Path|PathFragment).*=.*/usr/local` translating to exactly the boolean-over-substrings shape my toy produces.
+
+Here is everything on the same Node checkout, indexes and scanners side by side.
+
+<CodeSearchBench />
+
+What the table does not show is why. google/codesearch answers the selective queries in single-digit milliseconds because it reads from a compact index it memory-maps and never fully touches. My toy maps its index the same way, so a query faults in only the trigram table and the few posting lists it needs, and the time that is left goes into opening the surviving candidates and running the real regex. The `function` column is the other end: a term in almost every file gives the index nothing to prune, so every tool falls back to scan speed.
+
+On a 0.8 GB tree that fits in cache, none of this is worth much. An index earns its keep when the corpus outgrows memory, when one index serves many queries a second, or when latency has to stay flat no matter how rare the term. Google's Code Search, which evolved [from trigrams through suffix arrays to a sparse n-gram index](https://abseil.io/resources/swe-book/html/ch17.html), indexes around 1.5 TB at sub-50ms median latency. That is the regime indexes are built for.
+
+## The other half: searching by meaning
+
+Everything so far finds text you can describe exactly. None of it can answer "where do we validate a TLS certificate" unless those words appear in the code, and they usually do not. The code says `X509_verify_cert` and `SSL_get_verify_result`, not "validate certificate". This is the gap embeddings fill.
+
+The idea is to turn every chunk of code into a vector of numbers such that code doing similar things lands near similar vectors, do the same to the query, and return the nearest chunks. The query and the answer can share no words at all and still end up close. Three pieces matter, and each is swappable.
+
+<DiagramEmbed />
+
+The first is chunking. Splitting a file every N lines cuts functions in half and glues unrelated code together, which gives the model incoherent things to embed. Splitting on the syntax tree instead keeps each chunk a whole unit. I parse each file with [tree-sitter](https://tree-sitter.github.io/tree-sitter/), then walk the tree greedily, emitting coherent spans up to a size budget and recursing into anything too big, an approach the [cAST paper](https://arxiv.org/abs/2506.15655) shows measurably helps retrieval:
+
+<Excerpt source="src/content/posts/code-search/semantic/embed.py" region="chunk" lang="python" />
+
+The second is the embedding model. Code-specific models are trained so that a natural-language description and the code it describes map to nearby vectors. I used [jina-code-embeddings-0.5b](https://huggingface.co/jinaai/jina-code-embeddings-0.5b). It is a small 2025 model built on a Qwen2.5-Coder backbone and runs comfortably on a desktop GPU. It is also instruction-tuned, so a query and a code chunk get different prefixes before embedding, which is what lets a question and its answer line up despite reading nothing alike.
+
+The third is the index. A few thousand vectors you can compare one by one, but once a corpus runs to hundreds of thousands the brute-force scan gets wasteful, so the standard answer is an approximate nearest-neighbour structure. [HNSW](https://arxiv.org/abs/1603.09320) builds a layered graph where each node links to its near neighbours, with a few long-range links in sparse upper layers. A search starts at the top, greedily walks toward the query, and drops down a layer at a time, which reaches the neighbourhood in roughly logarithmic steps instead of scanning everything. [FAISS](https://github.com/facebookresearch/faiss) has it built in, and it is the same structure whether the index holds ten thousand vectors or ten million:
+
+<Excerpt source="src/content/posts/code-search/semantic/embed.py" region="index" lang="python" />
+
+Querying is the mirror image. Embed the question with the query prefix, search the graph, map the hits back to files:
+
+<Excerpt source="src/content/posts/code-search/semantic/embed.py" region="search" lang="python" />
+
+I scoped this index to Node's own source, the `src/` and `lib/` trees, and left the vendored dependencies in `deps/` out. Embedding all of V8 and OpenSSL would be a couple of GPU-hours and mostly noise for a search like this, which is the same "what is the codebase" question from the start of the post, answered differently. Even scoped down it finds code that no trigram could. The results below are real queries against that index, and none of them share their key words with the files they return. Expand any hit to read the code the model actually matched and open it at the pinned commit on GitHub.
+
+<SemanticBench />
+
+The cost shows up on the other side. Building the index is not free the way a trigram index is: every chunk passes through the model, GPU-minutes rather than seconds of I/O. It goes stale the moment code changes, since an edited function needs re-embedding. And it returns what is *similar*, not what is *correct*, so a search for an exact identifier will surface things that only look related.
+
+## Putting them together
+
+Which is why the real answer is usually both. Lexical search nails identifiers, error strings and anything you can name precisely. Vector search handles intent and paraphrase. [Hybrid search](https://qdrant.tech/articles/hybrid-search/) runs both and fuses the ranked lists, most often with reciprocal rank fusion, which scores each result by its rank in each list rather than trying to reconcile incompatible score scales. For code specifically, the exact half is not optional, because an identifier match is something embeddings routinely miss.
+
+The tools people actually use have sorted themselves along this same line. Sourcegraph's Cody [dropped embeddings](https://sourcegraph.com/blog/how-cody-understands-your-codebase) as its backbone and moved to keyword search over Zoekt with BM25 ranking, citing the cost of sending code to a third party, the operational drag of keeping embeddings fresh, and poor scaling past a hundred thousand repositories. Cursor goes the other way and [maintains a vector index](https://cursor.com/blog/secure-codebase-indexing) of your codebase, syncing it with a Merkle tree so only changed chunks are re-embedded. Claude Code does neither: its creator [said plainly](https://x.com/bcherny/status/2017824286489383315) that early versions used a local vector database and RAG, and that agentic search with plain `grep` (ripgrep, in fact) "generally works better" while sidestepping the staleness, privacy and reliability problems of an index. Not everyone agrees, and vector-database vendors will [tell you](https://milvus.io/blog/why-im-against-claude-codes-grep-only-retrieval-it-just-burns-too-many-tokens.md) grep burns too many tokens on large repos. Both are right about different repositories.
+
+There is no single fast code search. A scanner for when you know the bytes you want, a trigram or suffix-array index for when you will ask many times, an embedding index for when you do not know the words at all. Knowing which one a query needs is the whole game, and most serious systems just run more than one.
