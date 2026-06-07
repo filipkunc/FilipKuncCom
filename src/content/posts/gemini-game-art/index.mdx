@@ -22,15 +22,15 @@ with custom background color and margin to ensure it is possible to slice it pro
 
 The frames are packed into a single sheet first. Each sprite sits on a magenta background, picked because no game sprite uses that color, so it is easy to find and strip out again afterwards. The margin around each one leaves Gemini room to add wings or a cape beyond the original silhouette.
 
-<Excerpt source="src/content/posts/gemini-game-art/gemini_client.py" region="defaults" lang="python" href="https://github.com/filipkunc/fheroes2/blob/FK/Azure-Dragon/tools/sprite_editor/gemini/gemini_client.py#L22-L25" />
+<Excerpt source="src/content/posts/gemini-game-art/gemini_client.py" region="defaults" lang="python" href="https://github.com/filipkunc/fheroes2/blob/91e08cff9f0f389becc4d4f9f33a5a7a1b1c0741/tools/sprite_editor/gemini/gemini_client.py#L22-L25" />
 
 The sheet then goes to Gemini as an image-to-image edit. The prompt pins the result to the same size and frame layout so everything still lines up when it is sliced back, and the default safety filters are turned off, because skeletons, demons and dragons trip them constantly.
 
-<Excerpt source="src/content/posts/gemini-game-art/gemini_client.py" region="generate" lang="python" href="https://github.com/filipkunc/fheroes2/blob/FK/Azure-Dragon/tools/sprite_editor/gemini/gemini_client.py#L250-L274" />
+<Excerpt source="src/content/posts/gemini-game-art/gemini_client.py" region="generate" lang="python" href="https://github.com/filipkunc/fheroes2/blob/91e08cff9f0f389becc4d4f9f33a5a7a1b1c0741/tools/sprite_editor/gemini/gemini_client.py#L250-L274" />
 
 Slicing the sheet back into frames is the fiddly part. Gemini does not hand back a clean magenta background, it blends the edges towards it, so a plain color match leaves a colored fringe around every sprite. The editor matches the background by hue instead, which catches those blended pixels and clears them to transparent.
 
-<Excerpt source="src/content/posts/gemini-game-art/gemini_client.py" region="mask" lang="python" href="https://github.com/filipkunc/fheroes2/blob/FK/Azure-Dragon/tools/sprite_editor/gemini/gemini_client.py#L136-L160" />
+<Excerpt source="src/content/posts/gemini-game-art/gemini_client.py" region="mask" lang="python" href="https://github.com/filipkunc/fheroes2/blob/91e08cff9f0f389becc4d4f9f33a5a7a1b1c0741/tools/sprite_editor/gemini/gemini_client.py#L136-L160" />
 
 This process works pretty well, especially with manual tuning of the prompt and few attempts.
 
