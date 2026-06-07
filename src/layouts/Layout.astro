@@ -342,6 +342,55 @@ const imageURL = new URL(image, Astro.site).href;
       .code-file-label > .copy-btn svg { width: 0.85rem; height: 0.85rem; }
       .code-file:hover .code-file-label > .copy-btn,
       .snippet-section:hover .code-file-label > .copy-btn { opacity: 1; }
+
+      /* Click-to-zoom lightbox for content images (see the script below). The
+         hint cursor is only applied once JS marks images as zoomable, so it
+         never appears when the lightbox would not actually open. */
+      main img.zoomable { cursor: zoom-in; }
+      .lightbox {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        overflow: auto;
+        background: color-mix(in srgb, var(--bg) 12%, rgba(0, 0, 0, 0.92));
+        overscroll-behavior: contain;
+      }
+      .lightbox.is-open { display: flex; }
+      .lightbox img {
+        max-width: 100%;
+        max-height: 100%;
+        margin: auto;
+        border-radius: 4px;
+        cursor: zoom-in;
+      }
+      /* Zoomed: show the image at its natural pixels and let the overlay scroll. */
+      .lightbox.is-zoomed { justify-content: flex-start; align-items: flex-start; }
+      .lightbox.is-zoomed img {
+        max-width: none;
+        max-height: none;
+        cursor: zoom-out;
+      }
+      .lightbox-close {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        width: 2.4rem;
+        height: 2.4rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--fg);
+        background: color-mix(in srgb, var(--bg) 70%, transparent);
+        border: 1px solid var(--rule);
+        border-radius: 50%;
+        cursor: pointer;
+        line-height: 1;
+      }
+      .lightbox-close svg { width: 1.1rem; height: 1.1rem; display: block; }
     </style>
 
     <script>
@@ -406,6 +455,68 @@ const imageURL = new URL(image, Astro.site).href;
           wrap.appendChild(pre);
           wrap.appendChild(btn);
         }
+      });
+    </script>
+
+    <script>
+      // Click-to-zoom lightbox for content images. Detailed screenshots render
+      // small in the column, so clicking one opens it full-size in an overlay;
+      // clicking the image again toggles actual-pixel zoom (the overlay scrolls),
+      // and Escape or a click on the backdrop closes it. Images that are already
+      // links keep their link behaviour and are left alone.
+      const lightbox = document.createElement('div');
+      lightbox.className = 'lightbox';
+      lightbox.setAttribute('role', 'dialog');
+      lightbox.setAttribute('aria-modal', 'true');
+      lightbox.innerHTML =
+        '<button type="button" class="lightbox-close" aria-label="Close">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+        '</button><img alt="">';
+      const lightboxImg = lightbox.querySelector('img') as HTMLImageElement;
+      document.body.appendChild(lightbox);
+
+      // Pick the highest-resolution candidate so the zoom shows real detail,
+      // not the small variant the column happened to load.
+      function bestSrc(img: HTMLImageElement): string {
+        const set = img.getAttribute('srcset');
+        if (set) {
+          const best = set
+            .split(',')
+            .map((part) => {
+              const [url, w] = part.trim().split(/\s+/);
+              return { url, w: parseInt(w) || 0 };
+            })
+            .sort((a, b) => b.w - a.w)[0];
+          if (best?.url) return best.url;
+        }
+        return img.currentSrc || img.src;
+      }
+
+      function closeLightbox() {
+        lightbox.classList.remove('is-open', 'is-zoomed');
+        lightboxImg.removeAttribute('src');
+        document.body.style.overflow = '';
+      }
+
+      document.querySelectorAll<HTMLImageElement>('main img').forEach((img) => {
+        if (img.closest('a')) return; // an intentional link, not a zoom target
+        img.classList.add('zoomable');
+        img.addEventListener('click', () => {
+          lightboxImg.src = bestSrc(img);
+          lightboxImg.alt = img.alt || '';
+          lightbox.classList.remove('is-zoomed');
+          lightbox.classList.add('is-open');
+          document.body.style.overflow = 'hidden';
+        });
+      });
+
+      lightbox.addEventListener('click', (e) => {
+        // Clicking the image toggles zoom; clicking anywhere else closes.
+        if (e.target === lightboxImg) lightbox.classList.toggle('is-zoomed');
+        else closeLightbox();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && lightbox.classList.contains('is-open')) closeLightbox();
       });
     </script>
   </body>
