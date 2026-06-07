@@ -2,6 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 import { getCollection, render, type CollectionEntry } from 'astro:content';
 import type { GetStaticPaths } from 'astro';
+import fs from 'node:fs';
 
 export const getStaticPaths: GetStaticPaths = async () => {
   const posts = await getCollection('posts', ({ data }) => !data.draft);
@@ -17,6 +18,10 @@ interface Props {
 
 const { post } = Astro.props as Props;
 const { Content } = await render(post);
+
+// Use the per-post OG image (scripts/gen-og.mjs -> public/og/<slug>.png) when
+// one exists; otherwise Layout falls back to the site-wide banner.
+const ogImage = fs.existsSync(`public/og/${post.id}.png`) ? `/og/${post.id}.png` : undefined;
 ---
 
 <Layout
@@ -24,6 +29,7 @@ const { Content } = await render(post);
   description={post.data.description}
   type="article"
   publishedDate={post.data.pubDate}
+  image={ogImage}
 >
   <article>
     <h1>{post.data.title}</h1>
