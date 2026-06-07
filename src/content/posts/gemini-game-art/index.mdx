@@ -6,6 +6,7 @@ tags: ["gamedev", "ai", "art"]
 ---
 
 import screencast_gameplay from './screencast-gameplay.webm';
+import Excerpt from '../../../components/Excerpt.astro';
 
 My long time favorite game is [Heroes of the Might and Magic II](https://en.wikipedia.org/wiki/Heroes_of_Might_and_Magic_II) and [III](https://en.wikipedia.org/wiki/Heroes_of_Might_and_Magic_III). I play both of them since their creation in the late 1990s and early 2000s, and I still enjoy them.
 I always wanted to create new units for those games, but my art skills are really bad. I managed to create smaller games with my brother where I supplied the programming and he did the art side, but this was always very limited in scope.
@@ -16,6 +17,20 @@ I really like the open source project [fheroes2](https://github.com/ihhub/fheroe
 
 To do that, I built (well Claude did) a sprite editor which sends selected frames from the original sprite sheet to Gemini
 with custom background color and margin to ensure it is possible to slice it properly afterwards.
+
+## How the sprite editor works
+
+The frames are packed into a single sheet first. Each sprite sits on a magenta background, picked because no game sprite uses that color, so it is easy to find and strip out again afterwards. The margin around each one leaves Gemini room to add wings or a cape beyond the original silhouette.
+
+<Excerpt source="src/content/posts/gemini-game-art/gemini_client.py" region="defaults" lang="python" href="https://github.com/filipkunc/fheroes2/blob/FK/Azure-Dragon/tools/sprite_editor/gemini/gemini_client.py#L22-L25" />
+
+The sheet then goes to Gemini as an image-to-image edit. The prompt pins the result to the same size and frame layout so everything still lines up when it is sliced back, and the default safety filters are turned off, because skeletons, demons and dragons trip them constantly.
+
+<Excerpt source="src/content/posts/gemini-game-art/gemini_client.py" region="generate" lang="python" href="https://github.com/filipkunc/fheroes2/blob/FK/Azure-Dragon/tools/sprite_editor/gemini/gemini_client.py#L250-L274" />
+
+Slicing the sheet back into frames is the fiddly part. Gemini does not hand back a clean magenta background, it blends the edges towards it, so a plain color match leaves a colored fringe around every sprite. The editor matches the background by hue instead, which catches those blended pixels and clears them to transparent.
+
+<Excerpt source="src/content/posts/gemini-game-art/gemini_client.py" region="mask" lang="python" href="https://github.com/filipkunc/fheroes2/blob/FK/Azure-Dragon/tools/sprite_editor/gemini/gemini_client.py#L136-L160" />
 
 This process works pretty well, especially with manual tuning of the prompt and few attempts.
 
