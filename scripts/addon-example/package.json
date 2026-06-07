@@ -1,0 +1,26 @@
+{
+  "name": "addon-example",
+  "private": true,
+  "type": "module",
+  "description": "Reproducible example for the native-node-addons post (not deployed)",
+  "scripts": {
+    "build:cpp": "cmake -S cpp -B cpp/build -DCMAKE_BUILD_TYPE=Release && cmake --build cpp/build -j",
+    "test:cpp": "ctest --test-dir cpp/build --output-on-failure",
+    "build:rust": "cd rust && napi build --release --platform",
+    "test:rust": "cd rust && cargo test",
+    "test:ts": "ava"
+  },
+  "ava": {
+    "extensions": { "ts": "module" },
+    "nodeArguments": ["--import=tsx/esm"],
+    "files": ["ts/**/*.test.ts"]
+  },
+  "devDependencies": {
+    "node-addon-api": "^8.3.0",
+    "node-api-headers": "^1.4.0",
+    "nan": "^2.20.0",
+    "ava": "^6.1.3",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.0"
+  }
+}

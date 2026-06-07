@@ -1,0 +1,10 @@
+node_modules/
+cpp/build/
+rust/target/
+rust/*.node
+rust/index.js
+rust/index.d.ts
+wasm/target/
+*.node
+*.wasm
+build/

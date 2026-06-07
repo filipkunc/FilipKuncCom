@@ -1,0 +1,100 @@
+---
+title: "Native Node.js addons: wrapping native code four ways"
+description: "The same native compressor wrapped for Node four ways, with NaN, Node-API, napi.rs, and WebAssembly."
+pubDate: 2026-06-07
+draft: false
+tags: ["node.js", "c++", "rust", "native addons", "node-gyp", "cmake", "napi", "napi-rs", "wasm"]
+---
+
+import CodeTabs from '../../../components/CodeTabs.astro';
+
+You found a native library you want in Node, or you have CPU work that would freeze the event loop. Either way you are writing a native addon. This post wraps the [miniz](https://github.com/richgel999/miniz) deflate compressor as a clean async API.
+
+The compression is incidental. The binding does the real work. It turns a `Buffer` into native bytes, runs off the event loop and returns a `Promise`, frees a native handle without leaking or double-freeing it, and ships without a compiler. Those jobs are the same whatever you wrap, so they are what this post compares, the same four ways: [NaN](https://github.com/nodejs/nan), the ABI-stable [Node-API](https://nodejs.org/api/n-api.html) in C++, [napi.rs](https://napi.rs/) in Rust, and [WebAssembly](https://developer.mozilla.org/en-US/docs/Web/API/WebAssembly). Every snippet is lifted from the `scripts/addon-example` workspace, which builds and tests all four.
+
+## The API we want
+
+miniz in C for the C++ and wasm builds, and [flate2](https://crates.io/crates/flate2) (its default backend is [miniz_oxide](https://crates.io/crates/miniz_oxide), miniz's Rust port) in Rust.
+
+```js
+import { compressAsync, Deflater } from "fast-deflate";
+
+// one-shot, runs off the event loop
+const packed = await compressAsync(input, { level: 6 });
+
+// a streaming handle that owns native state
+const d = new Deflater({ level: 9 });
+const out = Buffer.concat([d.push(chunkA), d.push(chunkB), d.finish()]);
+```
+
+The compression sits in a plain function per language. Each binding is a thin wrapper around it.
+
+## Type marshalling
+
+Getting bytes across the boundary. Node-API and napi.rs hide the copy behind a typed `Buffer`. NaN is the same in raw V8, which is why it is legacy. WebAssembly has no `Buffer`, so you copy through linear memory by hand.
+
+<CodeTabs group="marshalling" tabs={[
+  { label: "Node-API (C++)", source: "scripts/addon-example/cpp/binding.cpp", region: "marshalling", lang: "cpp" },
+  { label: "napi.rs (Rust)", source: "scripts/addon-example/rust/src/lib.rs", region: "marshalling", lang: "rust" },
+  { label: "NaN (C++)", source: "scripts/addon-example/nan/nan_binding.cpp", region: "nan-marshalling", lang: "cpp" },
+  { label: "WebAssembly", source: "scripts/addon-example/ts/wasm-loader.ts", region: "wasm-marshalling", lang: "ts" },
+]} />
+
+## Async
+
+Compressing a large buffer synchronously stalls the loop. C++ copies out of V8 and runs on a libuv worker thread in a `Napi::AsyncWorker`; napi.rs is just an `async fn` with `spawn_blocking`. WebAssembly has no threadpool, so off the main thread means a `worker_thread` and message-passing.
+
+<CodeTabs group="async" tabs={[
+  { label: "Node-API (C++)", source: "scripts/addon-example/cpp/binding.cpp", region: "async", lang: "cpp" },
+  { label: "napi.rs (Rust)", source: "scripts/addon-example/rust/src/lib.rs", region: "async", lang: "rust" },
+]} />
+
+## Object lifecycle
+
+The streaming `Deflater` owns native state tied to a garbage-collected object. Node-API frees it in a destructor that runs as a finalizer. napi.rs lets the `Drop` trait do it, with the boundary lifetime [managed by Node-API references](https://napi.rs/docs/concepts/understanding-lifetime), not Rust lifetimes. Both fire on GC, so the timing is non-deterministic.
+
+<CodeTabs group="lifecycle" tabs={[
+  { label: "Node-API (C++)", source: "scripts/addon-example/cpp/binding.cpp", region: "lifecycle", lang: "cpp" },
+  { label: "napi.rs (Rust)", source: "scripts/addon-example/rust/src/lib.rs", region: "lifecycle", lang: "rust" },
+]} />
+
+`using` makes cleanup deterministic, freeing the handle at the end of the scope through its [`Symbol.dispose`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/dispose) method. C++ registers the symbol natively (the last line of `Init`). napi.rs has no built-in one, so `register_disposer` binds it from Rust. WebAssembly has neither, so you free the offset yourself.
+
+## Using it from TypeScript
+
+The two read almost the same, except napi.rs ships generated `.d.ts` types from the Rust signatures and needs `registerDisposer()` once, behind a factory, for `using` to work.
+
+<CodeTabs group="usage" tabs={[
+  { label: "Node-API / NaN", source: "scripts/addon-example/ts/usage.ts", region: "usage", lang: "ts" },
+  { label: "napi.rs", source: "scripts/addon-example/ts/usage.ts", region: "usage-rust", lang: "ts" },
+]} />
+
+## Testing it
+
+The core is a plain function, so it is unit-tested without Node, then the built addons end-to-end from TypeScript with [ava](https://github.com/avajs/ava) (which also covers wasm and checks the output is real zlib via Node's own `zlib`).
+
+<CodeTabs group="tests" tabs={[
+  { label: "C++ (GoogleTest)", source: "scripts/addon-example/cpp/test/deflate_test.cpp", region: "gtest-test", lang: "cpp", outputKey: "native-node-addons/cpp", command: "./deflate_test" },
+  { label: "Rust (cargo test)", source: "scripts/addon-example/rust/src/lib.rs", region: "rust-test", lang: "rust", outputKey: "native-node-addons/rust", command: "cargo test" },
+  { label: "TypeScript (ava)", source: "scripts/addon-example/ts/lib.test.ts", region: "ava-test", lang: "ts", outputKey: "native-node-addons/ava", command: "npx ava" },
+]} />
+
+## Building and shipping it
+
+Only the C and C++ bindings need a build system. `node-gyp` is the old default, built on the abandoned `gyp-next` and needing Python plus the MSVC build tools on Windows. Plain CMake is more portable and pulls the Node-API headers from the npm packages. The Rust side is a `Cargo.toml` with the compressor as an ordinary dependency.
+
+<CodeTabs group="config" tabs={[
+  { label: "C++ (CMake)", source: "scripts/addon-example/cpp/CMakeLists.txt", region: "cmake", lang: "cmake", fileLabel: "CMakeLists.txt" },
+  { label: "Rust (Cargo)", source: "scripts/addon-example/rust/Cargo.toml", region: "cargo", lang: "toml", fileLabel: "Cargo.toml" },
+]} />
+
+Building each is a one-liner, and napi.rs reaches WebAssembly from the same crate, one `rustup target` away.
+
+<CodeTabs group="buildcmd" tabs={[
+  { label: "C++", source: "scripts/addon-example/build-commands.sh", region: "cpp", lang: "bash" },
+  { label: "Rust", source: "scripts/addon-example/build-commands.sh", region: "rust", lang: "bash" },
+  { label: "WebAssembly (C)", source: "scripts/addon-example/build-commands.sh", region: "wasm-c", lang: "bash" },
+  { label: "WebAssembly (Rust)", source: "scripts/addon-example/build-commands.sh", region: "wasm-rust", lang: "bash" },
+]} />
+
+On a user's machine, nothing should compile, so ship prebuilt binaries and let a loader like [node-gyp-build](https://github.com/prebuild/node-gyp-build) pick one. The Rust tab above is the whole distribution story: from one Linux runner, [cargo-zigbuild](https://github.com/rust-cross/cargo-zigbuild) and [cargo-xwin](https://github.com/rust-cross/cargo-xwin) cross-compile every platform, Windows and arm64 included, and each `.node` publishes as its own package wired into `optionalDependencies` so `npm install` pulls only the user's binary. C++ reaches the same end with prebuilds, but one CI job per operating system, because you cannot cross-compile a macOS or Windows addon from Linux. WebAssembly skips the matrix entirely, one artifact everywhere, and the same Rust crate compiles to wasm through [emnapi](https://github.com/toyobayashi/emnapi).

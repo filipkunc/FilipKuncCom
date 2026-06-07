@@ -124,5 +124,26 @@
     "exitCode": 0,
     "durationMs": 391,
     "verifiedAt": "2026-06-05T21:52:34.693Z"
+  },
+  "native-node-addons/cpp": {
+    "stdout": "Running main() from /home/fkunc/Projects/FilipKuncCom/scripts/addon-example/cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc\n[==========] Running 4 tests from 2 test suites.\n[----------] Global test environment set-up.\n[----------] 3 tests from Deflate\n[ RUN      ] Deflate.RoundTrips\n[       OK ] Deflate.RoundTrips (0 ms)\n[ RUN      ] Deflate.EmptyInput\n[       OK ] Deflate.EmptyInput (0 ms)\n[ RUN      ] Deflate.HigherLevelIsNotLarger\n[       OK ] Deflate.HigherLevelIsNotLarger (0 ms)\n[----------] 3 tests from Deflate (0 ms total)\n\n[----------] 1 test from Inflate\n[ RUN      ] Inflate.RejectsGarbage\n[       OK ] Inflate.RejectsGarbage (0 ms)\n[----------] 1 test from Inflate (0 ms total)\n\n[----------] Global test environment tear-down\n[==========] 4 tests from 2 test suites ran. (0 ms total)\n[  PASSED  ] 4 tests.\n",
+    "stderr": "",
+    "exitCode": 0,
+    "durationMs": 6,
+    "verifiedAt": "2026-06-07T19:27:42.926Z"
+  },
+  "native-node-addons/rust": {
+    "stdout": "\nrunning 3 tests\ntest tests::inflate_rejects_garbage ... ok\ntest tests::round_trips ... ok\ntest tests::higher_level_is_not_larger ... ok\n\ntest result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n",
+    "stderr": "",
+    "exitCode": 0,
+    "durationMs": 457,
+    "verifiedAt": "2026-06-07T19:27:43.384Z"
+  },
+  "native-node-addons/ava": {
+    "stdout": "\n  ✔ wasm › wasm: compress round-trips\n  ✔ wasm › wasm: output is standard zlib\n  ✔ lib › cpp: compress round-trips\n  ✔ lib › cpp: Deflater streams chunks\n  ✔ lib › cpp: output is standard zlib\n  ✔ lib › rust: compress round-trips\n  ✔ lib › rust: Deflater streams chunks\n  ✔ lib › rust: output is standard zlib\n  ✔ lib › nan: compress round-trips and is standard zlib\n  ✔ lib › cpp: using disposes the Deflater handle\n  ✔ lib › rust: using disposes via native registerDisposer\n  ✔ lib › cpp: compressAsync resolves a Buffer\n  ✔ lib › rust: compressAsync resolves a Buffer\n  ─\n\n  13 tests passed\n",
+    "stderr": "",
+    "exitCode": 0,
+    "durationMs": 614,
+    "verifiedAt": "2026-06-07T19:27:43.998Z"
   }
 }

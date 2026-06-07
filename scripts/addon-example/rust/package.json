@@ -1,0 +1,6 @@
+{
+  "name": "fast-deflate",
+  "version": "0.1.0",
+  "napi": { "binaryName": "fast-deflate" },
+  "devDependencies": { "@napi-rs/cli": "^3" }
+}

@@ -1,0 +1,145 @@
+---
+// Tabbed, multi-language code blocks (AWS/Azure-style). Pure CSS switching, no
+// client JS. Each tab reads a region from a real source file, exactly like
+// Excerpt, and may carry captured output from snippet-manifest.json like
+// RunnableSnippet. Supports up to 6 tabs.
+import { Code } from 'astro:components';
+import { basename, join } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { readSource, locateRegion, sourceUrl } from '../lib/snippets';
+import { CODE_THEMES, CODE_DEFAULT_COLOR } from '../lib/code-theme';
+
+interface Tab {
+  label: string;
+  source: string;
+  region?: string;
+  lang: Parameters<typeof Code>[0]['lang'];
+  fileLabel?: string;
+  outputKey?: string;
+  command?: string;
+}
+interface Props {
+  tabs: Tab[];
+  group: string;
+}
+const { tabs, group } = Astro.props;
+const gid = group.replace(/[^a-z0-9]+/gi, '-');
+
+let manifest: Record<string, { stdout: string; verifiedAt: string }> = {};
+if (tabs.some((t) => t.outputKey)) {
+  manifest = JSON.parse(readFileSync(join(process.cwd(), 'snippet-manifest.json'), 'utf8'));
+}
+
+const panels = tabs.map((t) => {
+  const full = readSource(t.source);
+  const loc = t.region
+    ? locateRegion(full, t.region)
+    : { code: full, startLine: 1, endLine: full.split('\n').length };
+  const filename = t.fileLabel ?? (t.region ? `${basename(t.source)} › ${t.region}` : basename(t.source));
+  const out = t.outputKey ? manifest[t.outputKey] : undefined;
+  if (t.outputKey && !out) throw new Error(`CodeTabs: no manifest entry for "${t.outputKey}"`);
+  return {
+    code: loc.code,
+    lang: t.lang,
+    filename,
+    href: sourceUrl(t.source, loc.startLine, loc.endLine),
+    command: t.command,
+    output: out?.stdout,
+    verifiedAt: out?.verifiedAt?.slice(0, 10),
+  };
+});
+---
+
+<figure class="code-tabs">
+  {tabs.map((_, i) => (
+    <input class="ct-radio" type="radio" name={gid} id={`${gid}-${i}`} checked={i === 0} />
+  ))}
+  <div class="ct-row" role="tablist">
+    {tabs.map((t, i) => (
+      <label class="ct-tab" for={`${gid}-${i}`}>{t.label}</label>
+    ))}
+  </div>
+  <div class="ct-panels">
+    {panels.map((p) => (
+      <div class="ct-panel">
+        <div class="ct-frame">
+          <div class="ct-label">
+            <a class="ct-src" href={p.href} target="_blank" rel="noopener noreferrer">
+              {p.filename} <span class="ext" aria-hidden="true">↗</span>
+            </a>
+          </div>
+          <Code code={p.code} lang={p.lang} themes={CODE_THEMES} defaultColor={CODE_DEFAULT_COLOR} />
+          {p.output !== undefined && (
+            <div class="ct-output">
+              <div class="ct-runline">
+                <span><span class="ct-prompt">$</span> {p.command}</span>
+                <span class="ct-verified">captured {p.verifiedAt}</span>
+              </div>
+              <pre class="ct-plain"><code>{p.output}</code></pre>
+            </div>
+          )}
+        </div>
+      </div>
+    ))}
+  </div>
+</figure>
+
+<style>
+  .code-tabs { position: relative; margin: 1.5rem 0; }
+  .ct-radio { position: absolute; opacity: 0; width: 0; height: 0; }
+  .ct-row { display: flex; flex-wrap: wrap; gap: 0.2rem; }
+  .ct-tab {
+    padding: 0.35rem 0.8rem; font-size: 0.78rem; cursor: pointer; user-select: none;
+    color: var(--muted); background: color-mix(in srgb, var(--fg) 4%, transparent);
+    border: 1px solid var(--rule); border-bottom: none; border-radius: 6px 6px 0 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .ct-tab:hover { color: var(--fg); }
+  .ct-frame {
+    border: 1px solid var(--rule); border-radius: 0 6px 6px 6px;
+    overflow: hidden; background: var(--bg);
+  }
+  .ct-label {
+    padding: 0.3rem 0.75rem; font-size: 0.75rem; color: var(--muted);
+    background: color-mix(in srgb, var(--fg) 4%, transparent);
+    border-bottom: 1px solid var(--rule);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .ct-src { color: var(--link); }
+  .ct-src .ext { font-size: 0.85em; opacity: 0.75; }
+  .ct-frame :global(pre.astro-code) { margin: 0; border-radius: 0; font-size: 0.85em; }
+  .ct-panel { display: none; }
+  .ct-output { border-top: 1px solid var(--rule); }
+  .ct-runline {
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;
+    padding: 0.35rem 0.75rem; font-size: 0.75rem; color: var(--muted);
+    background: color-mix(in srgb, var(--fg) 4%, transparent);
+    border-bottom: 1px solid var(--rule);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .ct-prompt { user-select: none; margin-right: 0.25rem; }
+  .ct-verified { font-style: italic; }
+  .ct-plain {
+    margin: 0; padding: 0.6rem 0.75rem; overflow-x: auto; font-size: 0.82em;
+    background: color-mix(in srgb, var(--fg) 3%, transparent); color: var(--fg);
+  }
+
+  /* CSS-only switching, up to 6 tabs */
+  .ct-radio:nth-of-type(1):checked ~ .ct-panels > .ct-panel:nth-child(1),
+  .ct-radio:nth-of-type(2):checked ~ .ct-panels > .ct-panel:nth-child(2),
+  .ct-radio:nth-of-type(3):checked ~ .ct-panels > .ct-panel:nth-child(3),
+  .ct-radio:nth-of-type(4):checked ~ .ct-panels > .ct-panel:nth-child(4),
+  .ct-radio:nth-of-type(5):checked ~ .ct-panels > .ct-panel:nth-child(5),
+  .ct-radio:nth-of-type(6):checked ~ .ct-panels > .ct-panel:nth-child(6) { display: block; }
+
+  .ct-radio:nth-of-type(1):checked ~ .ct-row > .ct-tab:nth-child(1),
+  .ct-radio:nth-of-type(2):checked ~ .ct-row > .ct-tab:nth-child(2),
+  .ct-radio:nth-of-type(3):checked ~ .ct-row > .ct-tab:nth-child(3),
+  .ct-radio:nth-of-type(4):checked ~ .ct-row > .ct-tab:nth-child(4),
+  .ct-radio:nth-of-type(5):checked ~ .ct-row > .ct-tab:nth-child(5),
+  .ct-radio:nth-of-type(6):checked ~ .ct-row > .ct-tab:nth-child(6) {
+    color: var(--fg); background: var(--bg); font-weight: 600;
+    border-bottom: 1px solid var(--bg); margin-bottom: -1px;
+  }
+  .ct-radio:focus-visible ~ .ct-row > .ct-tab { text-decoration: underline; }
+</style>

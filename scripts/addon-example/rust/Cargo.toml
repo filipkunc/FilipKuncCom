@@ -1,0 +1,18 @@
+# #region cargo
+[package]
+name = "fast-deflate"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+napi = { version = "3", features = ["tokio_rt"] }
+napi-derive = "3"
+flate2 = "1"
+tokio = { version = "1", features = ["rt"] }
+
+[build-dependencies]
+napi-build = "2"
+# #endregion cargo
