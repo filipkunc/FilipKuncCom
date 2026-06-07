@@ -4,10 +4,34 @@ import 'katex/dist/katex.min.css';
 interface Props {
   title: string;
   description?: string;
+  /** Page type for Open Graph. Posts pass 'article'; everything else is a 'website'. */
+  type?: 'website' | 'article';
+  /** Site-relative or absolute preview image. Defaults to the site-wide banner. */
+  image?: string;
+  /** ISO publish date, emitted as article:published_time for 'article' pages. */
+  publishedDate?: Date;
 }
 
-const { title, description } = Astro.props;
+const {
+  title,
+  description,
+  type = 'website',
+  image = '/og-default.png',
+  publishedDate,
+} = Astro.props;
 const fullTitle = title === 'filipkunc.com' ? title : `${title} — filipkunc.com`;
+
+// Fall back to the site tagline so pages without their own description still
+// get a sensible card on social and in search results.
+const SITE_DESCRIPTION = 'Notes, projects, and experiments by Filip Kunc.';
+const metaDescription = description ?? SITE_DESCRIPTION;
+
+// Astro.site is https://filipkunc.com. Build absolute URLs for canonical and
+// og:image — social scrapers and search engines require fully-qualified ones.
+// trailingSlash is 'never', so normalise '/posts/' -> '/posts' (root stays '/').
+const canonicalPath = Astro.url.pathname.replace(/\/$/, '') || '/';
+const canonicalURL = new URL(canonicalPath, Astro.site).href;
+const imageURL = new URL(image, Astro.site).href;
 ---
 
 <!doctype html>
@@ -16,7 +40,27 @@ const fullTitle = title === 'filipkunc.com' ? title : `${title} — filipkunc.co
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark light" />
-    {description && <meta name="description" content={description} />}
+    <meta name="description" content={metaDescription} />
+    <link rel="canonical" href={canonicalURL} />
+
+    <!-- Open Graph: how the link renders when shared (LinkedIn, Slack, etc.) -->
+    <meta property="og:type" content={type} />
+    <meta property="og:site_name" content="filipkunc.com" />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={metaDescription} />
+    <meta property="og:url" content={canonicalURL} />
+    <meta property="og:image" content={imageURL} />
+    {type === 'article' && publishedDate && (
+      <meta property="article:published_time" content={publishedDate.toISOString()} />
+    )}
+
+    <!-- Twitter/X card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={metaDescription} />
+    <meta name="twitter:image" content={imageURL} />
+
+    <link rel="alternate" type="application/rss+xml" title="filipkunc.com" href="/rss.xml" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />

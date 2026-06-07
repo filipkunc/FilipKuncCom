@@ -15,6 +15,7 @@
     "start": "node server-dist/index.js",
     "preview": "astro preview",
     "verify": "node scripts/verify-snippets.mjs",
+    "og": "node scripts/gen-og.mjs",
     "check": "astro check && tsc -p src/server/tsconfig.json --noEmit",
     "test:e2e": "playwright test",
     "bench": "node scripts/bench-normals.mjs",
@@ -35,6 +36,7 @@
   },
   "dependencies": {
     "@astrojs/react": "^5.0.5",
+    "@astrojs/rss": "^4.0.18",
     "@typescript/vfs": "^1.6.4",
     "katex": "^0.17.0",
     "monaco-editor": "^0.55.1",
