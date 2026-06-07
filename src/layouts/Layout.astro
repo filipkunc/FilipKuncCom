@@ -234,8 +234,10 @@ const imageURL = new URL(image, Astro.site).href;
       ul, ol { padding-left: 1.5rem; }
       img, video { max-width: 100%; height: auto; display: block; margin: 1.5rem auto; border-radius: 4px; }
       video { background: #000; }
-      a > img { transition: box-shadow 0.15s ease; }
-      a:hover > img, a:focus-visible > img {
+      /* Accent ring on hover for interactive images: linked images (e.g. the
+         Old Stuff demos) and zoomable content images (open the lightbox). */
+      a > img, main img.zoomable { transition: box-shadow 0.15s ease; }
+      a:hover > img, a:focus-visible > img, main img.zoomable:hover {
         box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 60%, transparent);
       }
       .post-list { list-style: none; padding: 0; }
@@ -344,9 +346,11 @@ const imageURL = new URL(image, Astro.site).href;
       .snippet-section:hover .code-file-label > .copy-btn { opacity: 1; }
 
       /* Click-to-zoom lightbox for content images (see the script below). The
-         hint cursor is only applied once JS marks images as zoomable, so it
-         never appears when the lightbox would not actually open. */
-      main img.zoomable { cursor: zoom-in; }
+         pointer hint is only applied once JS marks images as zoomable, so it
+         never appears when the lightbox would not actually open. The zoom-in /
+         zoom-out cursors live inside the overlay, where clicking truly changes
+         magnification. */
+      main img.zoomable { cursor: pointer; }
       .lightbox {
         position: fixed;
         inset: 0;
