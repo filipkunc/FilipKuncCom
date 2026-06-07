@@ -1,6 +1,11 @@
 node_modules/
 dist/
 server-dist/
+
+# Generated Open Graph images (npm run og, run as part of build). Derived from
+# the post source images, so they are build artifacts, not tracked source.
+/public/og/
+/public/og-default.png
 .astro/
 .cache/
 npm-debug.log*
