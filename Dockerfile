@@ -8,6 +8,11 @@ ARG NODE_VERSION=24-alpine
 FROM node:${NODE_VERSION} AS build
 WORKDIR /app
 
+# Fonts for OG image generation (scripts/gen-og.mjs renders SVG text via sharp).
+# Alpine ships none, so without these the cards render tofu boxes. DejaVu Sans /
+# Sans Mono match the families the generator requests.
+RUN apk add --no-cache fontconfig ttf-dejavu
+
 # Install deps with a clean cache. package-lock.json is the integrity check.
 COPY package.json package-lock.json* ./
 RUN npm ci --no-audit --no-fund

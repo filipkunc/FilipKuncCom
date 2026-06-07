@@ -10,7 +10,8 @@ npm-debug.log*
 ansible
 deploy.sh
 rollback.sh
-scripts
+scripts/*
+!scripts/gen-og.mjs
 README.md
 *.md
 .dockerignore
