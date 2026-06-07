@@ -162,6 +162,11 @@ const imageURL = new URL(image, Astro.site).href;
       header .brand { display: inline-flex; align-items: center; gap: 0.55rem; font-weight: 600; }
       header .brand-avatar { width: 1.75rem; height: 1.75rem; border-radius: 50%; flex: none; }
       header .spacer { flex: 1; }
+      @media (max-width: 30rem) {
+        header, main, footer { padding-left: 0.75rem; padding-right: 0.75rem; }
+        header nav { gap: 0.7rem; }
+        header .brand { gap: 0.4rem; }
+      }
       .theme-toggle {
         display: inline-flex;
         align-items: center;

@@ -81,7 +81,7 @@ const TOP = 5;
     padding: 0.15rem 0; list-style: none;
   }
   .sbench summary::-webkit-details-marker { display: none; }
-  .sbench .path { color: var(--muted); }
+  .sbench .path { color: var(--muted); min-width: 0; overflow-wrap: anywhere; }
   .sbench details[open] .path { color: var(--fg); }
   .sbench .hint {
     margin-left: auto; font-size: 0.72rem; color: var(--muted);
@@ -100,7 +100,11 @@ const TOP = 5;
   .sbench pre code { color: var(--fg); white-space: pre; }
   .sbench .gh {
     display: inline-block; margin-top: 0.45rem; font-size: 0.78rem;
-    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-family: 'JetBrains Mono', ui-monospace, monospace; overflow-wrap: anywhere;
+  }
+
+  @media (max-width: 36rem) {
+    .sbench .body { margin-left: 0; }
   }
 
   .sbench .score {
