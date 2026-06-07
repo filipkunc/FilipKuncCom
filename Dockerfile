@@ -16,6 +16,9 @@ RUN npm ci --no-audit --no-fund
 COPY tsconfig.json astro.config.mjs snippet-manifest.json ./
 COPY src ./src
 COPY public ./public
+# Build scripts: `npm run build` runs scripts/gen-og.mjs (OG image generation)
+# before astro build.
+COPY scripts ./scripts
 # The gpu-normals post excerpts the real benchmark kernel sources at build time
 # (CUDA/OpenCL/Slang live here, outside src). Build-stage only; the runtime
 # image takes just dist + server-dist below.
