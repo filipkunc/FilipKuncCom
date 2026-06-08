@@ -22,7 +22,7 @@ import AllocBench from '../../../components/AllocBench.astro';
 
 A data race is the bug that passes every test on your machine and then corrupts memory on a customer's. It does not show up because the broken interleaving is rare. Two threads have to touch the same memory in the same instant, and on a quiet dev box they almost never do.
 
-Years ago I worked on making a large legacy C++ app thread-safe, and the team's trick for this was to stop waiting for the rare case and force it. In debug builds, every UI action ran the same work on all cores at once, so a race that happened once in a million natural runs happened on almost every one. I have rebuilt that harness in every job since. This post is that harness pointed at the usual concurrency tools, one at a time, to watch each one fail when it is used the way the internet usually shows it.
+Years ago I worked on making a large legacy C++ app thread-safe, and the team's trick was to stop waiting for the rare case and force it. In debug builds, every UI action ran the same work on all cores at once, so a race that happened once in a million natural runs happened on almost every one. I have rebuilt that harness in every job since. This post is that harness pointed at the usual concurrency tools, one at a time, to watch each one fail when it is used the way the internet usually shows it.
 
 Here is the whole thing.
 
@@ -44,7 +44,7 @@ The smallest possible shared state is one integer that several threads increment
   lang="cpp"
 />
 
-Twenty-four threads each add one a hundred thousand times, so the counter should reach 2.4 million. It reaches a small fraction of that. `counter++` is not one step, it is three: load the value, add one, store it back. While one thread holds the old value in a register, a dozen others load the same old value, and every one of them stores back a number that is already stale. The lost increments are not a rounding error, they are most of the work.
+Twenty-four threads each add one a hundred thousand times, so the counter should reach 2.4 million. It reaches a small fraction. `counter++` is not one step but three: load, add one, store. While one thread holds the old value in a register, a dozen others load the same value and store back a total that is already stale. The lost increments are not a rounding error, they are most of the work.
 
 ## Marking it volatile is not the fix
 
@@ -84,11 +84,11 @@ It loses almost as much as the plain int did. The fix is `fetch_add`, which does
 
 It lands on the exact total, every time. Atomicity is a property of an operation, not of a variable.
 
-The subtler trap with atomics is memory ordering. The default ordering is sequentially consistent and always correct, but reach for `std::memory_order_relaxed` to publish a pointer and you can let a reader see the pointer before the data it points at. The dangerous part is that this rarely reproduces on x86, whose hardware does not reorder those accesses, so the bug ships and only wakes up on a phone's ARM core. When in doubt, leave the ordering at the default and only loosen it once a benchmark says it matters and you can prove the ordering holds.
+The subtler trap with atomics is memory ordering, the thing behind most broken busy-waits. The default is sequentially consistent and always correct. Loosen it to `std::memory_order_relaxed` and each operation stays atomic, but the writes around it can become visible to another thread out of order. That is the one race the harness cannot force, because it hides on the x86 this runs on and only wakes up on a weaker memory model like a phone's ARM core, so it is the example for ThreadSanitizer below.
 
 ## A mutex makes it correct, and adds a new way to fail
 
-A mutex sidesteps the question of which operations are atomic. Hold the lock, do whatever you want to the shared state, release it.
+A mutex sidesteps the question of which operations are atomic. Hold the lock, touch the shared state, release it.
 
 ```cpp
 std::mutex m;
@@ -156,15 +156,37 @@ Here is the same counter race, two threads this time, built with `-fsanitize=thr
   lang="cpp"
 />
 
-It names the conflicting write and read, the line each one is on, and the variable they fight over. The report above is trimmed to those stable lines, the full one also prints both threads' stack traces. This is the tool the old debug-build harness was a stand-in for. Run it in CI over a test suite that exercises the threaded paths and it catches races the harness would only find if it happened to hammer the right spot. The two go together: the harness drives many threads through the code, ThreadSanitizer watches what they touch.
+It names the conflicting write and read, the line each one is on, and the variable they fight over. The report above is trimmed to those stable lines, the full one also prints both threads' stack traces.
+
+It also catches the race the harness cannot force. The classic one is a broken busy-wait: spin on an atomic flag, then read the data the flag was meant to guard. Making the flag atomic feels like enough, but with relaxed ordering the flag promises nothing about the writes that came before it.
+
+<RunnableSnippet
+  source="src/content/posts/cpp-data-races/code/busywait.cpp"
+  region="busywait-wrong"
+  outputKey="cpp-data-races/busywait-wrong"
+  command="clang++ -fsanitize=thread busywait.cpp && ./a.out wrong"
+  lang="cpp"
+/>
+
+ThreadSanitizer flags the read of `data` against the write on the other thread, even though on this x86 box the value almost always arrives in time. The fix is to publish with `release` and receive with `acquire`. That pairs the store and the load, so everything written before the store is visible after the load, and the default sequentially consistent ordering does the same. The read is now ordered after the write, and the report is gone.
+
+<RunnableSnippet
+  source="src/content/posts/cpp-data-races/code/busywait.cpp"
+  region="busywait-right"
+  outputKey="cpp-data-races/busywait-right"
+  command="clang++ -fsanitize=thread busywait.cpp && ./a.out right"
+  lang="cpp"
+/>
+
+This is the tool the old debug-build harness was a stand-in for. Run it in CI over a test suite that exercises the threaded paths and it catches races the harness would only find if it happened to hammer the right spot. The two go together: the harness drives many threads through the code, ThreadSanitizer watches what they touch.
 
 ## A faster allocator with placement new
 
-The second half of this post builds something real with these tools. Calling `new` for every small object goes through the general allocator, which can free any block in any order and stay thread-safe, and pays for all of that on every call. Plenty of code needs none of it. If you allocate a heap of objects for one phase of work and throw them all away at the end, a bump allocator is far faster: keep one big buffer and a cursor, hand out the next slice on each call, and move the cursor back to the start once the phase is done.
+The second half of this post builds something real with these tools. Calling `new` for every small object goes through the general allocator, which can free any block in any order and stay thread-safe, and pays for all of that on every call. Plenty of code needs none of it. Allocate a heap of objects for one phase of work, throw them all away at the end, and a bump allocator is far faster: one big buffer, a cursor, and the next slice handed out on each call.
 
 <Excerpt source="src/content/posts/cpp-data-races/code/arena.h" region="arena-single" lang="cpp" />
 
-There is no per-object free, and that is the point. A bump allocator is fast because it barely does anything per call. It gives up freeing objects one at a time, and that is what buys the speed.
+There is no per-object free, and that is the point. It barely does anything per call, and giving up one-at-a-time frees is what buys the speed.
 
 The arena hands out raw bytes. To turn those bytes into an object you use placement new, which runs a constructor at an address you already own instead of allocating. It pairs with an explicit destructor call, since there is no `delete` to run one for you.
 
@@ -219,8 +241,8 @@ LD_PRELOAD=/usr/lib64/libtcmalloc.so.4 ./alloc_bench
 
 It tracks the system allocator and pulls clearly ahead at the higher thread counts. It still does not catch the thread-local arena, and that is the whole point: tcmalloc is solving the hard problem, freeing any block in any order and staying safe to share, while the arena gives all of that up. The way it scales is the same trick the arena uses, a per-thread cache: each thread serves most allocations from its own free list and only takes a lock on a shared central heap when that cache misses, which is why more threads keep helping instead of hurting.
 
-The third column is the one that should win and does not. Google's own [tcmalloc](https://github.com/google/tcmalloc), the newer rewrite, is a different library: Bazel-only and statically linked rather than preloaded, so the post [builds the same source against it](https://github.com/filipkunc/FilipKuncCom/tree/main/bench/tcmalloc). It runs at about half the speed of the others, and not for any reason you would guess. It was not the build, which is `-O3` with assertions off. It was not the per-CPU caches it is famous for, since turning them off changed nothing. A profile put the time somewhere more interesting: every allocation and free runs through a sampling-and-hooks dispatch, `FreeWithHooksOrPerThread` and `alloc_small_sampled_hooks_or_perthread`, the always-on machinery behind tcmalloc's heap profiler. It spends a few nanoseconds per call deciding whether to record the allocation, every time, even with sampling turned off. On a real server that buys continuous heap profiling for almost nothing. On a loop that does nothing but allocate and free, it is pure tax. The fancier allocator is slower here precisely because it is doing more, and what it is doing has nothing to do with this benchmark. Measure your own workload before you assume the sophisticated one wins.
+The third column is the one that should win and does not. Google's own [tcmalloc](https://github.com/google/tcmalloc), the newer rewrite, is a different library: Bazel-only and statically linked rather than preloaded, so the post [builds the same source against it](https://github.com/filipkunc/FilipKuncCom/tree/main/bench/tcmalloc). It runs at about half the speed of the others, and not for any reason you would guess. It was not the build, which is `-O3` with assertions off. It was not the per-CPU caches it is famous for, since turning them off changed nothing. A profile put the time somewhere more interesting: every allocation and free runs through a sampling-and-hooks dispatch, `FreeWithHooksOrPerThread` and `alloc_small_sampled_hooks_or_perthread`, the always-on machinery behind tcmalloc's heap profiler. It spends a few nanoseconds per call deciding whether to record the allocation, even with sampling turned off. On a real server that buys continuous heap profiling for almost nothing. On a loop that does nothing but allocate and free, it is pure tax. The fancier allocator is slower here precisely because it is doing more, and what it is doing has nothing to do with this benchmark. Measure your own workload before you assume the sophisticated one wins.
 
-That is why a general-purpose custom allocator is a fight you lose. The moment it has to free any block in any order and stay safe to share, it is doing tcmalloc's and jemalloc's job, and they have spent years on exactly that. A shared free list of your own ends up where the shared arena sat on the table. The custom allocator that wins is the narrow one. Give up freeing objects one at a time, or give up sharing across threads, and you are left doing so little per call that nothing general-purpose can catch you.
+That is why a general-purpose custom allocator is a fight you lose. The moment it has to free any block in any order and stay safe to share, it is doing tcmalloc's and jemalloc's job, and they have spent years on exactly that. The one that wins is narrow: give up freeing objects one at a time, or give up sharing across threads, and you do so little per call that nothing general-purpose can catch you.
 
-So the practical takeaway is small. Keep the harness and run ThreadSanitizer, because that is what finds the bug. For general allocation, measure first, then reach for tcmalloc or jemalloc before writing your own. Write an allocator by hand only when you can give something up, and let that be the reason it is faster.
+So the takeaway is small. Run the harness with ThreadSanitizer to find the bug, and for general allocation measure first, then reach for tcmalloc or jemalloc before writing your own.
