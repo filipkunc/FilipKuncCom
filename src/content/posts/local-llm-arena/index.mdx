@@ -4,6 +4,20 @@ description: "Comparing small local models on a LeetCode-style task with determi
 pubDate: 2026-05-23
 tags: ["llm", "local-llm", "llama.cpp"]
 draft: false
+og:
+  kind: snippet
+  lang: python
+  code: |-
+    class T:
+        def __init__(self, v, l=None, r=None):
+            self.val, self.left, self.right = v, l, r
+
+    def equal(a, b):
+        if a is None or b is None:
+            return a is b
+        return (a.val == b.val
+                and equal(a.left, b.left)
+                and equal(a.right, b.right))
 ---
 
 import { Code } from 'astro:components';

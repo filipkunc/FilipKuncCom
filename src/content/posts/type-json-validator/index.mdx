@@ -3,6 +3,19 @@ title: "TypeScript types as a runtime JSON validator, live in the browser"
 description: "Turn a plain TypeScript type into a live, in-browser JSON validator by walking it with the TypeScript Compiler API."
 pubDate: 2026-05-28
 tags: ["typescript", "compiler-api", "monaco", "json"]
+og:
+  kind: snippet
+  lang: ts
+  code: |-
+    // 1. Infer a type from a sample value.
+    const typeText = inferType(sample);
+
+    // 2. Generate a validator by walking that type.
+    const { validate } = await generateValidator(typeText);
+
+    // 3. Run it. The real value passes; a broken one fails.
+    validate(sample);  // => true
+    validate(broken);  // => false
 ---
 
 import TypeProbe from '../../../components/TypeProbe.tsx';

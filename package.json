@@ -33,7 +33,8 @@
     "@webgpu/types": "^0.1.70",
     "astro": "^6.3.0",
     "shiki": "^4.2.0",
-    "typescript": "^6.0.0"
+    "typescript": "^6.0.0",
+    "yaml": "^2.9.0"
   },
   "dependencies": {
     "@astrojs/react": "^5.0.5",

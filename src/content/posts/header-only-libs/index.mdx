@@ -3,6 +3,18 @@ title: "Header-only C and C++ libraries"
 description: "My favorite C and C++ header-only libraries."
 pubDate: 2026-06-03
 tags: ["cpp", "c", "header-only", "libraries"]
+og:
+  kind: snippet
+  lang: c
+  code: |-
+    // In exactly one .c file, define the implementation:
+    #define STB_IMAGE_IMPLEMENTATION
+    #include "stb_image.h"
+
+    // Everywhere else, just include the header:
+    int w, h, channels;
+    unsigned char* pixels =
+        stbi_load("cat.png", &w, &h, &channels, 4);
 ---
 
 import Excerpt from '../../../components/Excerpt.astro';

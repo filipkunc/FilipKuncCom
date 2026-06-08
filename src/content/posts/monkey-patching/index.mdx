@@ -3,6 +3,17 @@ title: "Monkey Patching"
 description: "Tour of techniques for modifying existing code at runtime."
 pubDate: 2026-05-20
 tags: ["programming", "software-engineering"]
+og:
+  kind: snippet
+  lang: js
+  code: |-
+    import fs from 'node:fs';
+
+    const original = fs.readFileSync;
+    fs.readFileSync = (...args) =>
+      original(...args).replace('Hello, world!', 'Hello, Filip!');
+
+    process.stdout.write(fs.readFileSync('hello.txt', 'utf8'));
 ---
 
 import RunnableSnippet from '../../../components/RunnableSnippet.astro';

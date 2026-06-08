@@ -3,6 +3,22 @@ title: "Computing mesh normals on the GPU's other pipeline"
 description: "A WebGPU cloth sim that rebuilds a million mesh normals every frame, with one kernel ported across four GPU languages."
 pubDate: 2026-05-30
 tags: ["webgpu", "gpgpu", "compute-shaders", "cloth", "cuda", "slang"]
+og:
+  kind: snippet
+  lang: wgsl
+  code: |-
+    @compute @workgroup_size(64)
+    fn main(@builtin(global_invocation_id) gid : vec3<u32>) {
+      let v = gid.x;
+      if (v >= counts.vertexCount) { return; }
+
+      // One thread per vertex gathers its triangles. No atomics.
+      var n = vec3<f32>(0.0, 0.0, 0.0);
+      for (var i = adjStart[v]; i < adjStart[v + 1u]; i = i + 1u) {
+        n = n + faceNormal(adjTris[i]);
+      }
+      if (dot(n, n) > 0.0) { n = normalize(n); }
+    }
 ---
 
 import ClothLab from '../../../components/ClothLab.tsx';

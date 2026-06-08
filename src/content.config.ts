@@ -20,6 +20,17 @@ const posts = defineCollection({
     updatedDate: z.coerce.date().optional(),
     draft: z.boolean().default(false),
     tags: z.array(z.string()).default([]),
+    // Recipe for the social preview card (scripts/gen-og.mjs). Omit for a plain
+    // title card. `snippet` needs lang + code; `screenshot` needs src (a path
+    // relative to the post folder). See gen-og.mjs for how each is rendered.
+    og: z
+      .object({
+        kind: z.enum(['snippet', 'screenshot', 'title']),
+        lang: z.string().optional(),
+        code: z.string().optional(),
+        src: z.string().optional(),
+      })
+      .optional(),
   }),
 });
 

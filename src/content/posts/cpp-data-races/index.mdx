@@ -3,6 +3,17 @@ title: "Making C++ data races show up on purpose"
 description: "Forcing C++ data races to show up on purpose, then fixing them with volatile, atomics, and mutexes. Plus a from-scratch allocator benchmark."
 pubDate: 2026-06-02
 tags: ["cpp", "concurrency", "data-races", "atomics", "lock-free"]
+og:
+  kind: snippet
+  lang: cpp
+  code: |-
+    // The same loop on every core, with no synchronization.
+    int counter = 0;
+    parallel_for(num_cores, [&] {
+        for (int i = 0; i < 1'000'000; i++)
+            counter++;            // torn reads, lost writes
+    });
+    // counter now lands well below num_cores * 1'000'000.
 ---
 
 import Excerpt from '../../../components/Excerpt.astro';

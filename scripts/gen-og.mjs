@@ -1,18 +1,22 @@
 // Generate Open Graph preview images (1200x630) shown when a filipkunc.com
 // link is shared (LinkedIn, Slack, X, ...). Outputs:
 //   public/og-default.png   the site-wide fallback banner
-//   public/og/<slug>.png    one per post, from a per-post recipe below
+//   public/og/<slug>.png    one per post
 //
-// Three recipes, all rendered without a browser:
+// The recipe for each card lives in the post's own frontmatter, under `og`:
 //   snippet     a hand-picked code sample, highlighted with the same Shiki
 //               theme the site uses (github-dark), laid out as an editor panel
-//   screenshot  an existing post asset composited onto the branded frame
-//   title       a plain title card (the default look) for text-only posts
+//                 og: { kind: snippet, lang: ts, code: "..." }
+//   screenshot  a post asset composited onto the branded frame
+//                 og: { kind: screenshot, src: shot.png }  (relative to the post)
+//   title       a plain title card; also the default when `og` is omitted
+//                 og: { kind: title }   (or no `og` at all)
 //
 // Palette mirrors the dark theme in src/layouts/Layout.astro. Re-run with
-// `npm run og` after changing a recipe, a snippet, or the palette.
+// `npm run og` after changing a recipe or the palette.
 import sharp from 'sharp';
 import { codeToTokens } from 'shiki';
+import { parse as parseYaml } from 'yaml';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -37,142 +41,16 @@ const PANEL_BG = '#17171a';
 const MONO_ADV = 0.62; // DejaVu Sans Mono
 const SANS_ADV = 0.56; // DejaVu Sans
 
-// --- per-post recipes -------------------------------------------------------
-// Code snippets are lifted (and lightly trimmed) from each post's own source so
-// the card shows something the post actually contains.
-const RECIPES = {
-  'gpu-normals': {
-    kind: 'snippet',
-    lang: 'wgsl',
-    code: `@compute @workgroup_size(64)
-fn main(@builtin(global_invocation_id) gid : vec3<u32>) {
-  let v = gid.x;
-  if (v >= counts.vertexCount) { return; }
-
-  // One thread per vertex gathers its triangles. No atomics.
-  var n = vec3<f32>(0.0, 0.0, 0.0);
-  for (var i = adjStart[v]; i < adjStart[v + 1u]; i = i + 1u) {
-    n = n + faceNormal(adjTris[i]);
-  }
-  if (dot(n, n) > 0.0) { n = normalize(n); }
-}`,
-  },
-  'code-search': {
-    kind: 'snippet',
-    lang: 'rust',
-    code: `/// A boolean query over trigrams every match must contain.
-pub enum Query {
-    All,
-    None,
-    Trigram(String),
-    And(Vec<Query>),
-    Or(Vec<Query>),
-}
-
-/// Trigrams: every three-byte window of a string.
-pub fn trigrams(s: &str) -> BTreeSet<String> {
-    s.as_bytes().windows(3)
-        .map(|w| String::from_utf8_lossy(w).into_owned())
-        .collect()
-}`,
-  },
-  'cpp-data-races': {
-    kind: 'snippet',
-    lang: 'cpp',
-    code: `// The same loop on every core, with no synchronization.
-int counter = 0;
-parallel_for(num_cores, [&] {
-    for (int i = 0; i < 1'000'000; i++)
-        counter++;            // torn reads, lost writes
-});
-// counter now lands well below num_cores * 1'000'000.`,
-  },
-  'native-node-addons': {
-    kind: 'snippet',
-    lang: 'js',
-    code: `import { compressAsync, Deflater } from "fast-deflate";
-
-// one-shot, runs off the event loop
-const packed = await compressAsync(input, { level: 6 });
-
-// a streaming handle that owns native state
-const d = new Deflater({ level: 9 });
-const out = Buffer.concat([d.push(chunkA), d.push(chunkB), d.finish()]);`,
-  },
-  'monkey-patching': {
-    kind: 'snippet',
-    lang: 'js',
-    code: `import fs from 'node:fs';
-
-const original = fs.readFileSync;
-fs.readFileSync = (...args) =>
-  original(...args).replace('Hello, world!', 'Hello, Filip!');
-
-process.stdout.write(fs.readFileSync('hello.txt', 'utf8'));`,
-  },
-  'header-only-libs': {
-    kind: 'snippet',
-    lang: 'c',
-    code: `// In exactly one .c file, define the implementation:
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-
-// Everywhere else, just include the header:
-int w, h, channels;
-unsigned char* pixels =
-    stbi_load("cat.png", &w, &h, &channels, 4);`,
-  },
-  'type-json-validator': {
-    kind: 'snippet',
-    lang: 'ts',
-    code: `// 1. Infer a type from a sample value.
-const typeText = inferType(sample);
-
-// 2. Generate a validator by walking that type.
-const { validate } = await generateValidator(typeText);
-
-// 3. Run it. The real value passes; a broken one fails.
-validate(sample);  // => true
-validate(broken);  // => false`,
-  },
-  'local-llm-arena': {
-    kind: 'snippet',
-    lang: 'python',
-    code: `class T:
-    def __init__(self, v, l=None, r=None):
-        self.val, self.left, self.right = v, l, r
-
-def equal(a, b):
-    if a is None or b is None:
-        return a is b
-    return (a.val == b.val
-            and equal(a.left, b.left)
-            and equal(a.right, b.right))`,
-  },
-  'gemini-game-art': {
-    kind: 'screenshot',
-    src: 'gemini-game-art/sprite-editor-generate-monster.png',
-  },
-  'old-stuff': {
-    kind: 'screenshot',
-    src: 'old-stuff/space-warrior.png',
-  },
-  'meshmaker': {
-    kind: 'screenshot',
-    src: 'meshmaker/unwrap.png',
-  },
-  'work-life': { kind: 'title' },
-};
-
 // --- helpers ----------------------------------------------------------------
 const escapeXml = (s) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-// Read the frontmatter title so the card label stays in sync with the post.
-function readTitle(slug) {
+// Parse a post's YAML frontmatter. The same `og` recipe shape the content
+// schema validates (src/content.config.ts) is read here to render the card.
+function readFrontmatter(slug) {
   const mdx = fs.readFileSync(path.join(POSTS, slug, 'index.mdx'), 'utf8');
-  const m = mdx.match(/^title:\s*["']?(.+?)["']?\s*$/m);
-  return m ? m[1] : slug;
+  const m = mdx.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  return m ? parseYaml(m[1]) : {};
 }
 
 // Greedy word-wrap to at most `maxLines`, ellipsising the last line if needed.
@@ -323,7 +201,7 @@ async function render(svg, outPath, composite) {
   await img.png().toFile(outPath);
 }
 
-async function screenshotComposite(srcRel) {
+async function screenshotComposite(srcAbs) {
   // Title eyebrow + a panel that contains the screenshot (fit inside, centered).
   const px = M;
   const py = 200;
@@ -333,7 +211,7 @@ async function screenshotComposite(srcRel) {
   const innerW = pw - 2 * pad;
   const innerH = ph - 2 * pad;
 
-  const shot = await sharp(path.join(POSTS, srcRel))
+  const shot = await sharp(srcAbs)
     .resize(Math.round(innerW), Math.round(innerH), { fit: 'inside' })
     .png()
     .toBuffer();
@@ -351,13 +229,27 @@ await fsp.mkdir(OUT_DIR, { recursive: true });
 await render(defaultCard(), path.join(ROOT, 'public', 'og-default.png'));
 console.log('wrote public/og-default.png');
 
-for (const [slug, recipe] of Object.entries(RECIPES)) {
+// One card per post folder. The recipe comes from each post's `og` frontmatter;
+// a post with no `og` (or `kind: title`) gets a plain title card, so every post
+// always has a per-post image and never falls back to the default banner.
+const slugs = fs
+  .readdirSync(POSTS, { withFileTypes: true })
+  .filter((e) => e.isDirectory() && fs.existsSync(path.join(POSTS, e.name, 'index.mdx')))
+  .map((e) => e.name)
+  .sort();
+
+for (const slug of slugs) {
   const out = path.join(OUT_DIR, `${slug}.png`);
-  const title = readTitle(slug);
+  const fm = readFrontmatter(slug);
+  const title = fm.title ?? slug;
+  const recipe = fm.og ?? { kind: 'title' };
+
   if (recipe.kind === 'snippet') {
+    if (!recipe.lang || !recipe.code) throw new Error(`${slug}: og snippet needs lang and code`);
     await render(await snippetCard(title, recipe.lang, recipe.code), out);
   } else if (recipe.kind === 'screenshot') {
-    const { panel, composite } = await screenshotComposite(recipe.src);
+    if (!recipe.src) throw new Error(`${slug}: og screenshot needs src`);
+    const { panel, composite } = await screenshotComposite(path.join(POSTS, slug, recipe.src));
     await render(frame(`${eyebrow(title)}\n  ${panel}`), out, [composite]);
   } else {
     await render(titleCard(title), out);

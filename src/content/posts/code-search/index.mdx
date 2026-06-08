@@ -3,6 +3,25 @@ title: "Fast code search"
 description: "Searching code fast with ripgrep, trigrams, and embeddings, benchmarked on the Node.js source."
 pubDate: 2026-06-05
 tags: ["search", "code", "tools", "development"]
+og:
+  kind: snippet
+  lang: rust
+  code: |-
+    /// A boolean query over trigrams every match must contain.
+    pub enum Query {
+        All,
+        None,
+        Trigram(String),
+        And(Vec<Query>),
+        Or(Vec<Query>),
+    }
+
+    /// Trigrams: every three-byte window of a string.
+    pub fn trigrams(s: &str) -> BTreeSet<String> {
+        s.as_bytes().windows(3)
+            .map(|w| String::from_utf8_lossy(w).into_owned())
+            .collect()
+    }
 ---
 
 import Excerpt from '../../../components/Excerpt.astro';
