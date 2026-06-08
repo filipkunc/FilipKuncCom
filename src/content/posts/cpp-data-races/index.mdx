@@ -22,7 +22,7 @@ import AllocBench from '../../../components/AllocBench.astro';
 
 A data race is the bug that passes every test on your machine and then corrupts memory on a customer's. It does not show up because the broken interleaving is rare. Two threads have to touch the same memory in the same instant, and on a quiet dev box they almost never do.
 
-Years ago I worked on making a large legacy C++ app thread-safe, and the team's trick for this was to stop waiting for the rare case and force it. In debug builds, [every UI action ran the same work on all cores at once](/posts/work-life), so a race that happened once in a million natural runs happened on almost every one. I have rebuilt that harness in every job since. This post is that harness pointed at the usual concurrency tools, one at a time, to watch each one fail when it is used the way the internet usually shows it.
+Years ago I worked on making a large legacy C++ app thread-safe, and the team's trick for this was to stop waiting for the rare case and force it. In debug builds, every UI action ran the same work on all cores at once, so a race that happened once in a million natural runs happened on almost every one. I have rebuilt that harness in every job since. This post is that harness pointed at the usual concurrency tools, one at a time, to watch each one fail when it is used the way the internet usually shows it.
 
 Here is the whole thing.
 
