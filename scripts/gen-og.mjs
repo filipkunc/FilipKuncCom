@@ -145,6 +145,10 @@ def equal(a, b):
     kind: 'screenshot',
     src: 'old-stuff/space-warrior.png',
   },
+  'meshmaker': {
+    kind: 'screenshot',
+    src: 'meshmaker/unwrap.png',
+  },
   'work-life': { kind: 'title' },
 };
 
