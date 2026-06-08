@@ -87,6 +87,18 @@ parallel_for(num_cores, [&] {
 });
 // counter now lands well below num_cores * 1'000'000.`,
   },
+  'native-node-addons': {
+    kind: 'snippet',
+    lang: 'js',
+    code: `import { compressAsync, Deflater } from "fast-deflate";
+
+// one-shot, runs off the event loop
+const packed = await compressAsync(input, { level: 6 });
+
+// a streaming handle that owns native state
+const d = new Deflater({ level: 9 });
+const out = Buffer.concat([d.push(chunkA), d.push(chunkB), d.finish()]);`,
+  },
   'monkey-patching': {
     kind: 'snippet',
     lang: 'js',
