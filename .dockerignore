@@ -12,6 +12,7 @@ deploy.sh
 rollback.sh
 scripts/*
 !scripts/gen-og.mjs
+!scripts/compress-dist.mjs
 # the native-node-addons post reads its excerpts from this workspace at build time
 !scripts/addon-example
 !scripts/addon-example/**
