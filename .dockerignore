@@ -15,6 +15,10 @@ scripts/*
 # the native-node-addons post reads its excerpts from this workspace at build time
 !scripts/addon-example
 !scripts/addon-example/**
+# the text-rendering post imports the hb-gpu wasm, demo modules, and font
+# subsets from this workspace at build time
+!scripts/hb-editor
+!scripts/hb-editor/**
 README.md
 *.md
 .dockerignore

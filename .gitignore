@@ -35,6 +35,11 @@ bench/normals/run-slang.ptx
 # Bazel convenience symlinks for the tcmalloc bench
 bench/tcmalloc/bazel-*
 
-# hb-editor build artifacts (rebuild via scripts/hb-editor/build-wasm.sh)
-scripts/hb-editor/dist/
-scripts/hb-editor/fonts/
+# hb-editor: full fonts are fetched by build-wasm.sh; the wasm and the web
+# font subsets ARE committed so the container build (git archive of the
+# committed tree) is self-contained, same as the MeshMaker wasm in public/.
+scripts/hb-editor/fonts/*.ttf
+!scripts/hb-editor/fonts/*-subset.ttf
+!scripts/hb-editor/dist/
+!scripts/hb-editor/dist/hb-gpu.mjs
+!scripts/hb-editor/dist/hb-gpu.wasm
