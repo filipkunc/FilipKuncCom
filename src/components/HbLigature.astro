@@ -1,0 +1,25 @@
+---
+// Live partial-ligature selection: the ffi glyph rendered two-tone by the
+// same pipeline as the editor, in the active theme.
+---
+
+<div id="hb-ligature-demo" class="hb-demo">
+  <canvas></canvas>
+</div>
+
+<style>
+  .hb-demo { margin: 1.5rem 0; }
+  canvas {
+    width: 100%; border: 1px solid var(--rule, #ccc); border-radius: 6px;
+    display: block; background: var(--bg, #fff);
+  }
+</style>
+
+<script>
+  import { mountLigatureDemo } from '../../scripts/hb-editor/src/demo-ligature.mjs';
+  import garamondUrl from '../../scripts/hb-editor/fonts/EBGaramond.ttf?url';
+
+  mountLigatureDemo(document.getElementById('hb-ligature-demo'), {
+    fontUrl: garamondUrl,
+  });
+</script>

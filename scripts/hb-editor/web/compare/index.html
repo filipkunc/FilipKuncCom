@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>hb-gpu vs canvas 2D vs DOM</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 1200px; padding: 0 1rem; }
+    .row { display: flex; gap: 1rem; align-items: center; margin: 0.75rem 0; flex-wrap: wrap; }
+    #text { flex: 1; min-width: 16rem; font-size: 1rem; padding: 0.4rem; }
+    .panes { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .pane { border: 1px solid #ccc; border-radius: 4px; min-width: 0; }
+    .pane h2 { font-size: 0.85rem; font-weight: 600; margin: 0; padding: 6px 10px; border-bottom: 1px solid #eee; color: #444; }
+    .pane canvas, .pane .dom-host { display: block; width: 100%; }
+    .dom-host { position: relative; overflow: hidden; }
+    .dom-host > div { position: absolute; left: 0; white-space: pre; line-height: 1; }
+    #status { color: #666; font-size: 0.9rem; }
+    a { color: #2563eb; }
+  </style>
+</head>
+<body>
+  <h1>Same text, same font file, three pipelines</h1>
+  <p>hb-gpu renders glyph outlines per pixel on the GPU. Canvas 2D and DOM go
+     through the browser's CPU-raster glyph atlas. Compare small sizes up close.
+     <a href="../">playground</a> · <a href="../editor/">editor</a> · <a href="../bench/">zoom benchmark</a></p>
+  <div class="row">
+    <input id="text" value="Difficult waffles, fjords & quick mixes. 1Il| 0O" />
+  </div>
+  <div class="row">
+    <label>font
+      <select id="font">
+        <option value="Inter" selected>Inter</option>
+        <option value="EBGaramond">EB Garamond</option>
+        <option value="FiraCode">Fira Code</option>
+      </select>
+    </label>
+    <label><input id="darken" type="checkbox" checked /> stem darkening</label>
+    <label>gamma <input id="gamma" type="range" min="0.5" max="2.2" step="0.05" value="0.75" /> <span id="gammaVal">0.75</span></label>
+  </div>
+  <div class="panes">
+    <div class="pane"><h2>hb-gpu (WebGL2, no atlas)</h2><canvas id="gl"></canvas></div>
+    <div class="pane"><h2>canvas 2D fillText (opaque)</h2><canvas id="c2d"></canvas></div>
+    <div class="pane"><h2>DOM text</h2><div class="dom-host" id="dom"></div></div>
+  </div>
+  <p id="status">loading wasm…</p>
+  <script type="module" src="./main.mjs"></script>
+</body>
+</html>

@@ -18,6 +18,7 @@
     "og": "node scripts/gen-og.mjs",
     "check": "astro check && tsc -p src/server/tsconfig.json --noEmit",
     "test:e2e": "playwright test",
+    "test:hb": "node --test scripts/hb-editor/test/*.test.mjs",
     "bench": "node scripts/bench-normals.mjs",
     "bench:alloc": "node scripts/bench-allocators.mjs",
     "bench:codesearch": "node scripts/bench-codesearch.mjs"

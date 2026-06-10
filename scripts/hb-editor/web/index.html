@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>hb-gpu WebGL2 playground</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 960px; padding: 0 1rem; }
+    canvas { width: 100%; height: 240px; border: 1px solid #ccc; display: block; }
+    .row { display: flex; gap: 1rem; align-items: center; margin: 0.75rem 0; flex-wrap: wrap; }
+    #text { flex: 1; min-width: 16rem; font-size: 1rem; padding: 0.4rem; }
+    #status { color: #666; font-size: 0.9rem; }
+    label { user-select: none; }
+  </style>
+</head>
+<body>
+  <h1>hb-gpu WebGL2 playground</h1>
+  <p>Static rendering testbed (type in the box below). See also the
+     interactive <a href="./editor/">editor</a> and the
+     <a href="./compare/">quality comparison</a> vs canvas 2D and DOM, and the
+     <a href="./bench/">zoom benchmark</a>.</p>
+  <div class="row">
+    <input id="text" value="Office flavor AV. Type ffi &amp; fj — 12345" />
+  </div>
+  <div class="row">
+    <label>size <input id="size" type="range" min="8" max="220" value="72" /> <span id="sizeVal">72</span>px</label>
+    <label><input id="darken" type="checkbox" checked /> stem darkening</label>
+    <label>gamma <input id="gamma" type="range" min="0.5" max="2.2" step="0.05" value="0.75" /> <span id="gammaVal">0.75</span></label>
+    <label><input id="debug" type="checkbox" /> curve-count debug</label>
+  </div>
+  <canvas id="canvas"></canvas>
+  <p id="status">loading wasm…</p>
+  <script type="module" src="./main.mjs"></script>
+</body>
+</html>

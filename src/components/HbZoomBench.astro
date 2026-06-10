@@ -1,0 +1,55 @@
+---
+// Continuous-zoom benchmark demo, embedded from scripts/hb-editor.
+---
+
+<div id="hb-bench-demo" class="hb-demo">
+  <div class="row">
+    <button id="run">Run benchmark</button>
+    <label><input id="phase" type="checkbox" /> per-row phase</label>
+    <label>load <input id="load" type="range" min="1" max="96" value="4" /> x<span id="loadVal">4</span></label>
+    <label><input id="quant" type="checkbox" /> quantize sizes</label>
+    <span class="watch">watch:
+      <label><input type="radio" name="watch" value="hb" checked /> hb-gpu</label>
+      <label><input type="radio" name="watch" value="c2d" /> canvas 2D</label>
+      <label><input type="radio" name="watch" value="dom" /> DOM</label>
+    </span>
+  </div>
+  <p id="live"></p>
+  <div id="progress" class="progress" hidden>
+    <div class="seg" data-pipe="hb"><span class="fill"></span><span class="name">hb-gpu</span></div>
+    <div class="seg" data-pipe="c2d"><span class="fill"></span><span class="name">canvas 2D</span></div>
+    <div class="seg" data-pipe="dom"><span class="fill"></span><span class="name">DOM</span></div>
+  </div>
+  <div class="stage">
+    <canvas id="gl"></canvas>
+    <canvas id="c2d" style="display:none"></canvas>
+    <div id="domHost" style="display:none"></div>
+  </div>
+  <div id="results"></div>
+</div>
+
+<style>
+  .hb-demo { margin: 1.5rem 0; }
+  .row { display: flex; gap: 1rem; align-items: center; margin: 0.5rem 0; flex-wrap: wrap; }
+  .stage { position: relative; border: 1px solid var(--rule, #ccc); border-radius: 6px; height: 420px; overflow: hidden; background: var(--bg, #fff); }
+  .stage canvas { display: block; width: 100%; height: 100%; }
+  #domHost { position: absolute; inset: 0; background: var(--bg, #fff); color: var(--fg, #000); }
+  #domHost :global(div) { position: absolute; left: 14px; white-space: pre; line-height: 1; will-change: font-size; }
+  #live { color: var(--muted, #666); font-size: 0.85rem; min-height: 1.4em; font-variant-numeric: tabular-nums; margin: 0.25rem 0; }
+  .progress { display: flex; gap: 6px; margin: 0.4rem 0; }
+  .seg { flex: 1; position: relative; height: 22px; border: 1px solid var(--rule, #ccc); border-radius: 4px; overflow: hidden; }
+  .seg :global(.fill) { position: absolute; inset: 0; width: 0; background: var(--link, #2b5fb8); opacity: 0.25; }
+  .seg .name { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 0.78rem; color: var(--fg, #000); }
+  .seg.active { border-color: var(--link, #2b5fb8); }
+  #results :global(table) { border-collapse: collapse; margin-top: 0.5rem; font-variant-numeric: tabular-nums; font-size: 0.9rem; }
+  #results :global(th), #results :global(td) { border: 1px solid var(--rule, #ddd); padding: 4px 10px; text-align: right; }
+  #results :global(th:first-child), #results :global(td:first-child) { text-align: left; }
+  button { padding: 0.35rem 0.9rem; }
+</style>
+
+<script>
+  import { mountZoomBench } from '../../scripts/hb-editor/src/demo-bench.mjs';
+  import interUrl from '../../scripts/hb-editor/fonts/Inter.ttf?url';
+
+  mountZoomBench(document.getElementById('hb-bench-demo'), { fontUrl: interUrl });
+</script>

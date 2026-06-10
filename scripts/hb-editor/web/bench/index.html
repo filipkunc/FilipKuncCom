@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>hb-gpu zoom benchmark</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 1100px; padding: 0 1rem; }
+    .row { display: flex; gap: 1rem; align-items: center; margin: 0.75rem 0; flex-wrap: wrap; }
+    .stage { position: relative; border: 1px solid #ccc; border-radius: 4px; height: 540px; overflow: hidden; }
+    .stage canvas { display: block; width: 100%; height: 100%; }
+    #domHost { position: absolute; inset: 0; background: #fff; }
+    #domHost > div { position: absolute; left: 14px; white-space: pre; line-height: 1; will-change: font-size; }
+    #live { color: #444; font-size: 0.95rem; min-height: 1.4em; font-variant-numeric: tabular-nums; }
+    .progress { display: flex; gap: 6px; margin: 0.4rem 0; }
+    .seg { flex: 1; position: relative; height: 22px; border: 1px solid #ccc; border-radius: 4px; overflow: hidden; }
+    .seg .fill { position: absolute; inset: 0; width: 0; background: #2b5fb833; }
+    .seg .name { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 0.78rem; }
+    .seg.active { border-color: #2b5fb8; }
+    table { border-collapse: collapse; margin-top: 0.5rem; font-variant-numeric: tabular-nums; }
+    th, td { border: 1px solid #ddd; padding: 4px 12px; text-align: right; }
+    th:first-child, td:first-child { text-align: left; }
+    button { padding: 0.4rem 1rem; }
+    a { color: #2563eb; }
+  </style>
+</head>
+<body>
+  <h1>Continuous zoom: where the atlas has to re-rasterize</h1>
+  <p>Text size animates every frame. hb-gpu reuses the same GPU curve data at
+     any size; canvas 2D and DOM must re-rasterize every glyph at every new
+     size. Pipelines run one at a time; frame intervals are the metric.
+     <a href="../">playground</a> · <a href="../editor/">editor</a> ·
+     <a href="../compare/">compare</a></p>
+  <div class="row">
+    <button id="run">Run benchmark</button>
+    <label><input id="phase" type="checkbox" /> per-row phase (N distinct sizes per frame)</label>
+    <label>load <input id="load" type="range" min="1" max="96" value="1" /> x<span id="loadVal">1</span></label>
+    <label><input id="quant" type="checkbox" /> quantize sizes to whole px (glyph-cache friendly)</label>
+    <span>watch:
+      <label><input type="radio" name="watch" value="hb" checked /> hb-gpu</label>
+      <label><input type="radio" name="watch" value="c2d" /> canvas 2D</label>
+      <label><input type="radio" name="watch" value="dom" /> DOM</label>
+    </span>
+    <span id="live"></span>
+  </div>
+  <div id="progress" class="progress" hidden>
+    <div class="seg" data-pipe="hb"><span class="fill"></span><span class="name">hb-gpu</span></div>
+    <div class="seg" data-pipe="c2d"><span class="fill"></span><span class="name">canvas 2D</span></div>
+    <div class="seg" data-pipe="dom"><span class="fill"></span><span class="name">DOM</span></div>
+  </div>
+  <div class="stage">
+    <canvas id="gl"></canvas>
+    <canvas id="c2d" style="display:none"></canvas>
+    <div id="domHost" style="display:none"></div>
+  </div>
+  <div id="results"></div>
+  <script type="module" src="./main.mjs"></script>
+</body>
+</html>

@@ -1,0 +1,101 @@
+---
+title: "Text rendering without glyph bitmaps"
+description: "A web text editor that renders glyph outlines on the GPU with HarfBuzz, and honest benchmarks against canvas 2D and DOM text."
+pubDate: 2026-06-10
+draft: false
+tags: ["text-rendering", "harfbuzz", "webgl", "wasm", "emscripten", "fonts"]
+og:
+  kind: screenshot
+  src: lig-selection.png
+---
+
+import HbEditor from '../../../components/HbEditor.astro';
+import HbLigature from '../../../components/HbLigature.astro';
+import HbCompare from '../../../components/HbCompare.astro';
+import HbZoomBench from '../../../components/HbZoomBench.astro';
+import Excerpt from '../../../components/Excerpt.astro';
+
+Text rendering is the most complex part of many applications I have worked on. I spent years around [DirectWrite](https://learn.microsoft.com/en-us/windows/win32/directwrite/direct-write-portal) and [Skia](https://skia.org/), and at one point I cached the laid-out result of 256 lines at a time just to keep scrolling smooth, paying for it in memory. It is a niche topic with very high expectations, because everyone stares at text all day and notices everything.
+
+This spring the rules of the niche changed, so I built a small text editor on the new rules. It runs below, in this page, and every glyph you see is rasterized from its outline curves by a fragment shader. There is no glyph bitmap anywhere, no atlas, no cached mask. That used to be either patented or impractical, and for twenty years it was both.
+
+## Two patents fell in one week
+
+Drawing curves directly on the GPU was worked out long ago. Microsoft patented the [Loop-Blinn technique](https://patents.google.com/patent/US7564459B2/en) in 2005. Eric Lengyel built the state of the art on top of similar ideas, shipped it in games as the [Slug library](https://sluglibrary.com/), published [the algorithm](https://jcgt.org/published/0006/02/02/) in 2017, and patented it too. Open source projects kept their distance from the whole family for two decades.
+
+In March 2026 the Loop-Blinn patent expired on schedule, and a week earlier Lengyel [dedicated his Slug patent to the public domain](https://terathon.com/blog/decade-slug.html) and published his [reference shaders](https://github.com/EricLengyel/Slug) under MIT. Two weeks after that, Behdad Esfahbod shipped [HarfBuzz 14.0](https://github.com/harfbuzz/harfbuzz/releases/tag/14.0.0) with a new library called hb-gpu. It encodes glyph outlines into a compact texture on the CPU and ships first-party fragment shaders, in GLSL, WGSL, MSL, and HLSL, that compute the Slug coverage per pixel. The shaping engine that already runs in every browser and every Linux desktop now comes with a GPU text rasterizer in the same tarball.
+
+One warning for anyone searching this topic: Skia contains an unrelated class also named Slug. It is a serialization wrapper for text blobs and has nothing to do with Lengyel's algorithm. Half my early search results were contaminated by it.
+
+## An editor with no glyph bitmaps
+
+Click into the canvas and type. Arrows, selection, clipboard, and the font picker all work.
+
+<HbEditor />
+
+The pipeline behind it is short. HarfBuzz shapes the text, the same shaping every browser does. For each glyph the hb-gpu encoder walks the outline once and packs the quadratic curves into a small blob of RGBA16I texels, which I upload into one texture shared by all glyphs. From then on that glyph never gets touched again. Drawing is one quad per glyph, and the fragment shader fetches the curves, casts rays through each pixel, and computes exact coverage at whatever size and transform the vertex side asks for.
+
+The whole CPU side of that, per glyph, is this.
+
+<Excerpt source="scripts/hb-editor/src/shim.c" region="encode-glyph" lang="c" />
+
+I compile HarfBuzz with that shim using Emscripten, one emcc command over the release tarball, no meson involved because the tarball ships the generated shader headers. The result is about 620 KB of wasm that does shaping, encoding, and hands me the shader source as strings. My fragment shader is just a `main` appended to what hb-gpu provides.
+
+<Excerpt source="scripts/hb-editor/src/renderer.mjs" region="fragment-main" lang="glsl" />
+
+`hb_gpu_draw` is the Slug evaluation. `hb_gpu_stem_darken` and the gamma line matter more than they look, and they get their own section below.
+
+## The caret has to stop inside a ligature
+
+The font in the editor starts as EB Garamond on purpose. Type "ffi" and it becomes a single glyph. Now press the left arrow. The caret stops inside the ligature, twice, at positions that respect the glyph's actual shape. Select half of it and the one glyph renders in two colors. Below is that exact situation, rendered live by the same pipeline, with the selection frozen partway through the ffi.
+
+<HbLigature />
+
+I cared about this detail because it is a known sore spot. DirectWrite's hit testing snaps to whole clusters, so editors built on it [struggle to put a caret inside a ligature](https://stackoverflow.com/questions/48462119/partial-ligature-selection-with-directwrite), and rendering a partially selected ligature in two colors is close to impossible with its layout API. Chromium handles it correctly, and the way it does that is reproducible in not much code.
+
+Caret stops are grapheme boundaries from `Intl.Segmenter`, not shaping clusters. For a combining mark that means the caret skips the whole grapheme as one unit, which is what you want. For a ligature it means the caret needs x positions inside one glyph, and the font can volunteer them through the GDEF ligature caret table. EB Garamond does not carry that table, so the fallback divides the ligature advance evenly per grapheme, which is exactly what Blink does too.
+
+<Excerpt source="scripts/hb-editor/src/doc.mjs" region="ligature-carets" lang="js" />
+
+The two-color rendering is the part DirectWrite cannot do, and here it costs fifteen lines. The selected text is the same glyph buffer drawn a second time in white with a GL scissor rect clipped to the selection. Shaping never reruns, the ligature never breaks apart, and the glyph straddles the selection edge correctly because both draws are pixel-exact copies.
+
+The font picker holds two more data points. Inter has no f-ligatures at all, by design. Fira Code has famous programming ligatures, but it implements them as per-character glyph substitutions, so the clusters never merge and a caret can never get trapped. Three fonts, three different answers to the same problem.
+
+## Matching the browser's darkness
+
+The first time I rendered text with mathematically correct coverage it looked wrong. Thin, gray, weaker than the same text in the DOM next to it. This is a known effect rather than a bug. Browsers do not ship physically correct text blending, because correct blending on a dark-on-light page reads as anemic. Skia documents its own compensation tricks in a design doc honestly titled [The Raster Tragedy](https://skia.org/docs/dev/design/raster_tragedy/), and FreeType's documentation [tells the same story](https://freetype.org/freetype2/docs/hinting/text-rendering-general.html) from the Linux side.
+
+hb-gpu ships stem darkening for the same reason, and I added one knob on top, a gamma applied to the edge coverage only. Compare for yourself. The same text, the same font file, rendered by hb-gpu, by canvas 2D `fillText`, and by the DOM, at the small sizes where rendering quality is actually contested.
+
+<HbCompare />
+
+On my monitor, an OLED with an unusual subpixel layout where I keep LCD antialiasing disabled anyway, gamma between 0.7 and 0.8 makes the hb-gpu pane nearly indistinguishable from the DOM pane. That value is now the default everywhere in this post. It is my screen and my eyes, which is exactly why the demo has sliders instead of a conclusion.
+
+## A benchmark where a cache decides everything
+
+Speed claims about text rendering are usually wrong by omission, and I say that as someone who once built the omission. A browser caches rasterized glyphs by font and size, so any benchmark where sizes repeat measures the cache, and any benchmark where they never repeat measures the miss path. My old 256-lines-at-once layout cache was the same bet at a different layer, and its cost was memory.
+
+So this benchmark animates text size every frame and lets you pick which world you are in. Continuous sizes never repeat and defeat the glyph cache by construction. Quantized sizes snap to whole pixels and recur every cycle, so the cache works. The pipelines run one at a time and the metric is delivered frame intervals, which is what you actually see.
+
+<HbZoomBench />
+
+On my 240 Hz monitor, at 14,352 glyphs per frame, the results came out like this.
+
+| scenario | hb-gpu | canvas 2D | DOM |
+|---|---|---|---|
+| quantized zoom, one size per frame | 240 fps, 0% missed | 240 fps, 0% missed | 249 fps, 0% missed |
+| continuous zoom, one size per frame | 240 fps, 0% missed | 163 fps, 45% missed | 145 fps, 69% missed |
+| quantized, 156 distinct sizes per frame | 240 fps, 0% missed | 42 fps, 89% missed | 67 fps, 70% missed |
+| continuous, 156 distinct sizes per frame | 240 fps, 0% missed | 5 fps, 100% missed | 7 fps, 100% missed |
+
+Read it from the top. When the cache works, the three pipelines tie, and nobody should rewrite their text stack for a tie. One checkbox later the browser pipelines lose a third of their frames, not because they are slow but because every frame pays a fresh rasterization per glyph. The third row is my favorite, because quantization restored cache hits and canvas still fell to 42 fps. With 156 sizes alive at once the working set is thousands of glyph masks, which blows past the browser's glyph cache budget, and the cache thrashes by eviction instead of by novelty. That row reproduces the memory limit I kept hitting with my own caches years ago, now measured from the outside.
+
+The hb-gpu column does not move, because there is nothing in the pipeline keyed by size, so there is nothing to miss. I want to be fair about what that flatness cost me. My first version of this benchmark showed hb-gpu dropping 2% of its frames, and the culprit was my own JavaScript allocating vertex buffers every frame and paying for it in garbage collection pauses. A flat cost profile is not a property you get for free from the algorithm. You build it, on either architecture.
+
+Two honest caveats. The 156-size case is adversarial, though it has real relatives in map labels and zoomable canvas UIs, which is why tools like Figma render text themselves. And on SwiftShader, Chrome's software GL fallback, the whole table inverts and hb-gpu collapses to 16 fps while canvas cruises, because executing a ray-casting fragment shader on a CPU is the worst case for this design while Skia's CPU rasterizer is the most optimized path in the browser. Run the benchmark on whatever you are reading this on. Your hardware will pick your winner.
+
+## Where this leaves text
+
+The browsers are not wrong. At normal UI scale my Perfetto traces show all three pipelines under 0.2 ms per frame, the glyph atlas is the right design for text that mostly stands still, and I needed stem darkening plus a gamma knob just to visually match what Skia produces at 14 px. Chromium keeps CPU-rasterized glyph masks because at small static sizes they are the quality benchmark, and after this project I agree with that choice more than before, not less.
+
+What changed in March is that the other architecture stopped being forbidden. A text renderer whose cost does not depend on size, transform, or an invisible cache is now a public domain algorithm with a maintained implementation inside HarfBuzz, reachable from a browser through one wasm build and two shader strings. The editor above is a few hundred lines of document model on top of that, and the parts I expected to be hard, ligature carets and partial selection, turned out to be the pleasant parts. hb-gpu also ships its shaders in WGSL, so the WebGPU version of this post is mostly waiting for me to want it.

@@ -1,0 +1,51 @@
+---
+// Three-pipeline quality comparison demo, embedded from scripts/hb-editor.
+---
+
+<div id="hb-compare-demo" class="hb-demo">
+  <div class="row">
+    <input id="text" value="Difficult waffles, fjords & quick mixes. 1Il| 0O" />
+  </div>
+  <div class="row">
+    <label>font
+      <select id="font">
+        <option value="Inter" selected>Inter</option>
+        <option value="EBGaramond">EB Garamond</option>
+        <option value="FiraCode">Fira Code</option>
+      </select>
+    </label>
+    <label><input id="darken" type="checkbox" checked /> stem darkening</label>
+    <label>gamma <input id="gamma" type="range" min="0.5" max="2.2" step="0.05" value="0.75" /> <span id="gammaVal">0.75</span></label>
+  </div>
+  <div class="panes">
+    <div class="pane"><h4>hb-gpu (WebGL2, no atlas)</h4><canvas id="gl"></canvas></div>
+    <div class="pane"><h4>canvas 2D fillText (opaque)</h4><canvas id="c2d"></canvas></div>
+    <div class="pane"><h4>DOM text</h4><div class="dom-host" id="dom"></div></div>
+  </div>
+  <p id="status">loading wasm…</p>
+</div>
+
+<style>
+  .hb-demo { margin: 1.5rem 0; }
+  .row { display: flex; gap: 1rem; align-items: center; margin: 0.5rem 0; flex-wrap: wrap; }
+  #text { flex: 1; min-width: 14rem; font-size: 0.95rem; padding: 0.35rem; }
+  .panes { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  @media (max-width: 800px) { .panes { grid-template-columns: 1fr; } }
+  .pane { border: 1px solid var(--rule, #ccc); border-radius: 6px; min-width: 0; background: var(--bg, #fff); }
+  .pane h4 { font-size: 0.8rem; font-weight: 600; margin: 0; padding: 5px 10px; border-bottom: 1px solid var(--rule, #eee); color: var(--muted, #444); }
+  .pane canvas, .pane .dom-host { display: block; width: 100%; }
+  .dom-host { position: relative; overflow: hidden; color: var(--fg, #000); background: var(--bg, #fff); }
+  .dom-host :global(div) { position: absolute; left: 0; white-space: pre; line-height: 1; }
+  #status { color: var(--muted, #666); font-size: 0.85rem; }
+</style>
+
+<script>
+  import { mountCompareDemo } from '../../scripts/hb-editor/src/demo-compare.mjs';
+  import interUrl from '../../scripts/hb-editor/fonts/Inter.ttf?url';
+  import garamondUrl from '../../scripts/hb-editor/fonts/EBGaramond.ttf?url';
+  import firaUrl from '../../scripts/hb-editor/fonts/FiraCode.ttf?url';
+
+  mountCompareDemo(document.getElementById('hb-compare-demo'), {
+    fontUrls: { Inter: interUrl, EBGaramond: garamondUrl, FiraCode: firaUrl },
+  });
+</script>

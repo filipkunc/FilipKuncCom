@@ -1,0 +1,54 @@
+---
+// The hb-gpu text editor demo, embedded from scripts/hb-editor.
+---
+
+<div id="hb-editor-demo" class="hb-demo">
+  <div class="row">
+    <label>font
+      <select id="font">
+        <option value="EBGaramond" selected>EB Garamond (fi/ffi ligatures)</option>
+        <option value="Inter">Inter (no f-ligatures by design)</option>
+        <option value="FiraCode">Fira Code (caret-safe programming ligatures)</option>
+      </select>
+    </label>
+    <span id="status">loading wasm…</span>
+  </div>
+  <div class="editor-wrap">
+    <canvas id="canvas"></canvas>
+    <textarea
+      id="input-proxy"
+      autocomplete="off"
+      autocorrect="off"
+      autocapitalize="off"
+      spellcheck="false"></textarea>
+  </div>
+</div>
+
+<style>
+  .hb-demo { margin: 1.5rem 0; }
+  .row { display: flex; gap: 1rem; align-items: center; margin: 0 0 0.5rem; flex-wrap: wrap; }
+  #status { color: var(--muted, #666); font-size: 0.85rem; }
+  .editor-wrap { position: relative; }
+  canvas {
+    width: 100%; height: 220px; border: 1px solid var(--rule, #ccc);
+    border-radius: 6px; display: block; cursor: text; touch-action: none;
+    background: var(--bg, #fff);
+  }
+  /* Hidden input proxy: keeps focus + receives keyboard/IME/clipboard events. */
+  #input-proxy {
+    position: absolute; left: 0; top: 0; width: 1px; height: 1px;
+    opacity: 0; border: none; padding: 0; resize: none; outline: none;
+    overflow: hidden; pointer-events: none;
+  }
+</style>
+
+<script>
+  import { mountEditorDemo } from '../../scripts/hb-editor/src/demo-editor.mjs';
+  import interUrl from '../../scripts/hb-editor/fonts/Inter.ttf?url';
+  import garamondUrl from '../../scripts/hb-editor/fonts/EBGaramond.ttf?url';
+  import firaUrl from '../../scripts/hb-editor/fonts/FiraCode.ttf?url';
+
+  mountEditorDemo(document.getElementById('hb-editor-demo'), {
+    fontUrls: { Inter: interUrl, EBGaramond: garamondUrl, FiraCode: firaUrl },
+  });
+</script>
