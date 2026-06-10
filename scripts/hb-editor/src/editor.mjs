@@ -168,6 +168,7 @@ export function createEditor({ canvas, textarea, hb, font, sizePx = 28 }) {
     }
   });
 
+  // #region hidden-textarea
   // Regular typing (including dead keys resolving outside composition).
   textarea.addEventListener('input', () => {
     if (composing) return;
@@ -215,6 +216,7 @@ export function createEditor({ canvas, textarea, hb, font, sizePx = 28 }) {
       changed();
     }
   });
+  // #endregion hidden-textarea
 
   // --- Mouse ---
 

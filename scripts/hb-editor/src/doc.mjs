@@ -55,6 +55,7 @@ export function createDoc(font, { sizePx = 32, lineGapPx = 0 } = {}) {
       const lineText = text.slice(start, end);
       const shaped = lineText ? font.shape(lineText) : [];
 
+      // #region cluster-runs
       // Group glyphs into cluster runs (LTR: clusters non-decreasing).
       // Each: line-local [index, nextIndex) span, pen x, total advance, and
       // the first gid (the ligature glyph, for GDEF caret lookup).
@@ -73,6 +74,7 @@ export function createDoc(font, { sizePx = 32, lineGapPx = 0 } = {}) {
       for (let i = 0; i < clusters.length; i++) {
         clusters[i].nextIndex = i + 1 < clusters.length ? clusters[i + 1].index : lineText.length;
       }
+      // #endregion cluster-runs
 
       // Caret stops at grapheme boundaries; x inside a multi-grapheme
       // cluster (ligature) from GDEF carets or even division.

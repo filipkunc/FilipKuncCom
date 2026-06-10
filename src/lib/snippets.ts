@@ -12,8 +12,8 @@ import { readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { join } from 'node:path';
 
-const REGION_START = /^\s*(?:\/\/|#|--|\/\*)\s*#region\s+(\S+)/;
-const REGION_END = /^\s*(?:\/\/|#|--|\/\*)\s*#endregion\b/;
+const REGION_START = /^\s*(?:\/\/|#|--|\/\*|<!--)\s*#region\s+(\S+)/;
+const REGION_END = /^\s*(?:\/\/|#|--|\/\*|<!--)\s*#endregion\b/;
 
 // The public repository these sources live in, for "view on GitHub" links.
 const SOURCE_REPO = 'filipkunc/FilipKuncCom';
