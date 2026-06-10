@@ -112,7 +112,7 @@ At 14,352 glyphs per frame:
 
 The third row is the interesting one. Quantization restored the cache hits and canvas still fell to 42 fps, because 156 sizes alive at once need more glyph masks than the browser's cache budget holds, so it keeps evicting entries it will need again a moment later. That is the memory limit I kept hitting with my own caches years ago, measured from the outside. The hb-gpu column is flat because nothing in it is keyed by size, though my first version still dropped 2% of frames to per-frame allocations in my own JavaScript before I removed them.
 
-Two caveats. The 156-size case is adversarial, with real relatives in map labels and zoomable canvas UIs. And on [SwiftShader](https://github.com/google/swiftshader), Chrome's software GL fallback, the table inverts, because a ray-casting fragment shader on a CPU is this design's worst case. Run the benchmark on your own machine.
+Two caveats. The 156-size case is adversarial, with real relatives in map labels and zoomable canvas UIs. And the table above is a desktop GPU with fragment shading to spare. On my phone the crossover moves: hb-gpu stays ahead only in the cache-hostile modes, and on [SwiftShader](https://github.com/google/swiftshader), Chrome's software GL fallback, the table inverts outright, because a ray-casting fragment shader on a CPU is this design's worst case. Run the benchmark on your own device.
 
 ## Where this leaves text
 

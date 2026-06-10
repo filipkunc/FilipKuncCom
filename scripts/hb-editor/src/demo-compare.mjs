@@ -50,12 +50,15 @@ export async function mountCompareDemo(root, { fontUrls }) {
   // (scripts/hb-editor/trace.mjs) to see both pipelines.
   const gpuTimer = createGpuTimer(gl);
 
+  // Wasm and the initial font fetch run in parallel (see demo-editor.mjs).
+  const firstFont = ui.font.value;
+  const prefetched = new Map([[firstFont, fetch(fontUrls[firstFont]).then((r) => r.arrayBuffer())]]);
   const hb = await loadHb();
   const fonts = new Map(); // name -> {hbFont, family, renderer}
 
   async function getFont(name) {
     if (!fonts.has(name)) {
-      const buf = await (await fetch(fontUrls[name])).arrayBuffer();
+      const buf = await (prefetched.get(name) ?? (await fetch(fontUrls[name])).arrayBuffer());
       const hbFont = hb.createFont(new Uint8Array(buf));
       const family = `cmp-${name}`;
       const face = new FontFace(family, buf);

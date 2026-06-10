@@ -46,8 +46,10 @@ export async function mountZoomBench(root, { fontUrl }) {
   onThemeChange(() => { theme = themeColors(); });
   const watchValue = () => ui.watchRadios.find((r) => r.checked)?.value ?? 'hb';
 
-  const hb = await loadHb();
-  const fontBuf = await (await fetch(fontUrl)).arrayBuffer();
+  const [hb, fontBuf] = await Promise.all([
+    loadHb(),
+    fetch(fontUrl).then((r) => r.arrayBuffer()),
+  ]);
   const font = hb.createFont(new Uint8Array(fontBuf));
   const family = 'bench-Inter';
   const face = new FontFace(family, fontBuf);

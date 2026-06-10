@@ -6,9 +6,12 @@ through HarfBuzz 14's hb-gpu (Slug-algorithm GPU text), WebGL2 first.
 ## Layout
 
 - `build-wasm.sh` — fetches HarfBuzz 14.2.1 sources (into `~/.cache/hb-src`)
-  and the Inter font (OFL, into `fonts/`), compiles HarfBuzz core + the
-  hb-gpu sources + `src/shim.c` with Emscripten into `dist/hb-gpu.mjs` +
-  `dist/hb-gpu.wasm` (~620 KB).
+  and the fonts (OFL, into `fonts/`), compiles HarfBuzz core + the hb-gpu
+  sources + `src/shim.c` with Emscripten into `dist/hb-gpu.mjs` +
+  `dist/hb-gpu.wasm` (~620 KB raw, ~180 KB brotli), and generates web font
+  subsets (`fonts/*-subset.ttf`, default instance + Latin/Latin-1/Ext-A,
+  ~2 MB -> ~330 KB) via uvx fonttools. Demos ship the subsets; node tests
+  keep the full fonts.
 - `src/shim.c` — C shim: create font, shape UTF-8, encode glyph texels,
   fetch shader sources. Flat buffers only across the wasm boundary.
 - `src/hb.mjs` — JS wrapper exposing `loadHb()`, `HbFont.shape()`,

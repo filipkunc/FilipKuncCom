@@ -25,7 +25,7 @@ if (!gl) {
 
 const hb = await loadHb();
 const fontBytes = new Uint8Array(
-  await (await fetch('../fonts/Inter.ttf')).arrayBuffer(),
+  await (await fetch('../fonts/Inter-subset.ttf')).arrayBuffer(),
 );
 const font = hb.createFont(fontBytes);
 const renderer = createTextRenderer(gl, hb, font);

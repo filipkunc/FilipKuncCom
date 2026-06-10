@@ -42,6 +42,27 @@ if [ ! -f "$FIRACODE" ]; then
     "https://raw.githubusercontent.com/google/fonts/main/ofl/firacode/FiraCode%5Bwght%5D.ttf"
 fi
 
+# Web subsets: pin the variable axes to the default instance and keep Latin +
+# Latin-1 + Latin Extended-A + common punctuation. The demos ship these
+# (~2 MB -> ~150 KB total); tests keep using the full fonts.
+SUBSET_UNICODES="U+0020-007E,U+00A0-017F,U+2010-2027,U+20AC"
+subset_font() {
+  local src="$1" out="$2" axes="$3"
+  [ -f "$out" ] && [ "$out" -nt "$src" ] && return 0
+  echo "Subsetting $(basename "$src") -> $(basename "$out")..."
+  local tmp
+  tmp="$(mktemp --suffix=.ttf)"
+  uvx fonttools varLib.instancer --quiet "$src" $axes -o "$tmp"
+  uvx fonttools subset "$tmp" \
+    --unicodes="$SUBSET_UNICODES" \
+    --layout-features='*' \
+    --output-file="$out"
+  rm -f "$tmp"
+}
+subset_font "$FONT" "$DIR/fonts/Inter-subset.ttf" "wght=400 opsz=14"
+subset_font "$GARAMOND" "$DIR/fonts/EBGaramond-subset.ttf" "wght=400"
+subset_font "$FIRACODE" "$DIR/fonts/FiraCode-subset.ttf" "wght=400"
+
 if ! command -v emcc >/dev/null 2>&1; then
   source "$HOME/emsdk/emsdk_env.sh" >/dev/null 2>&1
 fi

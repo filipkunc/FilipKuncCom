@@ -21,6 +21,7 @@
     <div class="pane"><h4>hb-gpu (WebGL2, no atlas)</h4><canvas id="gl"></canvas></div>
     <div class="pane"><h4>canvas 2D fillText (opaque)</h4><canvas id="c2d"></canvas></div>
     <div class="pane"><h4>DOM text</h4><div class="dom-host" id="dom"></div></div>
+    <p class="hb-loading" hidden>loading wasm + font…</p>
   </div>
   <p id="status">loading wasm…</p>
 </div>
@@ -29,7 +30,7 @@
   .hb-demo { margin: 1.5rem 0; }
   .row { display: flex; gap: 1rem; align-items: center; margin: 0.5rem 0; flex-wrap: wrap; }
   #text { flex: 1; min-width: 14rem; font-size: 0.95rem; padding: 0.35rem; }
-  .panes { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .panes { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; position: relative; min-height: 4rem; }
   @media (max-width: 800px) { .panes { grid-template-columns: 1fr; } }
   .pane { border: 1px solid var(--rule, #ccc); border-radius: 6px; min-width: 0; background: var(--bg, #fff); }
   .pane h4 { font-size: 0.8rem; font-weight: 600; margin: 0; padding: 5px 10px; border-bottom: 1px solid var(--rule, #eee); color: var(--muted, #444); }
@@ -37,19 +38,28 @@
   .dom-host { position: relative; overflow: hidden; color: var(--fg, #000); background: var(--bg, #fff); }
   .dom-host :global(div) { position: absolute; left: 0; white-space: pre; line-height: 1; }
   #status { color: var(--muted, #666); font-size: 0.85rem; }
+  .hb-loading {
+    position: absolute; inset: 0; display: flex; align-items: center;
+    justify-content: center; margin: 0; pointer-events: none;
+    color: var(--muted, #666); font-size: 0.9rem;
+    animation: hb-pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes hb-pulse { 50% { opacity: 0.4; } }
 </style>
 
 <script>
   import { mountWhenVisible } from '../../scripts/hb-editor/src/lazy.mjs';
   import { mountCompareDemo } from '../../scripts/hb-editor/src/demo-compare.mjs';
-  import interUrl from '../../scripts/hb-editor/fonts/Inter.ttf?url';
-  import garamondUrl from '../../scripts/hb-editor/fonts/EBGaramond.ttf?url';
-  import firaUrl from '../../scripts/hb-editor/fonts/FiraCode.ttf?url';
+  import interUrl from '../../scripts/hb-editor/fonts/Inter-subset.ttf?url';
+  import garamondUrl from '../../scripts/hb-editor/fonts/EBGaramond-subset.ttf?url';
+  import firaUrl from '../../scripts/hb-editor/fonts/FiraCode-subset.ttf?url';
 
   const root = document.getElementById('hb-compare-demo');
-  mountWhenVisible(root, () =>
+  const loading = root.querySelector('.hb-loading');
+  mountWhenVisible(root, () => {
+    loading.hidden = false;
     mountCompareDemo(root, {
       fontUrls: { Inter: interUrl, EBGaramond: garamondUrl, FiraCode: firaUrl },
-    }),
-  );
+    }).then(() => loading.remove());
+  });
 </script>

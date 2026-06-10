@@ -12,8 +12,12 @@ export async function mountEditorDemo(root, { fontUrls }) {
   const status = root.querySelector('#status');
   const fontPicker = root.querySelector('#font');
 
+  // Fetch the wasm and the initial font in parallel; mobile radio latency
+  // makes a sequential waterfall twice as slow.
+  const firstName = fontPicker.value;
+  const firstBytes = fetch(fontUrls[firstName]).then((r) => r.arrayBuffer());
   const hb = await loadHb();
-  const fonts = new Map();
+  const fonts = new Map([[firstName, hb.createFont(new Uint8Array(await firstBytes))]]);
   async function getFont(name) {
     if (!fonts.has(name)) {
       const bytes = new Uint8Array(await (await fetch(fontUrls[name])).arrayBuffer());

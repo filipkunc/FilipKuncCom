@@ -18,10 +18,11 @@ export async function mountLigatureDemo(root, { fontUrl, text = 'difficult fjord
   });
   if (!gl) return;
 
-  const hb = await loadHb();
-  const font = hb.createFont(
-    new Uint8Array(await (await fetch(fontUrl)).arrayBuffer()),
-  );
+  const [hb, fontBuf] = await Promise.all([
+    loadHb(),
+    fetch(fontUrl).then((r) => r.arrayBuffer()),
+  ]);
+  const font = hb.createFont(new Uint8Array(fontBuf));
   const renderer = createTextRenderer(gl, hb, font);
   const doc = createDoc(font, { sizePx });
   doc.setText(text);

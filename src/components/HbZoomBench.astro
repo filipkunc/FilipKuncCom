@@ -24,6 +24,7 @@
     <canvas id="gl"></canvas>
     <canvas id="c2d" style="display:none"></canvas>
     <div id="domHost" style="display:none"></div>
+    <p class="hb-loading" hidden>loading wasm + font…</p>
   </div>
   <div id="results"></div>
 </div>
@@ -45,13 +46,24 @@
   #results :global(th), #results :global(td) { border: 1px solid var(--rule, #ddd); padding: 4px 10px; text-align: right; }
   #results :global(th:first-child), #results :global(td:first-child) { text-align: left; }
   button { padding: 0.35rem 0.9rem; }
+  .hb-loading {
+    position: absolute; inset: 0; display: flex; align-items: center;
+    justify-content: center; margin: 0; pointer-events: none;
+    color: var(--muted, #666); font-size: 0.9rem;
+    animation: hb-pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes hb-pulse { 50% { opacity: 0.4; } }
 </style>
 
 <script>
   import { mountWhenVisible } from '../../scripts/hb-editor/src/lazy.mjs';
   import { mountZoomBench } from '../../scripts/hb-editor/src/demo-bench.mjs';
-  import interUrl from '../../scripts/hb-editor/fonts/Inter.ttf?url';
+  import interUrl from '../../scripts/hb-editor/fonts/Inter-subset.ttf?url';
 
   const root = document.getElementById('hb-bench-demo');
-  mountWhenVisible(root, () => mountZoomBench(root, { fontUrl: interUrl }));
+  const loading = root.querySelector('.hb-loading');
+  mountWhenVisible(root, () => {
+    loading.hidden = false;
+    mountZoomBench(root, { fontUrl: interUrl }).then(() => loading.remove());
+  });
 </script>

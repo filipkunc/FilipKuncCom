@@ -182,6 +182,35 @@ const server = http.createServer(async (req, res) => {
 
   const ext = path.extname(file).toLowerCase();
   const mime = MIME[ext] ?? 'application/octet-stream';
+
+  // Precompressed siblings (.br/.gz, written by scripts/compress-dist.mjs).
+  // Range requests bypass this: ranges address the identity encoding.
+  if (!req.headers.range) {
+    const accepted = (req.headers['accept-encoding'] ?? '').toString();
+    for (const [enc, suffix] of [['br', '.br'], ['gzip', '.gz']] as const) {
+      if (!new RegExp(`\\b${enc}\\b`).test(accepted)) continue;
+      try {
+        const cstat = await fs.stat(file + suffix);
+        res.writeHead(200, {
+          'content-type': mime,
+          'content-length': String(cstat.size),
+          'content-encoding': enc,
+          vary: 'accept-encoding',
+          'cache-control': cacheHeaderFor(file),
+          'x-git-sha': GIT_SHA,
+        });
+        if (req.method === 'HEAD') {
+          res.end();
+          return;
+        }
+        createReadStream(file + suffix).pipe(res);
+        return;
+      } catch {
+        /* no precompressed sibling for this encoding */
+      }
+    }
+  }
+
   const stat = await fs.stat(file);
   const fileSize = stat.size;
 

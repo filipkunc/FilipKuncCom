@@ -22,6 +22,7 @@
       autocorrect="off"
       autocapitalize="off"
       spellcheck="false"></textarea>
+    <p class="hb-loading">loading wasm + font…</p>
   </div>
   <!-- #endregion input-proxy-dom -->
 </div>
@@ -44,15 +45,23 @@
     overflow: hidden; pointer-events: none;
   }
   /* #endregion input-proxy-css */
+  .hb-loading {
+    position: absolute; inset: 0; display: flex; align-items: center;
+    justify-content: center; margin: 0; pointer-events: none;
+    color: var(--muted, #666); font-size: 0.9rem;
+    animation: hb-pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes hb-pulse { 50% { opacity: 0.4; } }
 </style>
 
 <script>
   import { mountEditorDemo } from '../../scripts/hb-editor/src/demo-editor.mjs';
-  import interUrl from '../../scripts/hb-editor/fonts/Inter.ttf?url';
-  import garamondUrl from '../../scripts/hb-editor/fonts/EBGaramond.ttf?url';
-  import firaUrl from '../../scripts/hb-editor/fonts/FiraCode.ttf?url';
+  import interUrl from '../../scripts/hb-editor/fonts/Inter-subset.ttf?url';
+  import garamondUrl from '../../scripts/hb-editor/fonts/EBGaramond-subset.ttf?url';
+  import firaUrl from '../../scripts/hb-editor/fonts/FiraCode-subset.ttf?url';
 
-  mountEditorDemo(document.getElementById('hb-editor-demo'), {
+  const root = document.getElementById('hb-editor-demo');
+  mountEditorDemo(root, {
     fontUrls: { Inter: interUrl, EBGaramond: garamondUrl, FiraCode: firaUrl },
-  });
+  }).then(() => root.querySelector('.hb-loading')?.remove());
 </script>
