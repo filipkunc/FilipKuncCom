@@ -16,10 +16,10 @@
 </style>
 
 <script>
+  import { mountWhenVisible } from '../../scripts/hb-editor/src/lazy.mjs';
   import { mountLigatureDemo } from '../../scripts/hb-editor/src/demo-ligature.mjs';
   import garamondUrl from '../../scripts/hb-editor/fonts/EBGaramond.ttf?url';
 
-  mountLigatureDemo(document.getElementById('hb-ligature-demo'), {
-    fontUrl: garamondUrl,
-  });
+  const root = document.getElementById('hb-ligature-demo');
+  mountWhenVisible(root, () => mountLigatureDemo(root, { fontUrl: garamondUrl }));
 </script>

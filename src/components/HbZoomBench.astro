@@ -48,8 +48,10 @@
 </style>
 
 <script>
+  import { mountWhenVisible } from '../../scripts/hb-editor/src/lazy.mjs';
   import { mountZoomBench } from '../../scripts/hb-editor/src/demo-bench.mjs';
   import interUrl from '../../scripts/hb-editor/fonts/Inter.ttf?url';
 
-  mountZoomBench(document.getElementById('hb-bench-demo'), { fontUrl: interUrl });
+  const root = document.getElementById('hb-bench-demo');
+  mountWhenVisible(root, () => mountZoomBench(root, { fontUrl: interUrl }));
 </script>
