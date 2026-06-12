@@ -5,7 +5,9 @@ import type { GetStaticPaths } from 'astro';
 import fs from 'node:fs';
 
 export const getStaticPaths: GetStaticPaths = async () => {
-  const posts = await getCollection('posts', ({ data }) => !data.draft);
+  // Drafts stay out of the production build but are routable in `astro dev`,
+  // so a post can be developed against its live demos before publishing.
+  const posts = await getCollection('posts', ({ data }) => import.meta.env.DEV || !data.draft);
   return posts.map((post) => ({
     params: { slug: post.id },
     props: { post },
