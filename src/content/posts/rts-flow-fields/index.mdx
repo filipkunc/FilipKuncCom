@@ -6,14 +6,14 @@ draft: false
 tags: ["rts", "pathfinding", "flow-fields", "rust", "wasm", "webgl"]
 og:
   kind: screenshot
-  src: flow-view.png
+  src: integration-view.png
 ---
 
 import FlowField from '../../../components/FlowField.astro';
 import FlowDiagram from '../../../components/FlowDiagram.astro';
 import Excerpt from '../../../components/Excerpt.astro';
 
-I always wanted to build a real-time strategy game, and the part that kept pulling me back is unit movement. This post works through one idea from that world, flow field pathfinding, down to a simulation you can poke at. The simulation is Rust compiled to WebAssembly, the rendering is instanced WebGL2, and everything below runs live in the page. Claude Fable 5 did most of the typing, like in the [sprite editor post](/posts/gemini-game-art).
+I always wanted to build a real-time strategy game, and the part that kept pulling me back is unit movement. This post works through one idea from that world, flow field pathfinding, down to a simulation you can poke at. The simulation is Rust compiled to WebAssembly, the rendering is instanced WebGL2, and everything below runs live in the page. Claude Fable 5 did most of the work in this post. This is a second post using it. Previously I used Opus and Sonnet, like in the [Gemini game art post](/posts/gemini-game-art).
 
 <FlowField />
 
