@@ -43,3 +43,9 @@ scripts/hb-editor/fonts/*.ttf
 !scripts/hb-editor/dist/
 !scripts/hb-editor/dist/hb-gpu.mjs
 !scripts/hb-editor/dist/hb-gpu.wasm
+
+# flowfield: cargo build dir is local-only; the wasm artifact IS committed
+# (same rationale as hb-gpu.wasm above)
+scripts/flowfield/target/
+!scripts/flowfield/dist/
+!scripts/flowfield/dist/flowfield.wasm

@@ -1,0 +1,138 @@
+---
+// Interactive flow field pathfinding demo (scripts/flowfield). Lazy-mounts
+// when scrolled near, then loads the wasm sim and a WebGL2 renderer.
+---
+
+<div id="flowfield-demo" class="ff">
+  <div class="ff-toolbar">
+    <span class="ff-group" role="group" aria-label="Pointer mode">
+      <button type="button" data-ff-mode="goal" class="active">Set goal</button>
+      <button type="button" data-ff-mode="wall">Draw walls</button>
+      <button type="button" data-ff-mode="mud">Mud</button>
+      <button type="button" data-ff-mode="erase">Erase</button>
+    </span>
+    <span class="ff-group" role="group" aria-label="Field view">
+      <button type="button" data-ff-view="cost">Cost</button>
+      <button type="button" data-ff-view="integration" class="active">Integration</button>
+      <button type="button" data-ff-view="flow">Flow</button>
+    </span>
+    <span class="ff-group">
+      <button type="button" data-ff-spawn>+1000 agents</button>
+      <button type="button" data-ff-clear>Clear</button>
+    </span>
+    <span class="ff-sliders">
+      <label class="ff-scale">
+        size
+        <input type="range" data-ff-scale min="0.6" max="1.3" step="0.05" value="1" />
+      </label>
+      <label class="ff-scale">
+        variety
+        <input type="range" data-ff-variety min="0" max="1.6" step="0.1" value="1" />
+      </label>
+      <label class="ff-scale">
+        spacing
+        <input type="range" data-ff-spacing min="0.9" max="2" step="0.05" value="1" />
+      </label>
+      <label class="ff-scale">
+        speed
+        <input type="range" data-ff-speed min="0.3" max="5" step="0.1" value="1" />
+      </label>
+    </span>
+  </div>
+  <canvas aria-label="Flow field pathfinding demo"></canvas>
+  <p class="ff-status"><span class="ff-loading">loading wasm…</span><span data-ff-stats></span></p>
+</div>
+
+<style>
+  .ff {
+    margin: 1.5rem 0;
+  }
+  .ff canvas {
+    display: block;
+    width: 100%;
+    aspect-ratio: 128 / 80;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    background: #10151c;
+    touch-action: none;
+    cursor: crosshair;
+  }
+  .ff-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+    margin-bottom: 0.5rem;
+  }
+  .ff-group {
+    display: inline-flex;
+    gap: 0;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .ff-group button {
+    font: inherit;
+    font-size: 0.82rem;
+    padding: 0.25rem 0.6rem;
+    background: transparent;
+    color: var(--muted);
+    border: none;
+    border-right: 1px solid var(--rule);
+    cursor: pointer;
+  }
+  .ff-group button:last-child {
+    border-right: none;
+  }
+  .ff-group button.active {
+    background: var(--rule);
+    color: var(--fg);
+  }
+  .ff-sliders {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+  }
+  .ff-scale {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.82rem;
+    color: var(--muted);
+  }
+  .ff-scale input {
+    width: 80px;
+    accent-color: var(--fg);
+  }
+  .ff-status {
+    min-height: 1.2em;
+    margin: 0.4rem 0 0;
+    font-size: 0.82rem;
+    color: var(--muted);
+  }
+  .ff-loading {
+    animation: ff-pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes ff-pulse {
+    50% {
+      opacity: 0.35;
+    }
+  }
+</style>
+
+<script>
+  import { mountWhenVisible } from '../../scripts/hb-editor/src/lazy.mjs';
+  import wasmUrl from '../../scripts/flowfield/dist/flowfield.wasm?url';
+
+  const root = document.getElementById('flowfield-demo')!;
+  mountWhenVisible(root, async () => {
+    const { mountFlowFieldDemo } = await import('../../scripts/flowfield/js/demo.mjs');
+    try {
+      await mountFlowFieldDemo(root, { wasmUrl });
+      root.querySelector('.ff-loading')?.remove();
+    } catch (err) {
+      const loading = root.querySelector('.ff-loading');
+      if (loading) loading.textContent = 'demo unavailable (WebGL2 required)';
+      console.error(err);
+    }
+  });
+</script>

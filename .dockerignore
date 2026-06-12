@@ -20,6 +20,11 @@ scripts/*
 # subsets from this workspace at build time
 !scripts/hb-editor
 !scripts/hb-editor/**
+# the rts-flow-fields post imports the flowfield wasm and demo modules from
+# this workspace at build time (target/ is the local cargo build dir)
+!scripts/flowfield
+!scripts/flowfield/**
+scripts/flowfield/target
 README.md
 *.md
 .dockerignore

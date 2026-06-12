@@ -1,0 +1,31 @@
+---
+title: "RTS pathfinding: flow fields"
+description: "Moving thousands of units with shared flow fields instead of per-unit paths, the way Supreme Commander 2 did it."
+pubDate: 2026-06-12
+draft: true
+tags: ["rts", "pathfinding", "flow-fields", "rust", "wasm", "webgl"]
+---
+
+import FlowField from '../../../components/FlowField.astro';
+
+{/* DRAFT SCAFFOLD. Demo works; prose is placeholder. Research grounding in
+    research/rts-pathfinding/dossier.md (verified claims + do-not-assert list). */}
+
+Click anywhere to move the goal and watch a few thousand agents reroute instantly. Draw some
+walls in their way. Every agent reads its direction from a shared flow field, and no agent owns
+a path.
+
+<FlowField />
+
+The simulation runs in Rust compiled to WebAssembly, and the renderer is instanced WebGL2. The
+field structure follows the Supreme Commander 2 architecture from Elijah Emerson's Game AI Pro
+chapter: an 8-bit cost field where 255 means wall, an integration field holding the integrated
+cost plus flags, and an 8-bit flow field packing a direction index and per-cell flags.
+
+The integration view above shows the integrated cost as a gradient with the line-of-sight
+region brightened. Switch to the flow view to see the direction every cell hands to agents
+standing in it.
+
+{/* TODO: sectors/portals + hierarchical A*, Eikonal-vs-Dijkstra section, LOS pass
+    explanation with the diamond artifact toggle, bit layout table, bench numbers,
+    the jdxdev single-file failure mode reproduction. */}
