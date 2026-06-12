@@ -161,8 +161,10 @@ function drawGoal(ctx, map, cell, ox, oy) {
 }
 
 // The integrator as a movie: the wavefront expands from the goal, paying 8x
-// to cross mud, and the cost-so-far gradient is left in its wake.
-function wavefront(canvas) {
+// to cross mud, and the cost-so-far gradient is left in its wake. Shows the
+// finished field until the reader presses play, so it does not fight the
+// text around it.
+function wavefront(canvas, opts = {}) {
   const W = 660;
   const H = 390;
   const ctx = setup(canvas, W, H);
@@ -184,13 +186,15 @@ function wavefront(canvas) {
       if (c > 1) col = lerpColor([110, 84, 46], [40, 35, 22], Math.sqrt(d / maxd) * 0.5);
       return col;
     });
-    // Frontier band.
-    for (let y = 0; y < map.H; y++) {
-      for (let x = 0; x < map.W; x++) {
-        const d = dist[y * map.W + x];
-        if (d !== Infinity && d <= t && d > t - 1.6) {
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
-          ctx.fillRect(ox + x * cell, oy + y * cell, cell, cell);
+    // Frontier band, only while the wave is still spreading.
+    if (t < maxd) {
+      for (let y = 0; y < map.H; y++) {
+        for (let x = 0; x < map.W; x++) {
+          const d = dist[y * map.W + x];
+          if (d !== Infinity && d <= t && d > t - 1.6) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+            ctx.fillRect(ox + x * cell, oy + y * cell, cell, cell);
+          }
         }
       }
     }
@@ -204,21 +208,47 @@ function wavefront(canvas) {
     );
   }
 
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    frame(maxd);
-    return () => {};
-  }
-  let raf = 0;
-  let start;
+  frame(maxd);
+  const btn = opts.button;
   const SPEED = 9; // integrated-cost units per second
-  const loop = (now) => {
-    start ??= now;
-    const t = ((now - start) / 1000) * SPEED;
+  const HOLD = 1.2; // seconds to keep the finished field before stopping
+  let playing = false;
+  let t = 0;
+  let raf = 0;
+  let lastNow = 0;
+
+  function setLabel() {
+    if (!btn) return;
+    btn.textContent = playing ? '❚❚ pause' : t > 0 ? '▶ resume' : '▶ play the wave';
+  }
+  function tick(now) {
+    if (!playing) return;
+    if (lastNow) t += ((now - lastNow) / 1000) * SPEED;
+    lastNow = now;
+    if (t >= maxd + SPEED * HOLD) {
+      playing = false;
+      t = 0;
+      frame(maxd);
+      setLabel();
+      return;
+    }
     frame(Math.min(t, maxd));
-    if (t > maxd + SPEED * 1.5) start = now;
-    raf = requestAnimationFrame(loop);
-  };
-  raf = requestAnimationFrame(loop);
+    raf = requestAnimationFrame(tick);
+  }
+  function toggle() {
+    playing = !playing;
+    if (playing) {
+      lastNow = 0;
+      raf = requestAnimationFrame(tick);
+    } else {
+      cancelAnimationFrame(raf);
+    }
+    setLabel();
+  }
+  btn?.addEventListener('click', toggle);
+  canvas.addEventListener('click', toggle);
+  canvas.style.cursor = 'pointer';
+  setLabel();
   return () => cancelAnimationFrame(raf);
 }
 
@@ -364,62 +394,94 @@ function los(canvas) {
   );
 }
 
-// Velocity blend: the field says one thing, momentum says another, the agent
-// moves on the blend, and a too-close neighbor adds a push.
+// Steering in two uncluttered halves: how velocity turns toward the field,
+// and how neighbors keep their distance.
 function steer(canvas) {
   const W = 660;
-  const H = 280;
+  const H = 320;
   const ctx = setup(canvas, W, H);
   ctx.fillStyle = FLOOR;
   ctx.fillRect(0, 0, W, H);
-
-  const ax = 270;
-  const ay = 150;
+  const title = (x, text) => {
+    ctx.fillStyle = TEXT;
+    ctx.font = '13px system-ui, sans-serif';
+    ctx.fillText(text, x, 286);
+  };
   ctx.strokeStyle = GRID_LINE;
-  ctx.lineWidth = 1;
-  for (let i = -1; i <= 2; i++) {
-    ctx.strokeRect(ax - 70 + i * 0, ay - 70, 140, 140);
-  }
-  // Faint flow arrow of the cell underneath.
-  arrow(ctx, ax - 48, ay + 48, ax + 30, ay - 30, 'rgba(255, 255, 255, 0.18)', 8, 16);
+  ctx.beginPath();
+  ctx.moveTo(338, 24);
+  ctx.lineTo(338, 296);
+  ctx.stroke();
 
-  const label = (x, y, text, color) => {
+  // Left: one agent, three arrows fanned well apart, and a dashed arc that
+  // says "the cyan arrow turns into the white one, toward the orange one".
+  const ax = 150;
+  const ay = 165;
+  const len = 105;
+  const dirAt = (deg) => [Math.cos((deg * Math.PI) / 180), Math.sin((deg * Math.PI) / 180)];
+  const ray = (deg, r) => [ax + dirAt(deg)[0] * r, ay + dirAt(deg)[1] * r];
+  const label = (x, y, text, color, align = 'center') => {
     ctx.fillStyle = color;
     ctx.font = '13px system-ui, sans-serif';
+    ctx.textAlign = align;
     ctx.fillText(text, x, y);
+    ctx.textAlign = 'center';
   };
+
+  const DESIRED = -68;
+  const NEXT = -34;
+  const CURRENT = 14;
+  arrow(ctx, ax, ay, ...ray(DESIRED, len), ACCENT, 3);
+  arrow(ctx, ax, ay, ...ray(NEXT, len * 0.96), BRIGHT, 3.5);
+  arrow(ctx, ax, ay, ...ray(CURRENT, len), AGENT, 3);
+  // The turn arc, between the current and desired directions.
+  ctx.setLineDash([4, 5]);
+  ctx.strokeStyle = TEXT;
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.arc(ax, ay, len + 16, (CURRENT - 6) * (Math.PI / 180), (DESIRED + 6) * (Math.PI / 180), true);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  const [hx, hy] = ray(DESIRED + 8, len + 16);
+  arrow(ctx, ...ray(DESIRED + 13, len + 16), hx, hy, TEXT, 1.6, 6);
 
   ctx.fillStyle = AGENT;
   ctx.beginPath();
   ctx.arc(ax, ay, 9, 0, Math.PI * 2);
   ctx.fill();
 
-  arrow(ctx, ax, ay, ax + 120, ay - 120, ACCENT, 3);
-  label(ax + 150, ay - 132, 'desired: field direction · speed', ACCENT);
-  arrow(ctx, ax, ay, ax + 130, ay + 40, AGENT, 3);
-  label(ax + 178, ay + 56, 'current velocity', AGENT);
-  arrow(ctx, ax, ay, ax + 132, ay - 44, BRIGHT, 3.5);
-  label(ax + 205, ay - 52, 'next velocity: blend by accel · dt', BRIGHT);
+  label(...ray(DESIRED, len + 34), 'the field says go here', ACCENT);
+  label(...ray(CURRENT + 9, len + 42), 'velocity right now', AGENT);
+  const [nx0, ny0] = ray(NEXT - 4, len + 26);
+  label(nx0 + 8, ny0, 'next frame', BRIGHT, 'left');
+  title(170, 'follow the field, but with momentum');
 
-  // A neighbor below-left, with the push it applies drawn ON the agent,
-  // pointing away from the neighbor.
-  const nx = ax - 52;
-  const ny = ay + 26;
-  ctx.fillStyle = PARKED;
-  ctx.beginPath();
-  ctx.arc(nx, ny, 9, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(255, 126, 182, 0.5)';
-  ctx.setLineDash([3, 4]);
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(nx, ny);
-  ctx.lineTo(ax, ay);
-  ctx.stroke();
+  // Right: two bodies closer than their radii allow, pushed apart
+  // symmetrically.
+  const by = 150;
+  const b1 = 440;
+  const b2 = 530;
+  const r = 34;
+  ctx.setLineDash([4, 5]);
+  ctx.strokeStyle = TEXT;
+  ctx.lineWidth = 1.4;
+  for (const [bx, col] of [[b1, AGENT], [b2, AGENT]]) {
+    ctx.beginPath();
+    ctx.arc(bx, by, r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.arc(bx, by, 9, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.setLineDash([]);
-  arrow(ctx, ax + 6, ay - 3, ax + 54, ay - 27, BAD, 2.5);
-  label(ax - 4, ay + 38, 'too close', PARKED);
-  label(ax + 96, ay - 12, 'push', BAD);
+  arrow(ctx, b1 - 14, by, b1 - 78, by, BAD, 3);
+  arrow(ctx, b2 + 14, by, b2 + 78, by, BAD, 3);
+  ctx.fillStyle = TEXT;
+  ctx.font = '13px system-ui, sans-serif';
+  ctx.fillText('bodies overlap', (b1 + b2) / 2, by - r - 18);
+  ctx.fillText('half the overlap each, away from the other', (b1 + b2) / 2, by + r + 28);
+  title(490, 'separation keeps the crowd from stacking');
 }
 
 // Speed multiplier vs cost: 1/sqrt(cost), with grass and mud marked.
@@ -483,102 +545,134 @@ function terrain(canvas) {
 
 // Three frames of arrival contagion: park at the goal, park when stalled
 // against the parked, keep flowing around while there is room to move.
+// A legend up top carries the color code so the frames stay clean.
 function contagion(canvas) {
   const W = 660;
-  const H = 270;
+  const H = 300;
   const ctx = setup(canvas, W, H);
   ctx.fillStyle = FLOOR;
   ctx.fillRect(0, 0, W, H);
-  const pw = 200;
-  const r = 7.5;
+  const pw = 210;
+  const r = 8;
+  const STALLED = '#ffd166';
 
-  function dot(x, y, color, ring) {
+  function dot(x, y, color) {
     ctx.fillStyle = color;
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fill();
-    if (ring) {
-      ctx.strokeStyle = ring;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(x, y, r + 3.5, 0, Math.PI * 2);
-      ctx.stroke();
-    }
   }
   function goalRing(x, y) {
     ctx.strokeStyle = GOAL;
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(x, y, 13, 0, Math.PI * 2);
+    ctx.arc(x, y, 14, 0, Math.PI * 2);
     ctx.stroke();
+  }
+  // One long arrow for a whole moving group reads better than a tick on
+  // every dot.
+  function moveArrow(x0, y0, x1, y1) {
+    arrow(ctx, x0, y0, x1, y1, AGENT, 2.5, 7);
   }
   function caption(ox, text) {
     ctx.fillStyle = TEXT;
     ctx.font = '12.5px system-ui, sans-serif';
-    ctx.fillText(text, ox + pw / 2, 232);
+    ctx.fillText(text, ox + pw / 2, 262);
   }
+
+  // Legend.
+  {
+    const items = [
+      ['moving', AGENT],
+      ['stalled', STALLED],
+      ['parked', PARKED],
+    ];
+    let x = W / 2 - 150;
+    ctx.font = '12.5px system-ui, sans-serif';
+    for (const [name, color] of items) {
+      dot(x, 26, color);
+      ctx.fillStyle = TEXT;
+      ctx.textAlign = 'left';
+      ctx.fillText(name, x + 14, 26);
+      x += 30 + ctx.measureText(name).width + 30;
+    }
+    goalRing(x + 2, 26);
+    ctx.fillStyle = TEXT;
+    ctx.fillText('goal', x + 22, 26);
+    ctx.textAlign = 'center';
+  }
+
   ctx.strokeStyle = GRID_LINE;
-  [230, 440].forEach((x) => {
+  [225, 440].forEach((x) => {
     ctx.beginPath();
-    ctx.moveTo(x, 30);
-    ctx.lineTo(x, 245);
+    ctx.moveTo(x, 56);
+    ctx.lineTo(x, 272);
     ctx.stroke();
   });
 
-  // Frame 1: a column marches in, the first body reaches the goal and parks.
-  let ox = 10;
-  const gy = 120;
-  goalRing(ox + 160, gy);
-  dot(ox + 160, gy, PARKED);
-  for (let i = 0; i < 4; i++) {
-    const x = ox + 120 - i * 26;
-    dot(x, gy, AGENT);
-    arrow(ctx, x + 9, gy, x + 20, gy, AGENT, 2, 5);
-  }
+  const gy = 155;
+
+  // Frame 1: a column marches at the goal, the first body got there.
+  let ox = 8;
+  goalRing(ox + 165, gy);
+  dot(ox + 165, gy, PARKED);
+  for (let i = 0; i < 3; i++) dot(ox + 116 - i * 22, gy, AGENT);
+  moveArrow(ox + 30, gy - 26, ox + 120, gy - 26);
   caption(ox, 'reach the goal → park');
 
-  // Frame 2: the next body is pressed against the parked one and stalled,
-  // contact + stall spreads the parked state.
-  ox = 240;
-  goalRing(ox + 160, gy);
-  dot(ox + 160, gy, PARKED);
-  dot(ox + 142, gy - 10, PARKED);
-  dot(ox + 142, gy + 10, PARKED);
-  dot(ox + 124, gy, '#ffd166', PARKED);
-  ctx.fillStyle = TEXT;
-  ctx.font = '11px system-ui, sans-serif';
-  ctx.fillText('stalled 0.35 s', ox + 124, gy - 26);
-  for (let i = 0; i < 2; i++) {
-    const x = ox + 88 - i * 26;
-    dot(x, gy, AGENT);
-    arrow(ctx, x + 9, gy, x + 20, gy, AGENT, 2, 5);
-  }
+  // Frame 2: the column pressed in, the front body has been stuck for
+  // 0.35 s against parked bodies, so it parks too.
+  ox = 228;
+  goalRing(ox + 165, gy);
+  dot(ox + 165, gy, PARKED);
+  dot(ox + 147, gy - 11, PARKED);
+  dot(ox + 147, gy + 11, PARKED);
+  dot(ox + 129, gy, STALLED);
+  ctx.strokeStyle = STALLED;
+  ctx.lineWidth = 1.6;
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath();
+  ctx.arc(ox + 129, gy, r + 4, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = STALLED;
+  ctx.font = '11.5px system-ui, sans-serif';
+  ctx.fillText('stuck 0.35 s → parks', ox + 110, gy - 32);
+  for (let i = 0; i < 2; i++) dot(ox + 95 - i * 22, gy + 1, AGENT);
   caption(ox, 'stalled against the parked → park');
 
-  // Frame 3: bodies that can still move slide around the pile instead of
+  // Frame 3: bodies with room to move curve around the pile instead of
   // freezing nose-to-tail.
-  ox = 470;
-  goalRing(ox + 130, gy);
-  dot(ox + 130, gy, PARKED);
-  dot(ox + 112, gy - 11, PARKED);
-  dot(ox + 112, gy + 11, PARKED);
-  dot(ox + 94, gy, PARKED);
-  const around = [
-    [ox + 60, gy - 34, ox + 96, gy - 40],
-    [ox + 60, gy + 34, ox + 96, gy + 40],
-  ];
-  for (const [x0, y0, x1, y1] of around) {
-    dot(x0, y0, AGENT);
-    arrow(ctx, x0 + 10, y0 + (y1 - y0) * 0.2, x1, y1, AGENT, 2, 5);
+  ox = 448;
+  goalRing(ox + 145, gy);
+  dot(ox + 145, gy, PARKED);
+  dot(ox + 127, gy - 11, PARKED);
+  dot(ox + 127, gy + 11, PARKED);
+  dot(ox + 109, gy, PARKED);
+  for (const side of [-1, 1]) {
+    dot(ox + 52, gy + side * 14, AGENT);
+    // Curved path around the pile.
+    ctx.strokeStyle = AGENT;
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    ctx.moveTo(ox + 64, gy + side * 16);
+    ctx.quadraticCurveTo(ox + 110, gy + side * 52, ox + 158, gy + side * 32);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    arrow(ctx, ox + 150, gy + side * 36.5, ox + 160, gy + side * 31, AGENT, 2.5, 7);
   }
   caption(ox, 'still moving → flow around');
 }
 
 const DIAGRAMS = { wavefront, flowpick, los, steer, terrain, contagion };
 
-/** Mount one diagram into a canvas; returns a dispose function. */
-export function mountDiagram(canvas, kind) {
+/**
+ * Mount one diagram into a canvas; returns a dispose function.
+ * opts.button: a play/pause button for the animated diagrams.
+ */
+export function mountDiagram(canvas, kind, opts = {}) {
   const draw = DIAGRAMS[kind];
   if (!draw) throw new Error(`unknown diagram: ${kind}`);
-  return draw(canvas) ?? (() => {});
+  return draw(canvas, opts) ?? (() => {});
 }
