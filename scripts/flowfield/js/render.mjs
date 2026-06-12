@@ -265,6 +265,7 @@ export function createRenderer(canvas, gridW, gridH) {
         gl.drawArrays(gl.LINES, 0, lineVerts);
       }
 
+      // #region instanced
       const count = positions.length / 2;
       if (count > 0) {
         gl.useProgram(agentProg);
@@ -279,6 +280,7 @@ export function createRenderer(canvas, gridW, gridH) {
         gl.bufferData(gl.ARRAY_BUFFER, kinds, gl.STREAM_DRAW);
         gl.drawArraysInstanced(gl.TRIANGLES, 0, 3, count);
       }
+      // #endregion
 
       if (goal) {
         gl.useProgram(markerProg);

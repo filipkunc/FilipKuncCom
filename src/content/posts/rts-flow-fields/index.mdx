@@ -13,7 +13,7 @@ import FlowField from '../../../components/FlowField.astro';
 import FlowDiagram from '../../../components/FlowDiagram.astro';
 import Excerpt from '../../../components/Excerpt.astro';
 
-I always wanted to build a real-time strategy game, and the part that kept pulling me back is unit movement. This post is the first in a series working through how RTS pathfinding actually works, each with a simulation you can poke at. The sim runs in Rust compiled to WebAssembly, the rendering is instanced WebGL2, and everything below is live.
+I always wanted to build a real-time strategy game, and the part that kept pulling me back is unit movement. This post works through one complete idea from that world, flow field pathfinding, down to a simulation you can poke at. The sim runs in Rust compiled to WebAssembly, the rendering is instanced WebGL2, and everything below is live.
 
 <FlowField />
 
@@ -33,7 +33,11 @@ What the demo calls a flow field is really three fields computed in sequence, wi
 
 <Excerpt source="scripts/flowfield/src/field.rs" region="layouts" lang="rust" />
 
-The toolbar's **Cost**, **Integration**, and **Flow** views show each one directly. Cost is what you edit when you draw walls or mud. Integration is the orange gradient, the distance-to-goal landscape that everything else derives from. Flow is the arrows, and an arrow is all a unit ever sees.
+The grid holding them is nothing clever, and that is the point. Three flat vectors indexed by `y * width + x`, plus the goal:
+
+<Excerpt source="scripts/flowfield/src/field.rs" region="grid" lang="rust" />
+
+The toolbar's **Cost**, **Integration**, and **Flow** views show each field directly. Cost is what you edit when you draw walls or mud. Integration is the orange gradient, the distance-to-goal landscape that everything else derives from. Flow is the arrows, and an arrow is all a unit ever sees.
 
 ## Dijkstra wearing an Eikonal name tag
 
@@ -116,14 +120,32 @@ The three unit types are mostly for the eye, but they earn their place: sizes an
 
 ## The seam between Rust and the page
 
-The simulation is a 65 KB wasm binary with a C ABI, no wasm-bindgen. The interface is a handful of pointers into linear memory and the JavaScript side wraps them in typed array views:
+The simulation is a 65 KB wasm binary with a plain C ABI. No wasm-bindgen, no Emscripten, no generated glue: the interface is small enough that hand-rolling it is less machinery than versioning a binding generator against its CLI. All state lives behind one opaque handle:
+
+<Excerpt source="scripts/flowfield/src/lib.rs" region="handle" lang="rust" />
+
+Everything else the page needs is a pointer into wasm linear memory. The Rust side hands out the address of a `Vec`'s buffer:
+
+<Excerpt source="scripts/flowfield/src/lib.rs" region="pointers" lang="rust" />
+
+and the JavaScript side wraps it in a typed array view over the wasm memory, no copy, no serialization:
 
 <Excerpt source="scripts/flowfield/js/flowfield.mjs" region="views" lang="js" />
 
-Painting a wall is JavaScript writing a byte into the cost field through that view, and rendering reads agent positions the same way, straight out of simulation memory into `bufferData` with no copies in between. The whole crowd draws as one instanced call.
+Painting a wall in the demo is JavaScript writing a byte into the cost field through that view. The two caveats in the doc comments are the whole cost of this approach: a `Vec` reallocates when it grows, and `memory.grow` detaches every existing `ArrayBuffer`, so views are fetched fresh instead of cached.
 
-## What a click costs
+Rendering rides the same pointers in the other direction. Each frame, the agent positions, headings, radii, and kinds go straight from simulation memory into GPU buffers, and the whole crowd draws as one instanced call, three vertices times however many thousand agents:
+
+<Excerpt source="scripts/flowfield/js/render.mjs" region="instanced" lang="js" />
+
+The build is one cargo invocation with the artifact committed, so deploys never need a Rust toolchain:
+
+<Excerpt source="scripts/flowfield/build-wasm.sh" lang="bash" />
+
+## What a click costs, and where this stops scaling
 
 The stats line under the demo reports the field rebuild time, about 3 ms for this 128x80 grid on my desktop, most of it in the per-cell Bresenham of the LOS pass. Every goal drag and every painted wall pays it for the whole map.
 
-Three milliseconds is fine here and it does not survive contact with a real game. StarCraft maps are vastly larger, walls rise and fall constantly, and a dozen groups chase a dozen goals at once, each wanting its own field. Emerson's chapter spends most of its pages on exactly this problem: the map is split into sectors connected by portals, a coarse search runs over the portal graph first, fields are built only for the sectors a path actually crosses, and finished fields are cached and shared between orders. That architecture is the next post.
+Know that limit before lifting this into a project, because it defines where the single-grid approach is the right tool. One field per goal, maps up to a few hundred cells across, changes that arrive at human speed: tower defense, swarm and crowd toys, roguelike mob movement, anything where one horde chases one target. Within that envelope the approach is hard to beat for the effort, and the whole implementation here is about 1,200 lines of Rust and 450 of JavaScript glue and rendering, sitting in [`scripts/flowfield`](https://github.com/filipkunc/FilipKuncCom/tree/main/scripts/flowfield) as a self-contained crate you can lift.
+
+Past that envelope, the costs compound: bigger maps make every rebuild slower, and many simultaneous goals each want their own field. That is the regime Emerson's chapter spends most of its pages on, and the production answer is hierarchy: split the map into sectors connected by portals, run a coarse search over the portal graph first, build fields only for the sectors a path crosses, and cache finished fields keyed by portal so different orders share work. If you outgrow the single grid, [the chapter](https://www.gameaipro.com/GameAIPro/GameAIPro_Chapter23_Crowd_Pathfinding_and_Steering_Using_Flow_Field_Tiles.pdf) is the map of that territory.

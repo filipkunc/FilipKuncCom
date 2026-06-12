@@ -50,6 +50,7 @@ pub const DIR_VECTORS: [(f32, f32); 8] = [
     (INV_SQRT2, -INV_SQRT2),
 ];
 
+// #region grid
 pub struct FlowGrid {
     pub width: u32,
     pub height: u32,
@@ -60,6 +61,7 @@ pub struct FlowGrid {
     /// Scratch heap, kept to avoid reallocating per compute.
     heap: std::collections::BinaryHeap<std::cmp::Reverse<(u32, u32)>>,
 }
+// #endregion
 
 impl FlowGrid {
     pub fn new(width: u32, height: u32) -> Self {

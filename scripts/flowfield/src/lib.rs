@@ -9,6 +9,7 @@ pub mod field;
 use agents::Agents;
 use field::FlowGrid;
 
+// #region handle
 pub struct State {
     grid: FlowGrid,
     agents: Agents,
@@ -30,6 +31,7 @@ pub extern "C" fn ff_new(width: u32, height: u32) -> *mut State {
 pub unsafe extern "C" fn ff_free(s: *mut State) {
     drop(Box::from_raw(s));
 }
+// #endregion
 
 #[no_mangle]
 pub unsafe extern "C" fn ff_cost_ptr(s: *mut State) -> *mut u8 {
@@ -74,12 +76,14 @@ pub unsafe extern "C" fn ff_agent_count(s: *mut State) -> u32 {
     (*s).agents.count() as u32
 }
 
+// #region pointers
 /// Interleaved x,y per agent. Fetch after every call that may grow the agent
 /// list, and re-view after any wasm memory growth.
 #[no_mangle]
 pub unsafe extern "C" fn ff_positions_ptr(s: *mut State) -> *const f32 {
     (*s).agents.pos.as_ptr()
 }
+// #endregion
 
 #[no_mangle]
 pub unsafe extern "C" fn ff_velocities_ptr(s: *mut State) -> *const f32 {
