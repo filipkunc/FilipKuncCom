@@ -28,8 +28,8 @@
   import { mountLigatureDemo } from '../../scripts/hb-editor/src/demo-ligature.mjs';
   import garamondUrl from '../../scripts/hb-editor/fonts/EBGaramond-subset.ttf?url';
 
-  const root = document.getElementById('hb-ligature-demo');
-  const loading = root.querySelector('.hb-loading');
+  const root = document.getElementById('hb-ligature-demo')!;
+  const loading = root.querySelector<HTMLElement>('.hb-loading')!;
   mountWhenVisible(root, () => {
     loading.hidden = false;
     mountLigatureDemo(root, { fontUrl: garamondUrl }).then(() => loading.remove());

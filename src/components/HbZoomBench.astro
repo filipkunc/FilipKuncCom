@@ -60,8 +60,8 @@
   import { mountZoomBench } from '../../scripts/hb-editor/src/demo-bench.mjs';
   import interUrl from '../../scripts/hb-editor/fonts/Inter-subset.ttf?url';
 
-  const root = document.getElementById('hb-bench-demo');
-  const loading = root.querySelector('.hb-loading');
+  const root = document.getElementById('hb-bench-demo')!;
+  const loading = root.querySelector<HTMLElement>('.hb-loading')!;
   mountWhenVisible(root, () => {
     loading.hidden = false;
     mountZoomBench(root, { fontUrl: interUrl }).then(() => loading.remove());

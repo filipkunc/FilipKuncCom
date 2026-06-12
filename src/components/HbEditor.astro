@@ -60,7 +60,7 @@
   import garamondUrl from '../../scripts/hb-editor/fonts/EBGaramond-subset.ttf?url';
   import firaUrl from '../../scripts/hb-editor/fonts/FiraCode-subset.ttf?url';
 
-  const root = document.getElementById('hb-editor-demo');
+  const root = document.getElementById('hb-editor-demo')!;
   mountEditorDemo(root, {
     fontUrls: { Inter: interUrl, EBGaramond: garamondUrl, FiraCode: firaUrl },
   }).then(() => root.querySelector('.hb-loading')?.remove());

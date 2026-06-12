@@ -54,8 +54,8 @@
   import garamondUrl from '../../scripts/hb-editor/fonts/EBGaramond-subset.ttf?url';
   import firaUrl from '../../scripts/hb-editor/fonts/FiraCode-subset.ttf?url';
 
-  const root = document.getElementById('hb-compare-demo');
-  const loading = root.querySelector('.hb-loading');
+  const root = document.getElementById('hb-compare-demo')!;
+  const loading = root.querySelector<HTMLElement>('.hb-loading')!;
   mountWhenVisible(root, () => {
     loading.hidden = false;
     mountCompareDemo(root, {
