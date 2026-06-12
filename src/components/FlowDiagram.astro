@@ -1,0 +1,133 @@
+---
+// A diagram panel for the rts-flow-fields post: a canvas illustration of
+// what a nearby code excerpt does (scripts/flowfield/js/diagrams.mjs), or
+// the bit-layout figure for kind="bits". Mounted lazily like the demos.
+interface Props {
+  kind: 'bits' | 'wavefront' | 'flowpick' | 'los' | 'steer' | 'terrain' | 'contagion';
+  caption?: string;
+}
+const { kind, caption } = Astro.props;
+
+const bitRows = [
+  { name: 'cost', bits: [{ label: '8 bits · terrain cost, 255 = wall', grow: 8 }] },
+  {
+    name: 'integration',
+    bits: [
+      { label: '16 bits · integrated cost to goal', grow: 16 },
+      { label: 'flags · LOS, wavefront', grow: 8 },
+    ],
+  },
+  {
+    name: 'flow',
+    bits: [
+      { label: '4 bits · direction LUT index', grow: 4 },
+      { label: 'flags · pathable, LOS', grow: 4 },
+    ],
+  },
+];
+---
+
+<figure class="ffd" data-ff-diagram={kind === 'bits' ? undefined : kind}>
+  {
+    kind === 'bits' ? (
+      <div class="ffd-bits">
+        {bitRows.map((row) => (
+          <div class="ffd-bitrow">
+            <span class="ffd-bitname">{row.name}</span>
+            <span class="ffd-boxes">
+              {row.bits.map((b) => (
+                <span class="ffd-box" style={`flex-grow: ${b.grow}`}>
+                  {b.label}
+                </span>
+              ))}
+            </span>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <canvas></canvas>
+    )
+  }
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<style>
+  .ffd {
+    margin: 1.2rem 0 1.6rem;
+  }
+  .ffd canvas {
+    display: block;
+    width: 100%;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    background: #10151c;
+  }
+  .ffd figcaption {
+    margin-top: 0.45rem;
+    font-size: 0.82rem;
+    color: var(--muted);
+    text-align: center;
+  }
+  .ffd-bits {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    padding: 0.9rem;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    background: #10151c;
+  }
+  .ffd-bitrow {
+    display: flex;
+    align-items: stretch;
+    gap: 0.6rem;
+  }
+  .ffd-bitname {
+    flex: 0 0 5.5rem;
+    align-self: center;
+    text-align: right;
+    font-size: 0.82rem;
+    color: var(--muted);
+  }
+  .ffd-boxes {
+    display: flex;
+    flex: 1;
+    gap: 3px;
+  }
+  .ffd-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.4rem;
+    padding: 0.2rem 0.45rem;
+    border: 1px solid #344153;
+    border-radius: 3px;
+    background: #182230;
+    color: #c7d2de;
+    font-size: 0.74rem;
+    text-align: center;
+    line-height: 1.25;
+  }
+  @media (max-width: 640px) {
+    .ffd-bitrow {
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .ffd-bitname {
+      flex: none;
+      text-align: left;
+    }
+  }
+</style>
+
+<script>
+  import { mountWhenVisible } from '../../scripts/hb-editor/src/lazy.mjs';
+
+  for (const fig of document.querySelectorAll<HTMLElement>('[data-ff-diagram]')) {
+    mountWhenVisible(fig, async () => {
+      const { mountDiagram } = await import('../../scripts/flowfield/js/diagrams.mjs');
+      const canvas = fig.querySelector('canvas');
+      if (canvas) mountDiagram(canvas, fig.dataset.ffDiagram);
+    });
+  }
+</script>

@@ -10,6 +10,7 @@ og:
 ---
 
 import FlowField from '../../../components/FlowField.astro';
+import FlowDiagram from '../../../components/FlowDiagram.astro';
 import Excerpt from '../../../components/Excerpt.astro';
 
 I always wanted to build a real-time strategy game, and the part that kept pulling me back is unit movement. This post is the first in a series working through how RTS pathfinding actually works, each with a simulation you can poke at. The sim runs in Rust compiled to WebAssembly, the rendering is instanced WebGL2, and everything below is live.
@@ -28,11 +29,7 @@ The cost of an order stops depending on how many units received it. The **+1000 
 
 What the demo calls a flow field is really three fields computed in sequence, with the exact layouts from Emerson's chapter:
 
-| field | size | contents |
-|---|---|---|
-| cost | 8 bits | 255 = wall, 1 to 254 = how expensive the cell is to cross |
-| integration | 16 bits + flags | total cost from this cell to the goal |
-| flow | 4 bits + flags | direction index into an 8-way lookup table |
+<FlowDiagram kind="bits" caption="one entry per grid cell, per field" />
 
 <Excerpt source="scripts/flowfield/src/field.rs" region="layouts" lang="rust" />
 
@@ -44,11 +41,23 @@ The integration field is computed by a wavefront expanding from the goal. Each c
 
 <Excerpt source="scripts/flowfield/src/field.rs" region="integrate" lang="rust" />
 
+That loop, watched from above. The wave starts at the goal, spends the cost field as it goes, and leaves the integration field behind as a distance landscape:
+
+<FlowDiagram
+  kind="wavefront"
+  caption="the wavefront expanding from the goal · note the slow crawl across the mud and the diamond-ish shape of the front"
+/>
+
 Emerson's chapter calls this an Eikonal equation method, citing [Jeong and Whitaker's fast iterative solver](https://doi.org/10.1137/060670298). The update rule it actually describes is the one above, and that is a Dijkstra relaxation, not an Eikonal solve. The difference is not pedantry. A true Eikonal solver treats the wave as a continuous front and produces smoother distance values, while the discrete 4-neighbor minimum bakes the grid's geometry into the field. The chapter is the best production account of this architecture and its terminology is loose at the same time, which is a useful thing to know before you cite it.
 
 Once integration exists, the flow direction is a local decision. Each cell points at whichever 8-way neighbor has the lowest integrated cost, with one rule that prevents diagonal shortcuts through wall corners:
 
 <Excerpt source="scripts/flowfield/src/field.rs" region="flow" lang="rust" />
+
+<FlowDiagram
+  kind="flowpick"
+  caption="left: the center cell points at its cheapest neighbor · right: the cheapest neighbor is diagonally past a wall corner, so the pick falls to the next best"
+/>
 
 ## The diamond and the line of sight
 
@@ -56,7 +65,12 @@ A field built only from the pieces above has a visible defect near the goal. The
 
 <Excerpt source="scripts/flowfield/src/field.rs" region="los" lang="rust" />
 
-In the Integration view the flagged region is the brightened area around the goal. Watch it reshape as you drag the goal past walls.
+<FlowDiagram
+  kind="los"
+  caption="the brightened cells hold the LOS flag · the wall blocks one sightline and the mud blocks another"
+/>
+
+In the Integration view of the live demo the flagged region is the same brightened area around the goal. Watch it reshape as you drag the goal past walls.
 
 The doc comment above mentions terrain, and that line was earned the hard way. My first LOS pass checked only for walls, and agents inside the flagged region marched straight through mud the planner was carefully routing everyone else around. The straight line is only a shortcut when it crosses ground as cheap as the detour, so expensive terrain has to block line of sight exactly like a wall does.
 
@@ -68,6 +82,8 @@ Cost changes where units walk. It should also change how fast they walk, otherwi
 
 <Excerpt source="scripts/flowfield/src/agents.rs" region="terrain" lang="rust" />
 
+<FlowDiagram kind="terrain" caption="why the exponent is a square root: 1/cost would drop mud to 12% and look like a freeze" />
+
 Wall the mud off so it is the only way through and the crowd wades in, crawls at a third of its pace, and accelerates back to full speed on the far side.
 
 ## From particles to an army
@@ -78,11 +94,21 @@ The first is steering. An agent blends its velocity toward the field direction i
 
 <Excerpt source="scripts/flowfield/src/agents.rs" region="steer" lang="rust" />
 
+<FlowDiagram
+  kind="steer"
+  caption="the agent does not snap to the field · it leans toward it, and neighbors push back"
+/>
+
 The second is body collision. Steering forces alone let bodies interpenetrate the moment a crowd compresses, so after integration a position-based pass pushes every overlapping pair apart by half the overlap, sliding along walls. This is what makes a column squeezing through a gap look like bodies negotiating space instead of ghosts passing through each other.
 
 The third is knowing when to stop, and it is the one that surprised me. If arriving units simply brake near the goal, the units behind keep pushing at full speed and crush the crowd into the center. The fix is for arrival to spread by contact: a unit that reaches the goal parks, and a unit that bumps into a parked unit parks too. My first version of that froze entire marching columns, because units in a column touch nose to tail and the parked state propagated backwards through units that were moving perfectly well. Parking has to require being genuinely stuck, not merely touching:
 
 <Excerpt source="scripts/flowfield/src/agents.rs" region="contagion" lang="rust" />
+
+<FlowDiagram
+  kind="contagion"
+  caption="parking spreads by contact, but only to agents that are actually stuck"
+/>
 
 [Jdx ran into the group-movement wall from the other side](https://www.jdxdev.com/blog/2020/05/03/flowfields/). His flow field units rounding a corner "tended to cluster quickly and end up forming into a single/double file line, like a line of ants," and he eventually shelved flow fields for waypoint paths with formation offsets. The collision and parking layers above are what keep this demo's columns from collapsing into that ant line, and the deeper local-avoidance machinery behind StarCraft 2's famous unit ballet is a later post.
 
