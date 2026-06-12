@@ -58,6 +58,79 @@ const bitRows = [
   {caption && <figcaption>{caption}</figcaption>}
 </figure>
 
+<style is:global>
+  /* Diagram palette, themed the same way as the site palette in Layout.astro:
+     dark defaults, [data-theme="light"] for the live toggle, and the media
+     query as the JS-off fallback. The numeric data colors (gradients) are
+     mirrored in scripts/flowfield/js/diagrams.mjs, which re-renders on theme
+     change. */
+  :root {
+    --ffd-floor: #10151c;
+    --ffd-grid: #222c39;
+    --ffd-panel: #161d27;
+    --ffd-wall: #566374;
+    --ffd-mud: #6e542e;
+    --ffd-mud-bright: #c9a36a;
+    --ffd-text: #9aa7b8;
+    --ffd-bright: #e8eef5;
+    --ffd-accent: #ffb454;
+    --ffd-agent: #6bd9ff;
+    --ffd-parked: #ff7eb6;
+    --ffd-stalled: #ffd166;
+    --ffd-goal: #ff5d5d;
+    --ffd-bad: #ff6b6b;
+    --ffd-ok: #7ee787;
+    --ffd-edge: #44516a;
+    --ffd-box: #182230;
+    --ffd-box-border: #344153;
+    --ffd-box-text: #c7d2de;
+  }
+  :root[data-theme='light'] {
+    --ffd-floor: #f4f6f9;
+    --ffd-grid: #dde3ea;
+    --ffd-panel: #e8edf3;
+    --ffd-wall: #8e9aaa;
+    --ffd-mud: #c9ad79;
+    --ffd-mud-bright: #9a7b45;
+    --ffd-text: #57636f;
+    --ffd-bright: #18222e;
+    --ffd-accent: #d97706;
+    --ffd-agent: #0993d3;
+    --ffd-parked: #e0488e;
+    --ffd-stalled: #d3a012;
+    --ffd-goal: #e23d3d;
+    --ffd-bad: #d64545;
+    --ffd-ok: #1da653;
+    --ffd-edge: #99a5b4;
+    --ffd-box: #e8edf3;
+    --ffd-box-border: #c2ccd8;
+    --ffd-box-text: #303b48;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme]) {
+      --ffd-floor: #f4f6f9;
+      --ffd-grid: #dde3ea;
+      --ffd-panel: #e8edf3;
+      --ffd-wall: #8e9aaa;
+      --ffd-mud: #c9ad79;
+      --ffd-mud-bright: #9a7b45;
+      --ffd-text: #57636f;
+      --ffd-bright: #18222e;
+      --ffd-accent: #d97706;
+      --ffd-agent: #0993d3;
+      --ffd-parked: #e0488e;
+      --ffd-stalled: #d3a012;
+      --ffd-goal: #e23d3d;
+      --ffd-bad: #d64545;
+      --ffd-ok: #1da653;
+      --ffd-edge: #99a5b4;
+      --ffd-box: #e8edf3;
+      --ffd-box-border: #c2ccd8;
+      --ffd-box-text: #303b48;
+    }
+  }
+</style>
+
 <style>
   .ffd {
     position: relative;
@@ -70,15 +143,15 @@ const bitRows = [
     font: inherit;
     font-size: 0.8rem;
     padding: 0.3rem 0.7rem;
-    /* Sits on the dark canvas, not the page, so the colors are fixed. */
-    color: #e8eef5;
-    background: rgba(16, 21, 28, 0.85);
-    border: 1px solid #44516333;
+    /* Sits on the figure panel, so it themes with the figure palette. */
+    color: var(--ffd-bright);
+    background: var(--ffd-panel);
+    border: 1px solid var(--ffd-box-border);
     border-radius: 999px;
     cursor: pointer;
   }
   .ffd-play:hover {
-    background: rgba(40, 50, 64, 0.9);
+    border-color: var(--ffd-text);
   }
   .ffd-stage :global(svg) {
     display: block;
@@ -86,7 +159,7 @@ const bitRows = [
     height: auto;
     border: 1px solid var(--rule);
     border-radius: 4px;
-    background: #10151c;
+    background: var(--ffd-floor);
   }
   .ffd figcaption {
     margin-top: 0.45rem;
@@ -101,7 +174,7 @@ const bitRows = [
     padding: 0.9rem;
     border: 1px solid var(--rule);
     border-radius: 4px;
-    background: #10151c;
+    background: var(--ffd-floor);
   }
   .ffd-bitrow {
     display: flex;
@@ -126,10 +199,10 @@ const bitRows = [
     justify-content: center;
     min-height: 2.4rem;
     padding: 0.2rem 0.45rem;
-    border: 1px solid #344153;
+    border: 1px solid var(--ffd-box-border);
     border-radius: 3px;
-    background: #182230;
-    color: #c7d2de;
+    background: var(--ffd-box);
+    color: var(--ffd-box-text);
     font-size: 0.74rem;
     text-align: center;
     line-height: 1.25;

@@ -27,10 +27,39 @@ const BAD = 'var(--ffd-bad, #ff6b6b)';
 const OK = 'var(--ffd-ok, #7ee787)';
 const EDGE_IDLE = 'var(--ffd-edge, #44516a)';
 
-const NEAR = [255, 180, 84];
-const FAR = [30, 46, 78];
-const MUD_NEAR = [110, 84, 46];
-const MUD_FAR = [40, 35, 22];
+// Data colors are computed numerically (gradients, stall-timer blends), so
+// they cannot be CSS variables; pick them by the active theme instead. The
+// site resolves the theme to data-theme on <html>, with the OS preference as
+// the no-JS-choice fallback (see Layout.astro).
+function isLight() {
+  const t = document.documentElement.dataset.theme;
+  if (t) return t === 'light';
+  return window.matchMedia('(prefers-color-scheme: light)').matches;
+}
+
+function dataPalette() {
+  return isLight()
+    ? {
+        near: [217, 119, 6],
+        far: [203, 213, 225],
+        mudNear: [146, 114, 62],
+        mudFar: [209, 196, 170],
+        frontier: [51, 65, 85],
+        agent: [9, 147, 211],
+        stalled: [202, 138, 4],
+        parked: [219, 39, 119],
+      }
+    : {
+        near: [255, 180, 84],
+        far: [30, 46, 78],
+        mudNear: [110, 84, 46],
+        mudFar: [40, 35, 22],
+        frontier: [255, 255, 255],
+        agent: [107, 217, 255],
+        stalled: [255, 209, 102],
+        parked: [255, 126, 182],
+      };
+}
 
 function mix(a, b, t) {
   return [0, 1, 2].map((i) => Math.round(a[i] + (b[i] - a[i]) * t));
@@ -85,10 +114,15 @@ function arrowHead(x1, y1, angle, color, len = 7) {
   return el('polygon', { points: `${x1},${y1} ${p(-0.45)} ${p(0.45)}`, fill: color });
 }
 
-/** A line with an arrowhead, as one group. */
-function arrowEl(x0, y0, x1, y1, color, width = 2, head = 7, dash = '') {
+/** A line with an arrowhead, as one group. The head scales from the shaft
+ * width, and the shaft stops short of the tip so it never pokes out of the
+ * head triangle. */
+function arrowEl(x0, y0, x1, y1, color, width = 2, head = null, dash = '') {
   const a = Math.atan2(y1 - y0, x1 - x0);
-  return el('g', {}, line(x0, y0, x1, y1, color, width, dash), arrowHead(x1, y1, a, color, head));
+  const headLen = head ?? 5 + width * 2;
+  const sx = x1 - Math.cos(a) * headLen * 0.8;
+  const sy = y1 - Math.sin(a) * headLen * 0.8;
+  return el('g', {}, line(x0, y0, sx, sy, color, width, dash), arrowHead(x1, y1, a, color, headLen));
 }
 
 function goalRing(x, y, r = 14) {
@@ -232,7 +266,9 @@ function playable(svg, button, { onStart, onTick, label = '▶ play' }) {
     }
     setLabel();
   }
-  button?.addEventListener('click', toggle);
+  // onclick (not addEventListener) so a theme-change rebuild replaces the
+  // handler instead of stacking a second one on the persistent button.
+  if (button) button.onclick = toggle;
   svg.addEventListener('click', toggle);
   svg.style.cursor = 'pointer';
   setLabel();
@@ -246,6 +282,7 @@ function playable(svg, button, { onStart, onTick, label = '▶ play' }) {
 function wavefront(stage, opts = {}) {
   const W = 660;
   const H = 390;
+  const P = dataPalette();
   const svg = svgRoot(W, H);
   const map = toyMap();
   const cell = 28;
@@ -271,12 +308,12 @@ function wavefront(stage, opts = {}) {
         if (c === 255) {
           fill = WALL;
         } else if (d === Infinity || d > t) {
-          fill = c > 1 ? rgb(MUD_FAR) : FLOOR;
+          fill = c > 1 ? rgb(P.mudFar) : FLOOR;
         } else {
           const s = Math.sqrt(d / maxd);
-          let col = c > 1 ? mix(MUD_NEAR, MUD_FAR, s * 0.5) : mix(NEAR, FAR, s);
+          let col = c > 1 ? mix(P.mudNear, P.mudFar, s * 0.5) : mix(P.near, P.far, s);
           // Frontier band, only while the wave is still spreading.
-          if (t < maxd && d > t - 1.6) col = mix(col, [255, 255, 255], 0.55);
+          if (t < maxd && d > t - 1.6) col = mix(col, P.frontier, 0.55);
           fill = rgb(col);
         }
         rects[i].setAttribute('fill', fill);
@@ -352,7 +389,7 @@ function flowpick(stage) {
     }
     const [tx, ty] = at(chosen);
     svg.append(
-      arrowEl(cx + (tx - cx) * 0.2, cy + (ty - cy) * 0.2, cx + (tx - cx) * 0.72, cy + (ty - cy) * 0.72, ACCENT, 3.5, 9),
+      arrowEl(cx + (tx - cx) * 0.2, cy + (ty - cy) * 0.2, cx + (tx - cx) * 0.72, cy + (ty - cy) * 0.72, ACCENT, 2.5, 11),
     );
     svg.append(text(ox + 1.5 * cell, 30 + 3 * cell + 24, title));
   }
@@ -376,6 +413,7 @@ function flowpick(stage) {
 function los(stage) {
   const W = 660;
   const H = 400;
+  const P = dataPalette();
   const svg = svgRoot(W, H);
   const map = toyMap();
   const cell = 28;
@@ -391,7 +429,7 @@ function los(stage) {
     if (c === 255) return WALL;
     if (d === Infinity) return FLOOR;
     if (c > 1) return MUD;
-    let col = mix(NEAR, FAR, Math.sqrt(d / maxd));
+    let col = mix(P.near, P.far, Math.sqrt(d / maxd));
     if (bresenhamClear(map, x, y, map.goal.x, map.goal.y).clear) {
       col = mix(col, [255, 255, 255], 0.22);
     }
@@ -474,12 +512,12 @@ function steer(stage, opts = {}) {
         }),
       );
     }
-    parts.push(arrowEl(ax, ay, ...ray(DESIRED, LEN), ACCENT, 3));
-    parts.push(arrowEl(ax, ay, ...ray(s.angle, LEN * 0.96), AGENT, 3));
+    parts.push(arrowEl(ax, ay, ...ray(DESIRED, LEN), ACCENT, 2));
+    parts.push(arrowEl(ax, ay, ...ray(s.angle, LEN * 0.96), AGENT, 2));
     if (!animating) {
       // Static frame: also show the next-frame blend and the turn arc.
       const next = s.angle + (DESIRED - s.angle) * 0.45;
-      parts.push(arrowEl(ax, ay, ...ray(next, LEN * 0.9), BRIGHT, 3.5));
+      parts.push(arrowEl(ax, ay, ...ray(next, LEN * 0.9), BRIGHT, 2.5));
       const [a0x, a0y] = ray(s.angle - 6 * DEG, LEN + 16);
       const [a1x, a1y] = ray(DESIRED + 6 * DEG, LEN + 16);
       parts.push(
@@ -511,8 +549,8 @@ function steer(stage, opts = {}) {
       parts.push(circle(bx, by, 9, { fill: AGENT }));
     }
     if (s.overlap > 1) {
-      parts.push(arrowEl(b1 - 14, by, b1 - 58 - s.overlap * 0.4, by, BAD, 3));
-      parts.push(arrowEl(b2 + 14, by, b2 + 58 + s.overlap * 0.4, by, BAD, 3));
+      parts.push(arrowEl(b1 - 14, by, b1 - 58 - s.overlap * 0.4, by, BAD, 2));
+      parts.push(arrowEl(b2 + 14, by, b2 + 58 + s.overlap * 0.4, by, BAD, 2));
       parts.push(text(485, by - r - 18, 'bodies overlap'));
       parts.push(text(485, by + r + 28, 'half the overlap each, away from the other'));
     } else {
@@ -744,7 +782,8 @@ function contagion(stage, opts = {}) {
       const xoff = e.side * 10;
       const y0 = a.y + (b.y > a.y ? NODE_R : -NODE_R);
       const y1 = b.y + (b.y > a.y ? -NODE_R - 4 : NODE_R + 4);
-      g.append(line(a.x + xoff, y0, b.x + xoff, y1, EDGE_IDLE, 1.5));
+      const shaftEnd = y1 - Math.sign(y1 - y0) * 5;
+      g.append(line(a.x + xoff, y0, b.x + xoff, shaftEnd, EDGE_IDLE, 1.5));
       g.append(arrowHead(b.x + xoff, y1, Math.atan2(y1 - y0, 0), EDGE_IDLE, 6));
       g.append(
         text(a.x + xoff + e.side * 8, (a.y + b.y) / 2, e.label, {
@@ -768,7 +807,7 @@ function contagion(stage, opts = {}) {
       'stroke-dasharray': '3 4',
     }),
   );
-  svg.append(text(545, 344, 'dashed: a new goal resets everyone to moving', { size: 11.5 }));
+  svg.append(text(545, 344, 'dashed: new goal → all back to moving', { size: 11 }));
 
   const countEls = {};
   for (const [name, n] of Object.entries(NODES)) {
@@ -789,12 +828,10 @@ function contagion(stage, opts = {}) {
   // Dot colors are numeric so the stall timer can be shown filling up:
   // a blocked agent blends from cyan toward yellow as stall approaches
   // the 0.35 s threshold.
-  const AGENT_RGB = [107, 217, 255];
-  const STALLED_RGB = [255, 209, 102];
-  const PARKED_RGB = [255, 126, 182];
+  const P = dataPalette();
   function dotColor(a) {
-    if (a.state === 'parked') return rgb(PARKED_RGB);
-    return rgb(mix(AGENT_RGB, STALLED_RGB, Math.min(1, a.stall / 0.35)));
+    if (a.state === 'parked') return rgb(P.parked);
+    return rgb(mix(P.agent, P.stalled, Math.min(1, a.stall / 0.35)));
   }
 
   function draw(flashes) {
@@ -860,10 +897,25 @@ const DIAGRAMS = { wavefront, flowpick, los, steer, terrain, contagion };
 /**
  * Build one diagram into a stage element (the SVG replaces its children).
  * opts.button: a play/pause button for the animated diagrams.
- * Returns a dispose function.
+ * Structural colors follow the theme live via CSS variables; the numeric
+ * data colors require a rebuild, so the diagram re-renders (back to its
+ * static frame) when the theme toggles. Returns a dispose function.
  */
 export function mountDiagram(stage, kind, opts = {}) {
   const build = DIAGRAMS[kind];
   if (!build) throw new Error(`unknown diagram: ${kind}`);
-  return build(stage, opts) ?? (() => {});
+  let dispose = build(stage, opts) ?? (() => {});
+  const rebuild = () => {
+    dispose();
+    dispose = build(stage, opts) ?? (() => {});
+  };
+  const mq = window.matchMedia('(prefers-color-scheme: light)');
+  mq.addEventListener('change', rebuild);
+  const observer = new MutationObserver(rebuild);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  return () => {
+    mq.removeEventListener('change', rebuild);
+    observer.disconnect();
+    dispose();
+  };
 }
