@@ -1,31 +1,103 @@
 ---
 title: "RTS pathfinding: flow fields"
-description: "Moving thousands of units with shared flow fields instead of per-unit paths, the way Supreme Commander 2 did it."
+description: "Moving thousands of units with one shared flow field instead of per-unit paths, with a Rust simulation compiled to WebAssembly."
 pubDate: 2026-06-12
 draft: true
 tags: ["rts", "pathfinding", "flow-fields", "rust", "wasm", "webgl"]
+og:
+  kind: screenshot
+  src: flow-view.png
 ---
 
 import FlowField from '../../../components/FlowField.astro';
+import Excerpt from '../../../components/Excerpt.astro';
 
-{/* DRAFT SCAFFOLD. Demo works; prose is placeholder. Research grounding in
-    research/rts-pathfinding/dossier.md (verified claims + do-not-assert list). */}
-
-Click anywhere to move the goal and watch a few thousand agents reroute instantly. Draw some
-walls in their way. Every agent reads its direction from a shared flow field, and no agent owns
-a path.
+I always wanted to build a real-time strategy game, and the part that kept pulling me back is unit movement. This post is the first in a series working through how RTS pathfinding actually works, each with a simulation you can poke at. The sim runs in Rust compiled to WebAssembly, the rendering is instanced WebGL2, and everything below is live.
 
 <FlowField />
 
-The simulation runs in Rust compiled to WebAssembly, and the renderer is instanced WebGL2. The
-field structure follows the Supreme Commander 2 architecture from Elijah Emerson's Game AI Pro
-chapter: an 8-bit cost field where 255 means wall, an integration field holding the integrated
-cost plus flags, and an 8-bit flow field packing a direction index and per-cell flags.
+Drag anywhere to move the goal and the crowd reroutes mid-stride. Draw walls in their way, paint mud, switch the field views, and push the sliders around. On a phone all of it works with touch.
 
-The integration view above shows the integrated cost as a gradient with the line-of-sight
-region brightened. Switch to the flow view to see the direction every cell hands to agents
-standing in it.
+## One field instead of ten thousand paths
 
-{/* TODO: sectors/portals + hierarchical A*, Eikonal-vs-Dijkstra section, LOS pass
-    explanation with the diamond artifact toggle, bit layout table, bench numbers,
-    the jdxdev single-file failure mode reproduction. */}
+The classic approach gives every unit its own path: run A*, store the waypoints, follow them. That works until you have hundreds of units and a player who keeps clicking, because every order means hundreds of searches and every map change means hundreds of repairs. [Elijah Emerson's Game AI Pro chapter](https://www.gameaipro.com/GameAIPro/GameAIPro_Chapter23_Crowd_Pathfinding_and_Steering_Using_Flow_Field_Tiles.pdf) on Supreme Commander 2 describes the inversion that fixes this: stop giving paths to units and give one field to the destination. Every cell of the map stores the direction to walk from there. A unit standing anywhere just reads its cell and goes.
+
+The cost of an order stops depending on how many units received it. The **+1000 agents** button above adds a thousand followers for free, because they all share the field that already exists. That is the entire trick, and the rest of this post is the machinery that makes the field worth following.
+
+## Three fields
+
+What the demo calls a flow field is really three fields computed in sequence, with the exact layouts from Emerson's chapter:
+
+| field | size | contents |
+|---|---|---|
+| cost | 8 bits | 255 = wall, 1 to 254 = how expensive the cell is to cross |
+| integration | 16 bits + flags | total cost from this cell to the goal |
+| flow | 4 bits + flags | direction index into an 8-way lookup table |
+
+<Excerpt source="scripts/flowfield/src/field.rs" region="layouts" lang="rust" />
+
+The toolbar's **Cost**, **Integration**, and **Flow** views show each one directly. Cost is what you edit when you draw walls or mud. Integration is the orange gradient, the distance-to-goal landscape that everything else derives from. Flow is the arrows, and an arrow is all a unit ever sees.
+
+## Dijkstra wearing an Eikonal name tag
+
+The integration field is computed by a wavefront expanding from the goal. Each cell's integrated cost is the cheapest neighbor's integrated cost plus the cell's own cost field value:
+
+<Excerpt source="scripts/flowfield/src/field.rs" region="integrate" lang="rust" />
+
+Emerson's chapter calls this an Eikonal equation method, citing [Jeong and Whitaker's fast iterative solver](https://doi.org/10.1137/060670298). The update rule it actually describes is the one above, and that is a Dijkstra relaxation, not an Eikonal solve. The difference is not pedantry. A true Eikonal solver treats the wave as a continuous front and produces smoother distance values, while the discrete 4-neighbor minimum bakes the grid's geometry into the field. The chapter is the best production account of this architecture and its terminology is loose at the same time, which is a useful thing to know before you cite it.
+
+Once integration exists, the flow direction is a local decision. Each cell points at whichever 8-way neighbor has the lowest integrated cost, with one rule that prevents diagonal shortcuts through wall corners:
+
+<Excerpt source="scripts/flowfield/src/field.rs" region="flow" lang="rust" />
+
+## The diamond and the line of sight
+
+A field built only from the pieces above has a visible defect near the goal. The 4-neighbor wavefront measures distance like a taxicab, so the contours come out diamond shaped and agents approach the goal in stair-step zigzags instead of straight lines. Emerson's fix is a line-of-sight pass: every cell with a clear Bresenham line to the goal gets a flag, and agents in flagged cells ignore the quantized arrows and steer exactly at the target.
+
+<Excerpt source="scripts/flowfield/src/field.rs" region="los" lang="rust" />
+
+In the Integration view the flagged region is the brightened area around the goal. Watch it reshape as you drag the goal past walls.
+
+The doc comment above mentions terrain, and that line was earned the hard way. My first LOS pass checked only for walls, and agents inside the flagged region marched straight through mud the planner was carefully routing everyone else around. The straight line is only a shortcut when it crosses ground as cheap as the detour, so expensive terrain has to block line of sight exactly like a wall does.
+
+## Mud
+
+Walls are just the degenerate case of the cost field, the cells where cost is infinite. The interesting cases are in between, and that is what the **Mud** brush paints: cells with cost 8 that units can cross but would rather not. The wavefront passes through mud at eight times the price, the integration gradient bulges around it, and the flow arrows bend away. Paint a mud patch in front of a marching column and they part around it like a stream around a rock.
+
+Cost changes where units walk. It should also change how fast they walk, otherwise mud is just a strange invisible fence. Each step samples the cost under the agent and scales its speed:
+
+<Excerpt source="scripts/flowfield/src/agents.rs" region="terrain" lang="rust" />
+
+Wall the mud off so it is the only way through and the crowd wades in, crawls at a third of its pace, and accelerates back to full speed on the far side.
+
+## From particles to an army
+
+Reading an arrow per cell moves dots around. Making the dots read as units took three more mechanisms, and each exists because of a specific failure you can reproduce.
+
+The first is steering. An agent blends its velocity toward the field direction instead of snapping to it, with a separation force that keeps neighbors from stacking preemptively:
+
+<Excerpt source="scripts/flowfield/src/agents.rs" region="steer" lang="rust" />
+
+The second is body collision. Steering forces alone let bodies interpenetrate the moment a crowd compresses, so after integration a position-based pass pushes every overlapping pair apart by half the overlap, sliding along walls. This is what makes a column squeezing through a gap look like bodies negotiating space instead of ghosts passing through each other.
+
+The third is knowing when to stop, and it is the one that surprised me. If arriving units simply brake near the goal, the units behind keep pushing at full speed and crush the crowd into the center. The fix is for arrival to spread by contact: a unit that reaches the goal parks, and a unit that bumps into a parked unit parks too. My first version of that froze entire marching columns, because units in a column touch nose to tail and the parked state propagated backwards through units that were moving perfectly well. Parking has to require being genuinely stuck, not merely touching:
+
+<Excerpt source="scripts/flowfield/src/agents.rs" region="contagion" lang="rust" />
+
+[Jdx ran into the group-movement wall from the other side](https://www.jdxdev.com/blog/2020/05/03/flowfields/). His flow field units rounding a corner "tended to cluster quickly and end up forming into a single/double file line, like a line of ants," and he eventually shelved flow fields for waypoint paths with formation offsets. The collision and parking layers above are what keep this demo's columns from collapsing into that ant line, and the deeper local-avoidance machinery behind StarCraft 2's famous unit ballet is a later post.
+
+The three unit types are mostly for the eye, but they earn their place: sizes and speeds are coupled, smaller units are faster, and the **variety** slider widens both spreads together. Crank it and watch a marching column sort itself, quick small units threading ahead while the heavies lumber at the back. Nobody programmed the sorting.
+
+## The seam between Rust and the page
+
+The simulation is a 65 KB wasm binary with a C ABI, no wasm-bindgen. The interface is a handful of pointers into linear memory and the JavaScript side wraps them in typed array views:
+
+<Excerpt source="scripts/flowfield/js/flowfield.mjs" region="views" lang="js" />
+
+Painting a wall is JavaScript writing a byte into the cost field through that view, and rendering reads agent positions the same way, straight out of simulation memory into `bufferData` with no copies in between. The whole crowd draws as one instanced call.
+
+## What a click costs
+
+The stats line under the demo reports the field rebuild time, about 3 ms for this 128x80 grid on my desktop, most of it in the per-cell Bresenham of the LOS pass. Every goal drag and every painted wall pays it for the whole map.
+
+Three milliseconds is fine here and it does not survive contact with a real game. StarCraft maps are vastly larger, walls rise and fall constantly, and a dozen groups chase a dozen goals at once, each wanting its own field. Emerson's chapter spends most of its pages on exactly this problem: the map is split into sectors connected by portals, a coarse search runs over the portal graph first, fields are built only for the sectors a path actually crosses, and finished fields are cached and shared between orders. That architecture is the next post.

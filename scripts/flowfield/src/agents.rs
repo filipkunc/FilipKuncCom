@@ -100,6 +100,7 @@ fn effective_radius(kind: u8, scale: f32, variety: f32) -> f32 {
     (spread_radius(kind, variety) * scale).clamp(MIN_RADIUS, MAX_RADIUS)
 }
 
+// #region terrain
 /// Movement slowdown from the terrain under the agent: expensive ground is
 /// waded through at 1/sqrt(cost) pace (cost 8 mud ~ 35% speed), and leaving
 /// it restores full speed since this is sampled per step from the cell.
@@ -111,6 +112,7 @@ fn terrain_mult(cost: u8) -> f32 {
         1.0 / (cost as f32).sqrt()
     }
 }
+// #endregion
 
 /// Smaller bodies are nimbler: speed falls off as the square root of the
 /// spread radius, so the variety slider widens speed differences along with
@@ -299,6 +301,7 @@ impl Agents {
                 // Parked: hold position, let collisions shuffle us around.
                 (0.0, 0.0)
             } else {
+                // #region steer
                 let flow = grid.flow[cell];
                 let (dx, dy) = if flow & FLOW_LOS != 0 && goal_dist > 1e-3 {
                     (to_goal.0 / goal_dist, to_goal.1 / goal_dist)
@@ -310,6 +313,7 @@ impl Agents {
                         DIR_VECTORS[dir as usize]
                     }
                 };
+                // #endregion
                 // Slow into the goal so arrivals pool instead of orbiting.
                 let arrive = (goal_dist / ARRIVE_RADIUS).min(1.0);
                 let speed =
@@ -415,6 +419,7 @@ impl Agents {
         self.move_clamped(i, nx * half, ny * half, grid);
         self.move_clamped(j, -nx * half, -ny * half, grid);
 
+        // #region contagion
         // Arrival contagion: touching a parked agent that is closer to the
         // goal (by integrated cost, so the chain can't jump across a wall)
         // parks us too, but only once we are genuinely blocked (stalled),
@@ -442,6 +447,7 @@ impl Agents {
         {
             self.arrived[j] = 1;
         }
+        // #endregion
     }
 
     /// Apply a positional correction with the same per-axis wall slide rule

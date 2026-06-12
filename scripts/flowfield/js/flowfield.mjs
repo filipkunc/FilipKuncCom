@@ -47,10 +47,12 @@ export class FlowField {
     return new Ctor(this.exports.memory.buffer, ptr, length);
   }
 
+  // #region views
   /** Writable u8 view of the cost field (255 = wall). Call compute() after edits. */
   get cost() {
     return this.#view(Uint8Array, this.exports.ff_cost_ptr(this.handle), this.cells);
   }
+  // #endregion
 
   /** u32 view: bits 0..16 integrated cost, bit 16 = line of sight to goal. */
   get integration() {

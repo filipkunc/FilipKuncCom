@@ -11,6 +11,7 @@
 //! fix for diamond-shaped flow around the goal: LOS cells steer straight at
 //! the goal instead of along the quantized direction LUT.
 
+// #region layouts
 pub const WALL: u8 = 255;
 
 pub const INT_COST_MASK: u32 = 0xFFFF;
@@ -22,6 +23,7 @@ pub const FLOW_PATHABLE: u8 = 1 << 4;
 pub const FLOW_LOS: u8 = 1 << 5;
 /// Direction index meaning "no direction" (goal cell, or nothing reachable).
 pub const DIR_NONE: u8 = 0x0F;
+// #endregion
 
 /// 8-way direction LUT. Index = flow field bits 0..4. Order: E, SE, S, SW, W,
 /// NW, N, NE with +y pointing down (row-major grid).
@@ -117,6 +119,7 @@ impl FlowGrid {
 
         let w = self.width as i32;
         let h = self.height as i32;
+        // #region integrate
         while let Some(std::cmp::Reverse((dist, idx))) = self.heap.pop() {
             let idx = idx as usize;
             if dist > self.integration[idx] & INT_COST_MASK {
@@ -141,8 +144,10 @@ impl FlowGrid {
                 }
             }
         }
+        // #endregion
     }
 
+    // #region los
     /// Mark every reachable cell that has an unobstructed Bresenham line to
     /// the goal. Agents in LOS cells steer straight at the goal, which kills
     /// the diamond-shaped flow artifact near it. The line must cross only
@@ -165,6 +170,7 @@ impl FlowGrid {
             }
         }
     }
+    // #endregion
 
     /// Bresenham walk from (x0,y0) to (x1,y1); true if every cell on the
     /// line is plain cheapest-cost ground (no wall, no expensive terrain).
@@ -221,6 +227,7 @@ impl FlowGrid {
                 }
                 let mut best_dir = DIR_NONE;
                 let mut best = self.integration[idx] & INT_COST_MASK;
+                // #region flow
                 for (d, (dx, dy)) in DIR_OFFSETS.iter().enumerate() {
                     let (nx, ny) = (x + dx, y + dy);
                     if nx < 0 || ny < 0 || nx >= w || ny >= h {
@@ -239,6 +246,7 @@ impl FlowGrid {
                         best_dir = d as u8;
                     }
                 }
+                // #endregion
                 self.flow[idx] = flags | best_dir;
             }
         }
