@@ -96,18 +96,18 @@ The first is steering. An agent blends its velocity toward the field direction i
 
 <FlowDiagram
   kind="steer"
-  caption="the agent does not snap to the field · it leans toward it, and neighbors push back"
+  caption="the agent does not snap to the field, it leans toward it · press play to watch the velocity swing onto the field direction while the overlapped pair separates"
 />
 
 The second is body collision. Steering forces alone let bodies interpenetrate the moment a crowd compresses, so after integration a position-based pass pushes every overlapping pair apart by half the overlap, sliding along walls. This is what makes a column squeezing through a gap look like bodies negotiating space instead of ghosts passing through each other.
 
-The third is knowing when to stop, and it is the one that surprised me. If arriving units simply brake near the goal, the units behind keep pushing at full speed and crush the crowd into the center. The fix is for arrival to spread by contact: a unit that reaches the goal parks, and a unit that bumps into a parked unit parks too. My first version of that froze entire marching columns, because units in a column touch nose to tail and the parked state propagated backwards through units that were moving perfectly well. Parking has to require being genuinely stuck, not merely touching:
+The third is knowing when to stop, and it is the one that surprised me. If arriving units simply brake near the goal, the units behind keep pushing at full speed and crush the crowd into the center. What the code actually implements is a three-state machine per agent. A unit is **moving**, becomes **stalled** after 0.35 seconds of getting nowhere, and becomes **parked** either by reaching the goal or by being stalled against a unit that is already parked. A new goal resets everyone to moving. My first version skipped the stalled state and let parking spread on contact alone, which froze entire marching columns, because units in a column touch nose to tail and the parked state propagated backwards through units that were moving perfectly well:
 
 <Excerpt source="scripts/flowfield/src/agents.rs" region="contagion" lang="rust" />
 
 <FlowDiagram
   kind="contagion"
-  caption="parking spreads by contact, but only to agents that are actually stuck"
+  caption="the arrival state machine, live · press play and watch the queue stall and park · every flash on the right is one agent taking that transition"
 />
 
 [Jdx ran into the group-movement wall from the other side](https://www.jdxdev.com/blog/2020/05/03/flowfields/). His flow field units rounding a corner "tended to cluster quickly and end up forming into a single/double file line, like a line of ants," and he eventually shelved flow fields for waypoint paths with formation offsets. The collision and parking layers above are what keep this demo's columns from collapsing into that ant line, and the deeper local-avoidance machinery behind StarCraft 2's famous unit ballet is a later post.

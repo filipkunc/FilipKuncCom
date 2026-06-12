@@ -45,10 +45,16 @@ const bitRows = [
         ))}
       </div>
     ) : (
-      <canvas></canvas>
+      <div class="ffd-stage"></div>
     )
   }
-  {kind === 'wavefront' && <button type="button" class="ffd-play">▶ play the wave</button>}
+  {
+    ['wavefront', 'steer', 'contagion'].includes(kind) && (
+      <button type="button" class="ffd-play">
+        {kind === 'wavefront' ? '▶ play the wave' : '▶ play'}
+      </button>
+    )
+  }
   {caption && <figcaption>{caption}</figcaption>}
 </figure>
 
@@ -74,9 +80,10 @@ const bitRows = [
   .ffd-play:hover {
     background: rgba(40, 50, 64, 0.9);
   }
-  .ffd canvas {
+  .ffd-stage :global(svg) {
     display: block;
     width: 100%;
+    height: auto;
     border: 1px solid var(--rule);
     border-radius: 4px;
     background: #10151c;
@@ -145,9 +152,9 @@ const bitRows = [
   for (const fig of document.querySelectorAll<HTMLElement>('[data-ff-diagram]')) {
     mountWhenVisible(fig, async () => {
       const { mountDiagram } = await import('../../scripts/flowfield/js/diagrams.mjs');
-      const canvas = fig.querySelector('canvas');
+      const stage = fig.querySelector('.ffd-stage');
       const button = fig.querySelector('button.ffd-play');
-      if (canvas) mountDiagram(canvas, fig.dataset.ffDiagram, { button });
+      if (stage) mountDiagram(stage, fig.dataset.ffDiagram, { button });
     });
   }
 </script>

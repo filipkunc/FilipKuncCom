@@ -1,63 +1,109 @@
-// Small canvas diagrams that sit next to the code excerpts in the post.
-// Each one illustrates what a specific region of the Rust source does,
-// drawn in the same palette as the live demo. Pure JS, no wasm: the grids
-// here are a dozen cells wide and exist to be read, not benchmarked.
+// SVG diagrams that sit next to the code excerpts in the post. Each one
+// illustrates what a specific region of the Rust source does, drawn in the
+// same palette as the live demo. Pure JS + SVG, no wasm: the grids here are
+// a dozen cells wide and exist to be read, not benchmarked. SVG keeps them
+// crisp at any zoom, and the structural colors route through CSS custom
+// properties (--ffd-*) so the figures can be themed.
+//
+// The animated ones (wavefront, steer, contagion) show a settled static
+// frame until played, so they never fight the text around them.
 
-const FLOOR = '#10151c';
-const GRID_LINE = '#222c39';
-const WALL = '#566374';
-const MUD = '#6e542e';
+const NS = 'http://www.w3.org/2000/svg';
+
+// Structural colors, themable. Data colors (the integration gradient) are
+// computed numerically per cell below.
+const FLOOR = 'var(--ffd-floor, #10151c)';
+const GRID_LINE = 'var(--ffd-grid, #222c39)';
+const WALL = 'var(--ffd-wall, #566374)';
+const MUD = 'var(--ffd-mud, #6e542e)';
+const TEXT = 'var(--ffd-text, #9aa7b8)';
+const BRIGHT = 'var(--ffd-bright, #e8eef5)';
+const ACCENT = 'var(--ffd-accent, #ffb454)';
+const AGENT = 'var(--ffd-agent, #6bd9ff)';
+const PARKED = 'var(--ffd-parked, #ff7eb6)';
+const STALLED = 'var(--ffd-stalled, #ffd166)';
+const GOAL = 'var(--ffd-goal, #ff5d5d)';
+const BAD = 'var(--ffd-bad, #ff6b6b)';
+const OK = 'var(--ffd-ok, #7ee787)';
+const EDGE_IDLE = 'var(--ffd-edge, #44516a)';
+
 const NEAR = [255, 180, 84];
 const FAR = [30, 46, 78];
-const TEXT = '#9aa7b8';
-const BRIGHT = '#e8eef5';
-const ACCENT = '#ffb454';
-const AGENT = '#6bd9ff';
-const PARKED = '#ff7eb6';
-const GOAL = '#ff5d5d';
-const BAD = '#ff6b6b';
-const OK = '#7ee787';
-
-function setup(canvas, w, h) {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.width = w * dpr;
-  canvas.height = h * dpr;
-  canvas.style.aspectRatio = `${w} / ${h}`;
-  const ctx = canvas.getContext('2d');
-  ctx.scale(dpr, dpr);
-  ctx.textBaseline = 'middle';
-  ctx.textAlign = 'center';
-  return ctx;
-}
+const MUD_NEAR = [110, 84, 46];
+const MUD_FAR = [40, 35, 22];
 
 function mix(a, b, t) {
   return [0, 1, 2].map((i) => Math.round(a[i] + (b[i] - a[i]) * t));
 }
 
-function lerpColor(a, b, t) {
-  const c = mix(a, b, t);
+function rgb(c) {
   return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
 }
 
-function arrow(ctx, x0, y0, x1, y1, color, width = 2, headLen = 7) {
-  const a = Math.atan2(y1 - y0, x1 - x0);
-  ctx.strokeStyle = color;
-  ctx.fillStyle = color;
-  ctx.lineWidth = width;
-  ctx.beginPath();
-  ctx.moveTo(x0, y0);
-  ctx.lineTo(x1, y1);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.lineTo(x1 - headLen * Math.cos(a - 0.45), y1 - headLen * Math.sin(a - 0.45));
-  ctx.lineTo(x1 - headLen * Math.cos(a + 0.45), y1 - headLen * Math.sin(a + 0.45));
-  ctx.closePath();
-  ctx.fill();
+// Element helpers -----------------------------------------------------------
+
+function el(tag, attrs = {}, ...children) {
+  const node = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
+  node.append(...children);
+  return node;
 }
 
-// Shared toy map for the wavefront and LOS diagrams: a wall with one gap and
-// a mud blob, goal on the right.
+function svgRoot(w, h) {
+  return el('svg', { viewBox: `0 0 ${w} ${h}`, role: 'img' });
+}
+
+function text(x, y, str, opts = {}) {
+  const { fill = TEXT, size = 13, anchor = 'middle', weight = '', rotate = null } = opts;
+  const t = el('text', {
+    x,
+    y,
+    fill,
+    'font-size': size,
+    'text-anchor': anchor,
+    'dominant-baseline': 'middle',
+    'font-family': 'system-ui, sans-serif',
+  });
+  if (weight) t.setAttribute('font-weight', weight);
+  if (rotate !== null) t.setAttribute('transform', `rotate(${rotate} ${x} ${y})`);
+  t.textContent = str;
+  return t;
+}
+
+function line(x0, y0, x1, y1, stroke, width = 2, dash = '') {
+  const l = el('line', { x1: x0, y1: y0, x2: x1, y2: y1, stroke, 'stroke-width': width });
+  if (dash) l.setAttribute('stroke-dasharray', dash);
+  return l;
+}
+
+function circle(cx, cy, r, attrs = {}) {
+  return el('circle', { cx, cy, r, ...attrs });
+}
+
+function arrowHead(x1, y1, angle, color, len = 7) {
+  const p = (a) => `${x1 - len * Math.cos(angle + a)},${y1 - len * Math.sin(angle + a)}`;
+  return el('polygon', { points: `${x1},${y1} ${p(-0.45)} ${p(0.45)}`, fill: color });
+}
+
+/** A line with an arrowhead, as one group. */
+function arrowEl(x0, y0, x1, y1, color, width = 2, head = 7, dash = '') {
+  const a = Math.atan2(y1 - y0, x1 - x0);
+  return el('g', {}, line(x0, y0, x1, y1, color, width, dash), arrowHead(x1, y1, a, color, head));
+}
+
+function goalRing(x, y, r = 14) {
+  return el(
+    'g',
+    {},
+    circle(x, y, r, { fill: 'none', stroke: GOAL, 'stroke-width': 2 }),
+    circle(x, y, r * 0.42, { fill: GOAL }),
+  );
+}
+
+// Shared toy world ----------------------------------------------------------
+
+// A wall with one gap and a mud blob, goal on the right; used by the
+// wavefront and LOS diagrams.
 function toyMap() {
   const W = 22;
   const H = 12;
@@ -100,7 +146,7 @@ function integrate({ W, H, cost, goal }) {
   return dist;
 }
 
-function bresenhamClear({ W, H, cost }, x0, y0, x1, y1) {
+function bresenhamClear({ W, cost }, x0, y0, x1, y1) {
   const dx = Math.abs(x1 - x0);
   const dy = -Math.abs(y1 - y0);
   const sx = x0 < x1 ? 1 : -1;
@@ -121,53 +167,86 @@ function bresenhamClear({ W, H, cost }, x0, y0, x1, y1) {
   }
 }
 
-function drawCells(ctx, map, cell, ox, oy, fill) {
-  const { W, H, cost } = map;
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < W; x++) {
-      const c = cost[y * W + x];
-      ctx.fillStyle = c === 255 ? WALL : fill(x, y, c);
-      ctx.fillRect(ox + x * cell, oy + y * cell, cell, cell);
+/** Cell rects + grid lines; returns the per-cell rect elements for updates. */
+function cellGrid(svg, map, cell, ox, oy, fillFor) {
+  const rects = [];
+  const cells = el('g');
+  for (let y = 0; y < map.H; y++) {
+    for (let x = 0; x < map.W; x++) {
+      const r = el('rect', {
+        x: ox + x * cell,
+        y: oy + y * cell,
+        width: cell,
+        height: cell,
+        fill: fillFor(x, y, map.cost[y * map.W + x]),
+      });
+      rects.push(r);
+      cells.append(r);
     }
   }
-  ctx.strokeStyle = GRID_LINE;
-  ctx.lineWidth = 1;
-  for (let x = 0; x <= W; x++) {
-    ctx.beginPath();
-    ctx.moveTo(ox + x * cell + 0.5, oy);
-    ctx.lineTo(ox + x * cell + 0.5, oy + H * cell);
-    ctx.stroke();
+  svg.append(cells);
+  const lines = el('g');
+  for (let x = 0; x <= map.W; x++) {
+    lines.append(line(ox + x * cell, oy, ox + x * cell, oy + map.H * cell, GRID_LINE, 1));
   }
-  for (let y = 0; y <= H; y++) {
-    ctx.beginPath();
-    ctx.moveTo(ox, oy + y * cell + 0.5);
-    ctx.lineTo(ox + W * cell, oy + y * cell + 0.5);
-    ctx.stroke();
+  for (let y = 0; y <= map.H; y++) {
+    lines.append(line(ox, oy + y * cell, ox + map.W * cell, oy + y * cell, GRID_LINE, 1));
   }
+  svg.append(lines);
+  return rects;
 }
 
-function drawGoal(ctx, map, cell, ox, oy) {
-  const gx = ox + (map.goal.x + 0.5) * cell;
-  const gy = oy + (map.goal.y + 0.5) * cell;
-  ctx.fillStyle = GOAL;
-  ctx.beginPath();
-  ctx.arc(gx, gy, cell * 0.22, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = GOAL;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(gx, gy, cell * 0.45, 0, Math.PI * 2);
-  ctx.stroke();
+// Play/pause harness shared by the animated diagrams: static until played,
+// runs via requestAnimationFrame, returns to static when done.
+function playable(svg, button, { onStart, onTick, label = '▶ play' }) {
+  let playing = false;
+  let raf = 0;
+  let lastNow = 0;
+  let started = false;
+  const setLabel = () => {
+    if (button) button.textContent = playing ? '❚❚ pause' : started ? '▶ resume' : label;
+  };
+  function tick(now) {
+    if (!playing) return;
+    const dt = lastNow ? Math.min((now - lastNow) / 1000, 1 / 30) : 1 / 60;
+    lastNow = now;
+    if (onTick(dt) === 'done') {
+      playing = false;
+      started = false;
+      setLabel();
+      return;
+    }
+    raf = requestAnimationFrame(tick);
+  }
+  function toggle() {
+    playing = !playing;
+    if (playing) {
+      if (!started) {
+        onStart();
+        started = true;
+      }
+      lastNow = 0;
+      raf = requestAnimationFrame(tick);
+    } else {
+      cancelAnimationFrame(raf);
+    }
+    setLabel();
+  }
+  button?.addEventListener('click', toggle);
+  svg.addEventListener('click', toggle);
+  svg.style.cursor = 'pointer';
+  setLabel();
+  return () => cancelAnimationFrame(raf);
 }
+
+// Diagrams -------------------------------------------------------------
 
 // The integrator as a movie: the wavefront expands from the goal, paying 8x
-// to cross mud, and the cost-so-far gradient is left in its wake. Shows the
-// finished field until the reader presses play, so it does not fight the
-// text around it.
-function wavefront(canvas, opts = {}) {
+// to cross mud, and the cost-so-far gradient is left in its wake.
+function wavefront(stage, opts = {}) {
   const W = 660;
   const H = 390;
-  const ctx = setup(canvas, W, H);
+  const svg = svgRoot(W, H);
   const map = toyMap();
   const cell = 28;
   const ox = (W - map.W * cell) / 2;
@@ -176,142 +255,111 @@ function wavefront(canvas, opts = {}) {
   let maxd = 0;
   for (const d of dist) if (d !== Infinity && d > maxd) maxd = d;
 
+  svg.append(el('rect', { width: W, height: H, fill: FLOOR }));
+  const rects = cellGrid(svg, map, cell, ox, oy, () => FLOOR);
+  svg.append(goalRing(ox + (map.goal.x + 0.5) * cell, oy + (map.goal.y + 0.5) * cell, cell * 0.45));
+  svg.append(text(W / 2, oy + map.H * cell + 22, 'integrated cost so far · the wave pays 8x to cross mud'));
+  stage.replaceChildren(svg);
+
   function frame(t) {
-    ctx.fillStyle = FLOOR;
-    ctx.fillRect(0, 0, W, H);
-    drawCells(ctx, map, cell, ox, oy, (x, y, c) => {
-      const d = dist[y * map.W + x];
-      if (d === Infinity || d > t) return c > 1 ? '#2a2419' : FLOOR;
-      let col = lerpColor(NEAR, FAR, Math.sqrt(d / maxd));
-      if (c > 1) col = lerpColor([110, 84, 46], [40, 35, 22], Math.sqrt(d / maxd) * 0.5);
-      return col;
-    });
-    // Frontier band, only while the wave is still spreading.
-    if (t < maxd) {
-      for (let y = 0; y < map.H; y++) {
-        for (let x = 0; x < map.W; x++) {
-          const d = dist[y * map.W + x];
-          if (d !== Infinity && d <= t && d > t - 1.6) {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
-            ctx.fillRect(ox + x * cell, oy + y * cell, cell, cell);
-          }
+    for (let y = 0; y < map.H; y++) {
+      for (let x = 0; x < map.W; x++) {
+        const i = y * map.W + x;
+        const c = map.cost[i];
+        const d = dist[i];
+        let fill;
+        if (c === 255) {
+          fill = WALL;
+        } else if (d === Infinity || d > t) {
+          fill = c > 1 ? rgb(MUD_FAR) : FLOOR;
+        } else {
+          const s = Math.sqrt(d / maxd);
+          let col = c > 1 ? mix(MUD_NEAR, MUD_FAR, s * 0.5) : mix(NEAR, FAR, s);
+          // Frontier band, only while the wave is still spreading.
+          if (t < maxd && d > t - 1.6) col = mix(col, [255, 255, 255], 0.55);
+          fill = rgb(col);
         }
+        rects[i].setAttribute('fill', fill);
       }
     }
-    drawGoal(ctx, map, cell, ox, oy);
-    ctx.fillStyle = TEXT;
-    ctx.font = '13px system-ui, sans-serif';
-    ctx.fillText(
-      'integrated cost so far · the wave pays 8x to cross mud',
-      W / 2,
-      oy + map.H * cell + 22,
-    );
   }
 
   frame(maxd);
-  const btn = opts.button;
   const SPEED = 9; // integrated-cost units per second
-  const HOLD = 1.2; // seconds to keep the finished field before stopping
-  let playing = false;
   let t = 0;
-  let raf = 0;
-  let lastNow = 0;
-
-  function setLabel() {
-    if (!btn) return;
-    btn.textContent = playing ? '❚❚ pause' : t > 0 ? '▶ resume' : '▶ play the wave';
-  }
-  function tick(now) {
-    if (!playing) return;
-    if (lastNow) t += ((now - lastNow) / 1000) * SPEED;
-    lastNow = now;
-    if (t >= maxd + SPEED * HOLD) {
-      playing = false;
+  return playable(svg, opts.button, {
+    label: '▶ play the wave',
+    onStart() {
       t = 0;
-      frame(maxd);
-      setLabel();
-      return;
-    }
-    frame(Math.min(t, maxd));
-    raf = requestAnimationFrame(tick);
-  }
-  function toggle() {
-    playing = !playing;
-    if (playing) {
-      lastNow = 0;
-      raf = requestAnimationFrame(tick);
-    } else {
-      cancelAnimationFrame(raf);
-    }
-    setLabel();
-  }
-  btn?.addEventListener('click', toggle);
-  canvas.addEventListener('click', toggle);
-  canvas.style.cursor = 'pointer';
-  setLabel();
-  return () => cancelAnimationFrame(raf);
+    },
+    onTick(dt) {
+      t += dt * SPEED;
+      frame(Math.min(t, maxd));
+      if (t >= maxd + SPEED * 1.2) {
+        frame(maxd);
+        return 'done';
+      }
+    },
+  });
 }
 
 // Two 3x3 neighborhoods: pick the cheapest neighbor, and the corner rule
 // that refuses a diagonal squeezing past a wall.
-function flowpick(canvas) {
+function flowpick(stage) {
   const W = 660;
   const H = 330;
-  const ctx = setup(canvas, W, H);
-  ctx.fillStyle = FLOOR;
-  ctx.fillRect(0, 0, W, H);
+  const svg = svgRoot(W, H);
+  svg.append(el('rect', { width: W, height: H, fill: FLOOR }));
   const cell = 76;
 
   function panel(ox, values, wallAt, chosen, blocked, title) {
     for (let y = 0; y < 3; y++) {
       for (let x = 0; x < 3; x++) {
         const isWall = wallAt && wallAt.x === x && wallAt.y === y;
-        ctx.fillStyle = isWall ? WALL : '#161d27';
-        ctx.fillRect(ox + x * cell, 30 + y * cell, cell - 2, cell - 2);
-        if (!isWall) {
-          const v = values[y][x];
-          ctx.fillStyle = x === 1 && y === 1 ? BRIGHT : TEXT;
-          ctx.font = `${x === 1 && y === 1 ? 'bold ' : ''}17px system-ui, sans-serif`;
-          ctx.fillText(String(v), ox + x * cell + cell / 2, 30 + y * cell + cell / 2);
+        svg.append(
+          el('rect', {
+            x: ox + x * cell,
+            y: 30 + y * cell,
+            width: cell - 2,
+            height: cell - 2,
+            fill: isWall ? WALL : 'var(--ffd-panel, #161d27)',
+          }),
+        );
+        if (!isWall && values[y][x] !== null) {
+          const center = x === 1 && y === 1;
+          svg.append(
+            text(ox + x * cell + cell / 2, 30 + y * cell + cell / 2, String(values[y][x]), {
+              fill: center ? BRIGHT : TEXT,
+              size: 17,
+              weight: center ? 'bold' : '',
+            }),
+          );
         }
       }
     }
-    const cx = ox + 1 * cell + cell / 2;
-    const cy = 30 + 1 * cell + cell / 2;
+    const cx = ox + 1.5 * cell - 1;
+    const cy = 30 + 1.5 * cell - 1;
+    const at = (c) => [ox + c.x * cell + cell / 2, 30 + c.y * cell + cell / 2];
     if (blocked) {
-      const bx = ox + blocked.x * cell + cell / 2;
-      const by = 30 + blocked.y * cell + cell / 2;
-      arrow(ctx, cx + (bx - cx) * 0.25, cy + (by - cy) * 0.25, cx + (bx - cx) * 0.62, cy + (by - cy) * 0.62, BAD, 2);
-      ctx.strokeStyle = BAD;
-      ctx.lineWidth = 2.5;
+      const [bx, by] = at(blocked);
+      svg.append(
+        arrowEl(cx + (bx - cx) * 0.25, cy + (by - cy) * 0.25, cx + (bx - cx) * 0.62, cy + (by - cy) * 0.62, BAD, 2),
+      );
       const mx = (cx + bx) / 2;
       const my = (cy + by) / 2;
-      ctx.beginPath();
-      ctx.moveTo(mx - 7, my - 7);
-      ctx.lineTo(mx + 7, my + 7);
-      ctx.moveTo(mx + 7, my - 7);
-      ctx.lineTo(mx - 7, my + 7);
-      ctx.stroke();
+      svg.append(line(mx - 7, my - 7, mx + 7, my + 7, BAD, 2.5));
+      svg.append(line(mx + 7, my - 7, mx - 7, my + 7, BAD, 2.5));
     }
-    const tx = ox + chosen.x * cell + cell / 2;
-    const ty = 30 + chosen.y * cell + cell / 2;
-    arrow(ctx, cx + (tx - cx) * 0.2, cy + (ty - cy) * 0.2, cx + (tx - cx) * 0.72, cy + (ty - cy) * 0.72, ACCENT, 3.5, 9);
-    ctx.fillStyle = TEXT;
-    ctx.font = '13px system-ui, sans-serif';
-    ctx.fillText(title, ox + 1.5 * cell, 30 + 3 * cell + 24);
+    const [tx, ty] = at(chosen);
+    svg.append(
+      arrowEl(cx + (tx - cx) * 0.2, cy + (ty - cy) * 0.2, cx + (tx - cx) * 0.72, cy + (ty - cy) * 0.72, ACCENT, 3.5, 9),
+    );
+    svg.append(text(ox + 1.5 * cell, 30 + 3 * cell + 24, title));
   }
 
-  // Left: plain downhill pick, SE (11) wins over E (13).
-  panel(
-    72,
-    [[16, 15, 12], [16, 14, 13], [15, 13, 11]],
-    null,
-    { x: 2, y: 2 },
-    null,
-    'pick the cheapest of 8 neighbors',
-  );
-  // Right: same numbers, but S is a wall, so the SE diagonal would cut its
-  // corner. NE (12) wins instead.
+  // Left: plain downhill pick, SE (11) wins. Right: S is a wall, so the SE
+  // diagonal would cut its corner; NE (12) wins instead.
+  panel(72, [[16, 15, 12], [16, 14, 13], [15, 13, 11]], null, { x: 2, y: 2 }, null, 'pick the cheapest of 8 neighbors');
   panel(
     372,
     [[16, 15, 12], [16, 14, 13], [15, null, 11]],
@@ -320,14 +368,15 @@ function flowpick(canvas) {
     { x: 2, y: 2 },
     'diagonal past a wall corner is refused',
   );
+  stage.replaceChildren(svg);
 }
 
 // The LOS region around the goal, one clear sightline and two blocked ones
 // (a wall and mud, which blocks LOS the same way).
-function los(canvas) {
+function los(stage) {
   const W = 660;
   const H = 400;
-  const ctx = setup(canvas, W, H);
+  const svg = svgRoot(W, H);
   const map = toyMap();
   const cell = 28;
   const ox = (W - map.W * cell) / 2;
@@ -336,19 +385,19 @@ function los(canvas) {
   let maxd = 0;
   for (const d of dist) if (d !== Infinity && d > maxd) maxd = d;
 
-  ctx.fillStyle = FLOOR;
-  ctx.fillRect(0, 0, W, H);
-  drawCells(ctx, map, cell, ox, oy, (x, y, c) => {
+  svg.append(el('rect', { width: W, height: H, fill: FLOOR }));
+  cellGrid(svg, map, cell, ox, oy, (x, y, c) => {
     const d = dist[y * map.W + x];
+    if (c === 255) return WALL;
     if (d === Infinity) return FLOOR;
     if (c > 1) return MUD;
     let col = mix(NEAR, FAR, Math.sqrt(d / maxd));
     if (bresenhamClear(map, x, y, map.goal.x, map.goal.y).clear) {
       col = mix(col, [255, 255, 255], 0.22);
     }
-    return `rgb(${col[0]}, ${col[1]}, ${col[2]})`;
+    return rgb(col);
   });
-  drawGoal(ctx, map, cell, ox, oy);
+  svg.append(goalRing(ox + (map.goal.x + 0.5) * cell, oy + (map.goal.y + 0.5) * cell, cell * 0.45));
 
   const gx = ox + (map.goal.x + 0.5) * cell;
   const gy = oy + (map.goal.y + 0.5) * cell;
@@ -356,141 +405,156 @@ function los(canvas) {
     const res = bresenhamClear(map, x, y, map.goal.x, map.goal.y);
     const sx = ox + (x + 0.5) * cell;
     const sy = oy + (y + 0.5) * cell;
-    ctx.setLineDash(res.clear ? [] : [5, 4]);
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(sx, sy);
-    ctx.lineTo(gx, gy);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(sx, sy, 4.5, 0, Math.PI * 2);
-    ctx.fill();
+    svg.append(line(sx, sy, gx, gy, color, 2, res.clear ? '' : '5 4'));
+    svg.append(circle(sx, sy, 4.5, { fill: color }));
     if (!res.clear) {
       const hx = ox + (res.hit.x + 0.5) * cell;
       const hy = oy + (res.hit.y + 0.5) * cell;
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.moveTo(hx - 6, hy - 6);
-      ctx.lineTo(hx + 6, hy + 6);
-      ctx.moveTo(hx + 6, hy - 6);
-      ctx.lineTo(hx - 6, hy + 6);
-      ctx.stroke();
+      svg.append(line(hx - 6, hy - 6, hx + 6, hy + 6, color, 2.5));
+      svg.append(line(hx + 6, hy - 6, hx - 6, hy + 6, color, 2.5));
     }
   }
   sightline(15, 11, OK);
   sightline(4, 4, BAD);
   sightline(21, 1, BAD);
 
-  ctx.fillStyle = TEXT;
-  ctx.font = '13px system-ui, sans-serif';
-  ctx.fillText(
-    'bright cells see the goal and steer straight at it · walls and mud both break the line',
-    W / 2,
-    oy + map.H * cell + 22,
+  svg.append(
+    text(
+      W / 2,
+      oy + map.H * cell + 22,
+      'bright cells see the goal and steer straight at it · walls and mud both break the line',
+    ),
   );
+  stage.replaceChildren(svg);
 }
 
-// Steering in two uncluttered halves: how velocity turns toward the field,
-// and how neighbors keep their distance.
-function steer(canvas) {
+// Steering in two halves: how velocity turns toward the field, and how
+// overlapping bodies separate. Play animates both at once.
+function steer(stage, opts = {}) {
   const W = 660;
   const H = 320;
-  const ctx = setup(canvas, W, H);
-  ctx.fillStyle = FLOOR;
-  ctx.fillRect(0, 0, W, H);
-  const title = (x, text) => {
-    ctx.fillStyle = TEXT;
-    ctx.font = '13px system-ui, sans-serif';
-    ctx.fillText(text, x, 286);
-  };
-  ctx.strokeStyle = GRID_LINE;
-  ctx.beginPath();
-  ctx.moveTo(338, 24);
-  ctx.lineTo(338, 296);
-  ctx.stroke();
+  const svg = svgRoot(W, H);
+  svg.append(el('rect', { width: W, height: H, fill: FLOOR }));
+  svg.append(line(338, 24, 338, 296, GRID_LINE, 1));
+  svg.append(text(170, 286, 'follow the field, but with momentum'));
+  svg.append(text(490, 286, 'separation keeps the crowd from stacking'));
+  const dyn = el('g');
+  svg.append(dyn);
+  stage.replaceChildren(svg);
 
-  // Left: one agent, three arrows fanned well apart, and a dashed arc that
-  // says "the cyan arrow turns into the white one, toward the orange one".
-  const ax = 150;
-  const ay = 165;
-  const len = 105;
-  const dirAt = (deg) => [Math.cos((deg * Math.PI) / 180), Math.sin((deg * Math.PI) / 180)];
-  const ray = (deg, r) => [ax + dirAt(deg)[0] * r, ay + dirAt(deg)[1] * r];
-  const label = (x, y, text, color, align = 'center') => {
-    ctx.fillStyle = color;
-    ctx.font = '13px system-ui, sans-serif';
-    ctx.textAlign = align;
-    ctx.fillText(text, x, y);
-    ctx.textAlign = 'center';
-  };
+  const DEG = Math.PI / 180;
+  const DESIRED = -68 * DEG;
+  const START = 14 * DEG;
+  const LEN = 105;
 
-  const DESIRED = -68;
-  const NEXT = -34;
-  const CURRENT = 14;
-  arrow(ctx, ax, ay, ...ray(DESIRED, len), ACCENT, 3);
-  arrow(ctx, ax, ay, ...ray(NEXT, len * 0.96), BRIGHT, 3.5);
-  arrow(ctx, ax, ay, ...ray(CURRENT, len), AGENT, 3);
-  // The turn arc, between the current and desired directions.
-  ctx.setLineDash([4, 5]);
-  ctx.strokeStyle = TEXT;
-  ctx.lineWidth = 1.6;
-  ctx.beginPath();
-  ctx.arc(ax, ay, len + 16, (CURRENT - 6) * (Math.PI / 180), (DESIRED + 6) * (Math.PI / 180), true);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  const [hx, hy] = ray(DESIRED + 8, len + 16);
-  arrow(ctx, ...ray(DESIRED + 13, len + 16), hx, hy, TEXT, 1.6, 6);
+  const init = () => ({ angle: START, pos: [150, 195], trail: [], overlap: 46 });
+  let s = init();
 
-  ctx.fillStyle = AGENT;
-  ctx.beginPath();
-  ctx.arc(ax, ay, 9, 0, Math.PI * 2);
-  ctx.fill();
-
-  label(...ray(DESIRED, len + 34), 'the field says go here', ACCENT);
-  label(...ray(CURRENT + 9, len + 42), 'velocity right now', AGENT);
-  const [nx0, ny0] = ray(NEXT - 4, len + 26);
-  label(nx0 + 8, ny0, 'next frame', BRIGHT, 'left');
-  title(170, 'follow the field, but with momentum');
-
-  // Right: two bodies closer than their radii allow, pushed apart
-  // symmetrically.
-  const by = 150;
-  const b1 = 440;
-  const b2 = 530;
-  const r = 34;
-  ctx.setLineDash([4, 5]);
-  ctx.strokeStyle = TEXT;
-  ctx.lineWidth = 1.4;
-  for (const [bx, col] of [[b1, AGENT], [b2, AGENT]]) {
-    ctx.beginPath();
-    ctx.arc(bx, by, r, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.fillStyle = col;
-    ctx.beginPath();
-    ctx.arc(bx, by, 9, 0, Math.PI * 2);
-    ctx.fill();
+  function step(dt) {
+    s.angle += (DESIRED - s.angle) * Math.min(1, 2.4 * dt);
+    s.pos[0] += Math.cos(s.angle) * 46 * dt;
+    s.pos[1] += Math.sin(s.angle) * 46 * dt;
+    s.trail.push([...s.pos]);
+    s.overlap = Math.max(0, s.overlap - s.overlap * Math.min(1, 2.2 * dt) - 1.5 * dt);
   }
-  ctx.setLineDash([]);
-  arrow(ctx, b1 - 14, by, b1 - 78, by, BAD, 3);
-  arrow(ctx, b2 + 14, by, b2 + 78, by, BAD, 3);
-  ctx.fillStyle = TEXT;
-  ctx.font = '13px system-ui, sans-serif';
-  ctx.fillText('bodies overlap', (b1 + b2) / 2, by - r - 18);
-  ctx.fillText('half the overlap each, away from the other', (b1 + b2) / 2, by + r + 28);
-  title(490, 'separation keeps the crowd from stacking');
+
+  function draw(animating) {
+    const parts = [];
+    const [ax, ay] = s.pos;
+    const ray = (a, r) => [ax + Math.cos(a) * r, ay + Math.sin(a) * r];
+
+    if (s.trail.length > 1) {
+      parts.push(
+        el('polyline', {
+          points: s.trail.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' '),
+          fill: 'none',
+          stroke: AGENT,
+          opacity: 0.35,
+          'stroke-width': 2,
+        }),
+      );
+    }
+    parts.push(arrowEl(ax, ay, ...ray(DESIRED, LEN), ACCENT, 3));
+    parts.push(arrowEl(ax, ay, ...ray(s.angle, LEN * 0.96), AGENT, 3));
+    if (!animating) {
+      // Static frame: also show the next-frame blend and the turn arc.
+      const next = s.angle + (DESIRED - s.angle) * 0.45;
+      parts.push(arrowEl(ax, ay, ...ray(next, LEN * 0.9), BRIGHT, 3.5));
+      const [a0x, a0y] = ray(s.angle - 6 * DEG, LEN + 16);
+      const [a1x, a1y] = ray(DESIRED + 6 * DEG, LEN + 16);
+      parts.push(
+        el('path', {
+          d: `M ${a0x} ${a0y} A ${LEN + 16} ${LEN + 16} 0 0 0 ${a1x} ${a1y}`,
+          fill: 'none',
+          stroke: TEXT,
+          'stroke-width': 1.6,
+          'stroke-dasharray': '4 5',
+        }),
+      );
+      const tip = ray(DESIRED + 8 * DEG, LEN + 16);
+      const tail = ray(DESIRED + 13 * DEG, LEN + 16);
+      parts.push(arrowHead(tip[0], tip[1], Math.atan2(tip[1] - tail[1], tip[0] - tail[0]), TEXT, 6));
+      const [nx0, ny0] = ray(next - 4 * DEG, LEN + 26);
+      parts.push(text(nx0 + 8, ny0, 'next frame', { fill: BRIGHT, anchor: 'start' }));
+    }
+    parts.push(circle(ax, ay, 9, { fill: AGENT }));
+    parts.push(text(...ray(DESIRED, LEN + 34), 'the field says go here', { fill: ACCENT }));
+    parts.push(text(...ray(s.angle + 9 * DEG, LEN + 42), 'velocity right now', { fill: AGENT }));
+
+    const by = 150;
+    const r = 34;
+    const half = (r * 2 - s.overlap) / 2;
+    const b1 = 485 - half;
+    const b2 = 485 + half;
+    for (const bx of [b1, b2]) {
+      parts.push(circle(bx, by, r, { fill: 'none', stroke: TEXT, 'stroke-width': 1.4, 'stroke-dasharray': '4 5' }));
+      parts.push(circle(bx, by, 9, { fill: AGENT }));
+    }
+    if (s.overlap > 1) {
+      parts.push(arrowEl(b1 - 14, by, b1 - 58 - s.overlap * 0.4, by, BAD, 3));
+      parts.push(arrowEl(b2 + 14, by, b2 + 58 + s.overlap * 0.4, by, BAD, 3));
+      parts.push(text(485, by - r - 18, 'bodies overlap'));
+      parts.push(text(485, by + r + 28, 'half the overlap each, away from the other'));
+    } else {
+      parts.push(text(485, by + r + 28, 'settled: contact distance apart'));
+    }
+    dyn.replaceChildren(...parts);
+  }
+
+  function staticFrame() {
+    s = init();
+    // Just enough warmup that the blend is mid-turn, with the arrow fan
+    // still wide enough to read.
+    for (let i = 0; i < 8; i++) step(1 / 60);
+    s.trail = [];
+    draw(false);
+  }
+  staticFrame();
+
+  let elapsed = 0;
+  return playable(svg, opts.button, {
+    onStart() {
+      elapsed = 0;
+      s = init();
+    },
+    onTick(dt) {
+      elapsed += dt;
+      if (elapsed >= 4.6) {
+        staticFrame();
+        return 'done';
+      }
+      step(dt);
+      draw(true);
+    },
+  });
 }
 
-// Speed multiplier vs cost: 1/sqrt(cost), with grass and mud marked.
-function terrain(canvas) {
+// Speed multiplier vs cost: 1/sqrt(cost), with plain ground and mud marked.
+function terrain(stage) {
   const W = 660;
   const H = 260;
-  const ctx = setup(canvas, W, H);
-  ctx.fillStyle = FLOOR;
-  ctx.fillRect(0, 0, W, H);
+  const svg = svgRoot(W, H);
+  svg.append(el('rect', { width: W, height: H, fill: FLOOR }));
   const x0 = 70;
   const y0 = 200;
   const xw = 520;
@@ -498,181 +562,308 @@ function terrain(canvas) {
   const X = (c) => x0 + ((c - 1) / 11) * xw;
   const Y = (m) => y0 - m * yh;
 
-  ctx.strokeStyle = GRID_LINE;
-  ctx.lineWidth = 1;
   for (const m of [0.25, 0.5, 0.75, 1]) {
-    ctx.beginPath();
-    ctx.moveTo(x0, Y(m));
-    ctx.lineTo(x0 + xw, Y(m));
-    ctx.stroke();
-    ctx.fillStyle = TEXT;
-    ctx.font = '12px system-ui, sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText(`${m * 100}%`, x0 - 10, Y(m));
+    svg.append(line(x0, Y(m), x0 + xw, Y(m), GRID_LINE, 1));
+    svg.append(text(x0 - 10, Y(m), `${m * 100}%`, { size: 12, anchor: 'end' }));
   }
-  ctx.textAlign = 'center';
-  ctx.strokeStyle = ACCENT;
-  ctx.lineWidth = 2.5;
-  ctx.beginPath();
+  const pts = [];
   for (let c = 1; c <= 12; c += 0.1) {
-    const x = X(c);
-    const y = Y(1 / Math.sqrt(c));
-    if (c === 1) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
+    pts.push(`${X(c).toFixed(1)},${Y(1 / Math.sqrt(c)).toFixed(1)}`);
   }
-  ctx.stroke();
+  svg.append(
+    el('polyline', { points: pts.join(' '), fill: 'none', stroke: ACCENT, 'stroke-width': 2.5 }),
+  );
 
   function mark(c, name, color, dx, dy) {
     const x = X(c);
     const y = Y(1 / Math.sqrt(c));
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(x, y, 5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = TEXT;
-    ctx.font = '13px system-ui, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText(name, x + dx, y + dy);
-    ctx.textAlign = 'center';
-    ctx.fillText(`cost ${c}`, x, y0 + 20);
+    svg.append(circle(x, y, 5, { fill: color }));
+    svg.append(text(x + dx, y + dy, name, { anchor: dx > 0 ? 'start' : 'middle' }));
+    svg.append(text(x, y0 + 20, `cost ${c}`));
   }
   mark(1, 'plain ground · 100%', BRIGHT, 14, 4);
-  mark(8, 'mud · 35%', '#c9a36a', 0, -20);
-  ctx.fillStyle = TEXT;
-  ctx.font = '13px system-ui, sans-serif';
-  ctx.fillText('speed multiplier = 1 / √cost, sampled from the cell under the agent', W / 2 + 30, 28);
+  mark(8, 'mud · 35%', 'var(--ffd-mud-bright, #c9a36a)', 0, -20);
+  svg.append(text(W / 2 + 30, 28, 'speed multiplier = 1 / √cost, sampled from the cell under the agent'));
+  stage.replaceChildren(svg);
 }
 
-// Three frames of arrival contagion: park at the goal, park when stalled
-// against the parked, keep flowing around while there is room to move.
-// A legend up top carries the color code so the frames stay clean.
-function contagion(canvas) {
+// Arrival as it actually is in the code: a per-agent state machine. The left
+// side runs a real mini-simulation (move toward the goal, collide, stall,
+// park); the right side is the state graph with live agent counts, and every
+// transition an agent takes flashes its edge.
+function contagion(stage, opts = {}) {
   const W = 660;
-  const H = 300;
-  const ctx = setup(canvas, W, H);
-  ctx.fillStyle = FLOOR;
-  ctx.fillRect(0, 0, W, H);
-  const pw = 210;
-  const r = 8;
-  const STALLED = '#ffd166';
+  const H = 360;
+  const svg = svgRoot(W, H);
+  const SPEED = 52;
+  const R = 7;
+  const GX = 385;
+  const GY = 186;
+  // A narrow two-lane corridor forces a deep queue: when the front parks,
+  // the whole line behind it jams (stalled, yellow) and the parked state
+  // eats it from the front, one stall-timer tick per rank. That keeps the
+  // stalled population visible for seconds instead of flickering once.
+  const CORRIDOR = { top: 168, bottom: 204, left: 16, right: 412 };
+  const STATE_COLOR = { moving: AGENT, stalled: STALLED, parked: PARKED };
 
-  function dot(x, y, color) {
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  function goalRing(x, y) {
-    ctx.strokeStyle = GOAL;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(x, y, 14, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-  // One long arrow for a whole moving group reads better than a tick on
-  // every dot.
-  function moveArrow(x0, y0, x1, y1) {
-    arrow(ctx, x0, y0, x1, y1, AGENT, 2.5, 7);
-  }
-  function caption(ox, text) {
-    ctx.fillStyle = TEXT;
-    ctx.font = '12.5px system-ui, sans-serif';
-    ctx.fillText(text, ox + pw / 2, 262);
-  }
-
-  // Legend.
-  {
-    const items = [
-      ['moving', AGENT],
-      ['stalled', STALLED],
-      ['parked', PARKED],
-    ];
-    let x = W / 2 - 150;
-    ctx.font = '12.5px system-ui, sans-serif';
-    for (const [name, color] of items) {
-      dot(x, 26, color);
-      ctx.fillStyle = TEXT;
-      ctx.textAlign = 'left';
-      ctx.fillText(name, x + 14, 26);
-      x += 30 + ctx.measureText(name).width + 30;
+  function makeAgents() {
+    const agents = [];
+    for (let col = 0; col < 16; col++) {
+      for (let row = 0; row < 2; row++) {
+        agents.push({
+          x: 20 + col * 15,
+          y: CORRIDOR.top + 9 + row * 18,
+          stall: 0,
+          state: 'moving',
+        });
+      }
     }
-    goalRing(x + 2, 26);
-    ctx.fillStyle = TEXT;
-    ctx.fillText('goal', x + 22, 26);
-    ctx.textAlign = 'center';
+    return agents;
+  }
+  const goalDist = (a) => Math.hypot(GX - a.x, GY - a.y);
+  const clampY = (a) => {
+    a.y = Math.min(CORRIDOR.bottom - R - 1, Math.max(CORRIDOR.top + R + 1, a.y));
+  };
+
+  function simStep(agents, dt, flashes) {
+    for (const a of agents) {
+      a.px = a.x;
+      a.py = a.y;
+      if (a.state === 'parked') continue;
+      const d = goalDist(a);
+      a.x += ((GX - a.x) / d) * SPEED * dt;
+      a.y += ((GY - a.y) / d) * SPEED * dt;
+      clampY(a);
+    }
+    for (let iter = 0; iter < 2; iter++) {
+      for (let i = 0; i < agents.length; i++) {
+        for (let j = i + 1; j < agents.length; j++) {
+          const A = agents[i];
+          const B = agents[j];
+          const dx = A.x - B.x;
+          const dy = A.y - B.y;
+          const d = Math.hypot(dx, dy);
+          if (d >= 2 * R || d < 1e-6) continue;
+          const push = 2 * R - d;
+          const movableA = A.state !== 'parked';
+          const movableB = B.state !== 'parked';
+          if (!movableA && !movableB) continue;
+          const share = movableA && movableB ? 0.5 : 1;
+          if (movableA) {
+            A.x += (dx / d) * push * share;
+            A.y += (dy / d) * push * share;
+            clampY(A);
+          }
+          if (movableB) {
+            B.x -= (dx / d) * push * share;
+            B.y -= (dy / d) * push * share;
+            clampY(B);
+          }
+        }
+      }
+    }
+    for (const a of agents) {
+      if (a.state === 'parked') continue;
+      const moved = Math.hypot(a.x - a.px, a.y - a.py) / dt;
+      if (moved < SPEED * 0.45) a.stall += dt;
+      else a.stall = 0;
+
+      // Stalled after 0.35 s of getting nowhere; absorbed into the pile
+      // after a longer hold, so the stalled state has visible dwell time
+      // in this toy (in the live demo both gates share one threshold).
+      let next = a.stall >= 0.35 ? 'stalled' : 'moving';
+      if (goalDist(a) < 18) {
+        next = 'parked';
+      } else if (next === 'stalled' && a.stall >= 0.9) {
+        for (const b of agents) {
+          if (b.state !== 'parked') continue;
+          if (Math.hypot(a.x - b.x, a.y - b.y) < 2 * R + 1.5 && goalDist(b) < goalDist(a)) {
+            next = 'parked';
+            break;
+          }
+        }
+      }
+      if (next !== a.state) {
+        flashes[`${a.state}>${next}`] = 0.5;
+        a.state = next;
+      }
+    }
   }
 
-  ctx.strokeStyle = GRID_LINE;
-  [225, 440].forEach((x) => {
-    ctx.beginPath();
-    ctx.moveTo(x, 56);
-    ctx.lineTo(x, 272);
-    ctx.stroke();
+  // Static chrome: the corridor walls and the goal at its end.
+  svg.append(el('rect', { width: W, height: H, fill: FLOOR }));
+  svg.append(line(428, 24, 428, 336, GRID_LINE, 1));
+  for (const y of [CORRIDOR.top - 10, CORRIDOR.bottom]) {
+    svg.append(
+      el('rect', {
+        x: CORRIDOR.left,
+        y,
+        width: CORRIDOR.right - CORRIDOR.left,
+        height: 10,
+        fill: WALL,
+        rx: 2,
+      }),
+    );
+  }
+  svg.append(goalRing(GX, GY, 15));
+  svg.append(text(218, 348, 'a column queues through a corridor toward the goal', { size: 12.5 }));
+
+  // The state graph: nodes with live counts, edges that flash on transitions.
+  const NODES = {
+    moving: { x: 545, y: 80 },
+    stalled: { x: 545, y: 190 },
+    parked: { x: 545, y: 300 },
+  };
+  const NODE_R = 26;
+  const EDGES = [
+    { key: 'moving>stalled', from: 'moving', to: 'stalled', side: -1, label: 'blocked 0.35 s' },
+    { key: 'stalled>moving', from: 'stalled', to: 'moving', side: 1, label: 'free again' },
+    { key: 'stalled>parked', from: 'stalled', to: 'parked', side: -1, label: 'touching the pile' },
+    { key: 'moving>parked', from: 'moving', to: 'parked', side: 1, label: 'reach the goal', bow: 64 },
+  ];
+  const edgeEls = {};
+  for (const e of EDGES) {
+    const a = NODES[e.from];
+    const b = NODES[e.to];
+    const g = el('g');
+    if (e.bow) {
+      const mx = a.x + e.bow;
+      const my = (a.y + b.y) / 2;
+      g.append(
+        el('path', {
+          d: `M ${a.x + NODE_R - 4} ${a.y + 8} Q ${mx} ${my} ${b.x + NODE_R - 4} ${b.y - 8}`,
+          fill: 'none',
+          stroke: EDGE_IDLE,
+          'stroke-width': 1.5,
+        }),
+      );
+      const ang = Math.atan2(b.y - 8 - my, b.x + NODE_R - 4 - mx);
+      g.append(arrowHead(b.x + NODE_R - 4, b.y - 8, ang, EDGE_IDLE, 6));
+      g.append(text(mx + 6, my, e.label, { size: 11.5, rotate: 90 }));
+    } else {
+      const xoff = e.side * 10;
+      const y0 = a.y + (b.y > a.y ? NODE_R : -NODE_R);
+      const y1 = b.y + (b.y > a.y ? -NODE_R - 4 : NODE_R + 4);
+      g.append(line(a.x + xoff, y0, b.x + xoff, y1, EDGE_IDLE, 1.5));
+      g.append(arrowHead(b.x + xoff, y1, Math.atan2(y1 - y0, 0), EDGE_IDLE, 6));
+      g.append(
+        text(a.x + xoff + e.side * 8, (a.y + b.y) / 2, e.label, {
+          size: 11.5,
+          anchor: e.side < 0 ? 'end' : 'start',
+        }),
+      );
+    }
+    svg.append(g);
+    edgeEls[e.key] = g;
+  }
+  // The reset transition exists in the real sim too: a new goal un-parks
+  // everyone. A dashed hint with a horizontal footnote, so no rotated label
+  // collides with the edge labels.
+  svg.append(
+    el('path', {
+      d: `M ${NODES.parked.x - NODE_R} ${NODES.parked.y - 6} Q 448 190 ${NODES.moving.x - NODE_R} ${NODES.moving.y + 6}`,
+      fill: 'none',
+      stroke: EDGE_IDLE,
+      'stroke-width': 1.2,
+      'stroke-dasharray': '3 4',
+    }),
+  );
+  svg.append(text(545, 344, 'dashed: a new goal resets everyone to moving', { size: 11.5 }));
+
+  const countEls = {};
+  for (const [name, n] of Object.entries(NODES)) {
+    svg.append(circle(n.x, n.y, NODE_R, { fill: FLOOR, stroke: STATE_COLOR[name], 'stroke-width': 2 }));
+    const count = text(n.x, n.y - 4, '0', { fill: STATE_COLOR[name], size: 15, weight: 'bold' });
+    svg.append(count);
+    svg.append(text(n.x, n.y + 12, name, { fill: STATE_COLOR[name], size: 11 }));
+    countEls[name] = count;
+  }
+
+  // Agent dots, updated in place each frame.
+  let agents = makeAgents();
+  const dots = agents.map(() => circle(0, 0, R, { fill: AGENT }));
+  const dotsGroup = el('g', {}, ...dots);
+  svg.append(dotsGroup);
+  stage.replaceChildren(svg);
+
+  // Dot colors are numeric so the stall timer can be shown filling up:
+  // a blocked agent blends from cyan toward yellow as stall approaches
+  // the 0.35 s threshold.
+  const AGENT_RGB = [107, 217, 255];
+  const STALLED_RGB = [255, 209, 102];
+  const PARKED_RGB = [255, 126, 182];
+  function dotColor(a) {
+    if (a.state === 'parked') return rgb(PARKED_RGB);
+    return rgb(mix(AGENT_RGB, STALLED_RGB, Math.min(1, a.stall / 0.35)));
+  }
+
+  function draw(flashes) {
+    for (let i = 0; i < agents.length; i++) {
+      dots[i].setAttribute('cx', agents[i].x.toFixed(1));
+      dots[i].setAttribute('cy', agents[i].y.toFixed(1));
+      dots[i].setAttribute('fill', dotColor(agents[i]));
+    }
+    const counts = { moving: 0, stalled: 0, parked: 0 };
+    for (const a of agents) counts[a.state]++;
+    for (const [name, elc] of Object.entries(countEls)) elc.textContent = String(counts[name]);
+    for (const e of EDGES) {
+      const hot = (flashes[e.key] ?? 0) > 0;
+      for (const child of edgeEls[e.key].children) {
+        if (child.tagName === 'line' || child.tagName === 'path') {
+          child.setAttribute('stroke', hot ? ACCENT : EDGE_IDLE);
+          child.setAttribute('stroke-width', hot ? 2.5 : 1.5);
+        } else if (child.tagName === 'polygon') {
+          child.setAttribute('fill', hot ? ACCENT : EDGE_IDLE);
+        } else if (child.tagName === 'text') {
+          child.setAttribute('fill', hot ? ACCENT : TEXT);
+        }
+      }
+    }
+  }
+
+  // Static default: the settled end state.
+  {
+    const f = {};
+    for (let i = 0; i < 1400; i++) simStep(agents, 1 / 60, f);
+  }
+  draw({});
+
+  let flashes = {};
+  let hold = 0;
+  let elapsed = 0;
+  return playable(svg, opts.button, {
+    onStart() {
+      agents = makeAgents();
+      flashes = {};
+      hold = 0;
+      elapsed = 0;
+    },
+    onTick(dt) {
+      elapsed += dt;
+      if (elapsed > 30) return 'done';
+      simStep(agents, dt, flashes);
+      for (const k of Object.keys(flashes)) {
+        flashes[k] -= dt;
+        if (flashes[k] <= 0) delete flashes[k];
+      }
+      draw(flashes);
+      if (agents.every((a) => a.state === 'parked')) {
+        hold += dt;
+        if (hold > 1.6) return 'done';
+      }
+    },
   });
-
-  const gy = 155;
-
-  // Frame 1: a column marches at the goal, the first body got there.
-  let ox = 8;
-  goalRing(ox + 165, gy);
-  dot(ox + 165, gy, PARKED);
-  for (let i = 0; i < 3; i++) dot(ox + 116 - i * 22, gy, AGENT);
-  moveArrow(ox + 30, gy - 26, ox + 120, gy - 26);
-  caption(ox, 'reach the goal → park');
-
-  // Frame 2: the column pressed in, the front body has been stuck for
-  // 0.35 s against parked bodies, so it parks too.
-  ox = 228;
-  goalRing(ox + 165, gy);
-  dot(ox + 165, gy, PARKED);
-  dot(ox + 147, gy - 11, PARKED);
-  dot(ox + 147, gy + 11, PARKED);
-  dot(ox + 129, gy, STALLED);
-  ctx.strokeStyle = STALLED;
-  ctx.lineWidth = 1.6;
-  ctx.setLineDash([3, 3]);
-  ctx.beginPath();
-  ctx.arc(ox + 129, gy, r + 4, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.fillStyle = STALLED;
-  ctx.font = '11.5px system-ui, sans-serif';
-  ctx.fillText('stuck 0.35 s → parks', ox + 110, gy - 32);
-  for (let i = 0; i < 2; i++) dot(ox + 95 - i * 22, gy + 1, AGENT);
-  caption(ox, 'stalled against the parked → park');
-
-  // Frame 3: bodies with room to move curve around the pile instead of
-  // freezing nose-to-tail.
-  ox = 448;
-  goalRing(ox + 145, gy);
-  dot(ox + 145, gy, PARKED);
-  dot(ox + 127, gy - 11, PARKED);
-  dot(ox + 127, gy + 11, PARKED);
-  dot(ox + 109, gy, PARKED);
-  for (const side of [-1, 1]) {
-    dot(ox + 52, gy + side * 14, AGENT);
-    // Curved path around the pile.
-    ctx.strokeStyle = AGENT;
-    ctx.lineWidth = 2.5;
-    ctx.setLineDash([5, 4]);
-    ctx.beginPath();
-    ctx.moveTo(ox + 64, gy + side * 16);
-    ctx.quadraticCurveTo(ox + 110, gy + side * 52, ox + 158, gy + side * 32);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    arrow(ctx, ox + 150, gy + side * 36.5, ox + 160, gy + side * 31, AGENT, 2.5, 7);
-  }
-  caption(ox, 'still moving → flow around');
 }
 
 const DIAGRAMS = { wavefront, flowpick, los, steer, terrain, contagion };
 
 /**
- * Mount one diagram into a canvas; returns a dispose function.
+ * Build one diagram into a stage element (the SVG replaces its children).
  * opts.button: a play/pause button for the animated diagrams.
+ * Returns a dispose function.
  */
-export function mountDiagram(canvas, kind, opts = {}) {
-  const draw = DIAGRAMS[kind];
-  if (!draw) throw new Error(`unknown diagram: ${kind}`);
-  return draw(canvas, opts) ?? (() => {});
+export function mountDiagram(stage, kind, opts = {}) {
+  const build = DIAGRAMS[kind];
+  if (!build) throw new Error(`unknown diagram: ${kind}`);
+  return build(stage, opts) ?? (() => {});
 }
