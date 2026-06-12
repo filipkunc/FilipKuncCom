@@ -5,7 +5,14 @@
 	email {$ACME_EMAIL}
 }
 
-filipkunc.com, www.filipkunc.com {
+# The www host gets its own certificate and a permanent redirect to the apex,
+# so the site exists on exactly one canonical origin (search engines otherwise
+# see duplicate content on both hosts).
+www.filipkunc.com {
+	redir https://filipkunc.com{uri} permanent
+}
+
+filipkunc.com {
 	# Default encode whitelist skips application/octet-stream, but Emscripten
 	# ships its asset bundles (.data files) under that MIME type and they are
 	# very compressible. Override the match to add it.
