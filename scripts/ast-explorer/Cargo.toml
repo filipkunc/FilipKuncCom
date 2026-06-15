@@ -1,0 +1,23 @@
+[package]
+name = "oxc-wasm-web"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# The oxc transform that powers the in-browser AST explorer, compiled to wasm.
+# Self-contained: build-oxc-wasm.sh runs `cargo +nightly build --target
+# wasm32-unknown-unknown` here and copies the artifact to dist/. The cargo
+# target/ is local-only (gitignored); dist/oxc_wasm_web.wasm is committed so the
+# container build needs no Rust toolchain, the same way scripts/flowfield works.
+[dependencies]
+oxc = { version = "0.135.0", features = ["semantic", "transformer", "codegen", "serialize"] }
+oxc_estree = "0.135.0"
+
+[lib]
+name = "oxc_wasm_web"
+crate-type = ["cdylib"]
+
+[profile.release]
+opt-level = 3
+panic = "abort"
+lto = true

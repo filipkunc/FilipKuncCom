@@ -1,0 +1,112 @@
+---
+title: "Patching ESM imports with oxc"
+description: "A live AST explorer that runs the same import-rewriting transform two ways, oxc in Rust and Acorn in JavaScript, including source maps."
+pubDate: 2026-06-15
+draft: false
+tags: ["oxc", "rust", "wasm", "ast", "javascript", "tooling"]
+og:
+  kind: screenshot
+  src: og.png
+---
+
+import AstExplorer from '../../../components/AstExplorer.tsx';
+import Excerpt from '../../../components/Excerpt.astro';
+
+An [ESM import](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import)
+is just a string in the source. A lot of build tooling does nothing fancier
+than rewrite that string to pin a version, route a bare package through a CDN, or swap in a
+shim. The rewrite is the easy part. The work is doing it safely. You parse the source into a
+syntax tree, change one node, and print the tree back to code.
+
+The demo below runs that round trip twice on whatever you type. The same transform, rewriting
+bare import specifiers, runs in [oxc](https://oxc.rs) compiled to WebAssembly and in
+[Acorn](https://github.com/acornjs/acorn) plus [astring](https://github.com/davidbonnet/astring).
+You can watch the AST, the rewritten output, and the time each engine took.
+
+<AstExplorer client:visible />
+
+## What you are looking at
+
+Type an import prefix and the bare specifiers (`lit-html`, `nanoid`) pick it up. Relative
+paths (`./math.js`) and `node:` builtins are left alone. Switch the output tab to **AST** to
+see the tree each parser produces. Both emit [ESTree](https://github.com/estree/estree), so
+the shapes line up and the same rewrite logic works on both.
+
+The **source map** tab gets its own section below. The timing row is the point of the
+comparison. On the TypeScript example both engines strip the types. Vanilla Acorn cannot
+parse TS, but the [acorn-typescript](https://github.com/TyrealHu/acorn-typescript) plugin
+gives it the AST, and stripping types from there is just deleting the type nodes (covered
+below). oxc does the same in Rust with its built-in transformer, and the wasm build comes out
+several times faster. You give up editing the pass in JavaScript to get that speed.
+
+## How the transform works
+
+The rewrite is small in both engines. Both give you a tree where an import's specifier
+is a string you can reassign. In oxc the nodes live in an arena, so the new string is
+allocated there. Clearing the node's `raw` makes codegen reprint from the value instead
+of the original text.
+
+<Excerpt source="scripts/ast-explorer/src/lib.rs" region="rust-rewrite" lang="rust" />
+
+The Acorn side is the same walk over the same node types (`ImportDeclaration`,
+`ExportNamedDeclaration`, `ExportAllDeclaration`), reassigning `node.source.value`.
+Both parsers produce ESTree, so the logic lines up field for field.
+
+<Excerpt source="src/lib/ast-explorer/acorn-engine.ts" region="js-rewrite" lang="ts" />
+
+The two outputs match apart from formatting like quote style and spacing. I did have to
+change one thing on the oxc side. Its transformer drops unused value imports by default, so
+`import process from 'node:process'` disappeared even though I only asked it to strip
+types. Turning on `only_remove_type_imports` (the `verbatimModuleSyntax` behavior) keeps
+it, and the two engines agree again.
+
+### Stripping the types
+
+On the TypeScript example oxc strips the types with its built-in transformer. That is
+not something only oxc can do. Once you have a TypeScript AST, stripping types is walking
+it and deleting the type-only nodes, which is what Babel, swc, and Node's own
+`stripTypeScriptTypes` all do. Acorn gets the AST from the `acorn-typescript` plugin, and
+the strip is a plain recursive walk.
+
+<Excerpt source="src/lib/ast-explorer/acorn-engine.ts" region="ts-strip" lang="ts" />
+
+So both columns strip types, and oxc is the faster one. The walk has a limit, called out
+in that last comment. It only handles the parts of TypeScript that erase cleanly, like
+annotations, interfaces, and `import type`. Enums, namespaces, parameter properties, and
+decorators do not erase. They compile down to real JavaScript, and emitting that code is
+the job a full transformer does. To cover them the walk would have to grow into one.
+
+## Source maps
+
+Once you rewrite an import or strip a type, the output's line and column numbers no
+longer match the source. To keep a stack trace pointing at the code I wrote, the transform
+emits a source map that records where each generated position came from. The **source map**
+tab in the demo above draws it. Hover a colored span and the same color lights up where it
+came from in the original.
+
+oxc emits the map natively. Its Rust codegen takes a `source_map_path`. Set it, and the
+build returns a `SourceMap` next to the code that serializes straight to the v3 JSON the
+browser reads.
+
+<Excerpt source="scripts/ast-explorer/src/lib.rs" region="rust-sourcemap" lang="rust" />
+
+The JS side has no native map, so it builds one with the
+[@jridgewell](https://github.com/jridgewell/sourcemaps) source-map libraries. astring
+expects a generator object with an `addMapping` method and a `file` property.
+`@jridgewell/gen-mapping` exposes standalone functions instead, so a small shim sits
+between them.
+
+<Excerpt source="src/lib/ast-explorer/acorn-engine.ts" region="js-sourcemap-adapter" lang="ts" />
+
+With the shim in place, the transform parses with `locations: true` so every node carries
+its origin, then hands the shim to astring to fill in while it prints.
+
+<Excerpt source="src/lib/ast-explorer/acorn-engine.ts" region="js-sourcemap" lang="ts" />
+
+Reading a map back is the reverse, and `@jridgewell/sourcemap-codec` does that part. The
+`mappings` string is base64-[VLQ](https://en.wikipedia.org/wiki/Variable-length_quantity)
+where every number is a delta from the previous one, and its `decode` handles both the
+decoding and the delta accumulation, handing back absolute segments. Keeping the ones with
+an original position is the whole decoder the **source map** tab uses to draw its links.
+
+<Excerpt source="src/lib/ast-explorer/sourcemap.ts" region="vlq-decode" lang="ts" />

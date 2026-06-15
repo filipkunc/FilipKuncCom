@@ -49,3 +49,10 @@ scripts/hb-editor/fonts/*.ttf
 scripts/flowfield/target/
 !scripts/flowfield/dist/
 !scripts/flowfield/dist/flowfield.wasm
+
+# ast-explorer: the oxc transform crate lives here; its cargo target/ is
+# local-only and dist/oxc_wasm_web.wasm (built by build-oxc-wasm.sh) IS committed,
+# same rationale as hb-gpu.wasm and flowfield.wasm above.
+scripts/ast-explorer/target/
+!scripts/ast-explorer/dist/
+!scripts/ast-explorer/dist/oxc_wasm_web.wasm

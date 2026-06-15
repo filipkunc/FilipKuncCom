@@ -42,7 +42,13 @@
   "dependencies": {
     "@astrojs/react": "^5.0.5",
     "@astrojs/rss": "^4.0.18",
+    "@jridgewell/gen-mapping": "^0.3.13",
+    "@jridgewell/sourcemap-codec": "^1.5.5",
     "@typescript/vfs": "^1.6.4",
+    "acorn": "^8.17.0",
+    "acorn-typescript": "^1.4.13",
+    "acorn-walk": "^8.3.5",
+    "astring": "^1.9.0",
     "katex": "^0.17.0",
     "monaco-editor": "^0.55.1",
     "react": "^19.2.6",

@@ -25,6 +25,11 @@ scripts/*
 !scripts/flowfield
 !scripts/flowfield/**
 scripts/flowfield/target
+# the patching-esm post imports the oxc wasm and excerpts the Rust source from
+# this workspace at build time (target/ is the local cargo build dir)
+!scripts/ast-explorer
+!scripts/ast-explorer/**
+scripts/ast-explorer/target
 README.md
 *.md
 .dockerignore
