@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "notes-spec": {
+      "command": "node",
+      "args": ["mcp/server.js"],
+      "env": {
+        "TICKET_API_TOKEN": "tok-live-DEMO-DoNotLeak-9b21",
+        "SUMMARY_API_KEY": "sk-live-DEMO-DoNotLeak-2f9c41"
+      }
+    }
+  }
+}

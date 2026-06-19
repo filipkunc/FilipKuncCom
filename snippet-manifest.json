@@ -159,5 +159,12 @@
     "exitCode": 0,
     "durationMs": 375,
     "verifiedAt": "2026-06-08T23:01:40.699Z"
+  },
+  "testing-agents-skills-mcp/js": {
+    "stdout": "copied { error }   -> error.code: undefined        GATE: FAIL (wrong error shape)\nhouse envelope     -> error.code: NOTE_NOT_FOUND   GATE: PASS\n",
+    "stderr": "",
+    "exitCode": 0,
+    "durationMs": 120,
+    "verifiedAt": "2026-06-19T18:26:24.395Z"
   }
 }

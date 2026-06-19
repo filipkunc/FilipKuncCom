@@ -1,0 +1,24 @@
+{
+  "name": "demo-reliable-agents",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Minimal notes API used to demonstrate reliable, verifiable agent edits via skills + MCP.",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "lint": "eslint --no-inline-config src test",
+    "verify": "eslint --no-inline-config src test && node --test test/*.test.js",
+    "mcp": "node mcp/server.js",
+    "check:secret": "bash scripts/check-secret.sh"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "eslint": "^10.5.0"
+  }
+}

@@ -1,0 +1,65 @@
+---
+// The gate: after the agent stops, the harness restores the real tests and runs
+// them on the host. A simple left-to-right pipeline with inline-SVG arrows.
+interface Props {
+  caption?: string;
+}
+const { caption } = Astro.props;
+---
+
+<figure class="dg dgg">
+  <div class="dgg-flow">
+    <div class="dgg-box">the agent's<br />src/ + tests</div>
+    <svg class="dg-ar" width="40" height="11" viewBox="0 0 40 11" aria-hidden="true">
+      <line x1="1" y1="5.5" x2="30" y2="5.5"></line><path d="M28 1 L39 5.5 L28 10 Z"></path>
+    </svg>
+    <div class="dgg-box">restore the pristine contract,<br />drop in the hidden judge</div>
+    <svg class="dg-ar" width="40" height="11" viewBox="0 0 40 11" aria-hidden="true">
+      <line x1="1" y1="5.5" x2="30" y2="5.5"></line><path d="M28 1 L39 5.5 L28 10 Z"></path>
+    </svg>
+    <div class="dgg-box">npm run verify</div>
+    <svg class="dg-ar" width="40" height="11" viewBox="0 0 40 11" aria-hidden="true">
+      <line x1="1" y1="5.5" x2="30" y2="5.5"></line><path d="M28 1 L39 5.5 L28 10 Z"></path>
+    </svg>
+    <div class="dgg-box accent">PASS / FAIL</div>
+  </div>
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<style is:global>
+  .dgg-flow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+  .dgg-box {
+    flex: 0 1 auto;
+    border: 1px solid var(--dg-border);
+    border-radius: 8px;
+    background: var(--dg-box);
+    padding: 0.6rem 0.8rem;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    color: var(--dg-bright);
+    text-align: center;
+  }
+  .dgg-box.accent { border-color: var(--dg-accent); color: var(--dg-accent); font-weight: 600; }
+
+  /* Vars duplicated so the gate diagram themes even if the run diagram is absent. */
+  :root {
+    --dg-box: #161d27; --dg-border: #2b3543; --dg-bright: #e8eef5; --dg-dim: #8593a6;
+    --dg-edge: #8aa0bf; --dg-accent: #ffb454;
+  }
+  :root[data-theme='light'] {
+    --dg-box: #ffffff; --dg-border: #d0d7de; --dg-bright: #18222e; --dg-dim: #57636f;
+    --dg-edge: #6b7789; --dg-accent: #b45309;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme]) {
+      --dg-box: #ffffff; --dg-border: #d0d7de; --dg-bright: #18222e; --dg-dim: #57636f;
+      --dg-edge: #6b7789; --dg-accent: #b45309;
+    }
+  }
+</style>

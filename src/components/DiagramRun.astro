@@ -1,0 +1,120 @@
+---
+// One trial's run: the agent container talks to the MCP sidecar over a podman
+// network and holds no credential. Plain DOM + inline-SVG arrows + themed CSS.
+interface Props {
+  caption?: string;
+}
+const { caption } = Astro.props;
+---
+
+<figure class="dg dgr">
+  <div class="dg-net">
+    <span class="dg-net-tag">podman network · nothing from the host mounted</span>
+    <div class="dg-pair">
+      <div class="dg-box">
+        <div class="dg-title">agent container</div>
+        <div class="dg-line">claude -p &lt;the ticket task&gt;</div>
+        <div class="dg-line">edits src/app.js, writes tests</div>
+        <span class="dg-badge good">no credentials</span>
+      </div>
+
+      <div class="dg-conn">
+        <span class="dg-conn-lbl">get_ticket</span>
+        <svg class="dg-ar" width="74" height="11" viewBox="0 0 74 11" aria-hidden="true">
+          <line x1="1" y1="5.5" x2="64" y2="5.5"></line>
+          <path d="M62 1 L73 5.5 L62 10 Z"></path>
+        </svg>
+        <svg class="dg-ar" width="74" height="11" viewBox="0 0 74 11" aria-hidden="true">
+          <line x1="10" y1="5.5" x2="73" y2="5.5"></line>
+          <path d="M12 1 L1 5.5 L12 10 Z"></path>
+        </svg>
+        <span class="dg-conn-lbl">spec</span>
+      </div>
+
+      <div class="dg-box">
+        <div class="dg-title">mcp sidecar</div>
+        <div class="dg-line">get_ticket · summarize</div>
+        <span class="dg-badge secret">holds the API token</span>
+      </div>
+    </div>
+  </div>
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<style is:global>
+  .dg { margin: 1.6rem 0; }
+  .dg figcaption { margin-top: 0.6rem; font-size: 0.85rem; color: var(--dg-dim); text-align: center; }
+  .dg-ar line { stroke: var(--dg-edge); stroke-width: 2; }
+  .dg-ar path { fill: var(--dg-edge); }
+
+  .dg-net {
+    border: 1px dashed var(--dg-border);
+    border-radius: 10px;
+    padding: 1.6rem 1rem 1.1rem;
+    position: relative;
+    background: var(--dg-netbg);
+  }
+  .dg-net-tag {
+    position: absolute;
+    top: -0.65rem;
+    left: 1rem;
+    padding: 0.1rem 0.5rem;
+    background: var(--dg-page);
+    font-size: 0.72rem;
+    color: var(--dg-dim);
+  }
+  .dg-pair { display: flex; align-items: stretch; justify-content: center; flex-wrap: wrap; }
+
+  .dg-box {
+    flex: 1 1 220px;
+    min-width: 200px;
+    border: 1px solid var(--dg-border);
+    border-radius: 8px;
+    background: var(--dg-box);
+    padding: 0.7rem 0.85rem;
+  }
+  .dg-title { font-weight: 600; color: var(--dg-bright); margin-bottom: 0.4rem; }
+  .dg-line { font-size: 0.82rem; color: var(--dg-dim); line-height: 1.5; }
+  .dg-badge {
+    display: inline-block;
+    margin-top: 0.6rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.12rem 0.5rem;
+    border-radius: 999px;
+  }
+  .dg-badge.good { color: var(--dg-good); background: var(--dg-good-bg); }
+  .dg-badge.secret { color: var(--dg-secret); background: var(--dg-secret-bg); }
+
+  .dg-conn {
+    flex: 0 0 96px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    padding: 0 0.4rem;
+  }
+  .dg-conn-lbl { font-size: 0.72rem; font-style: italic; color: var(--dg-dim); }
+
+  :root {
+    --dg-page: #0b0f14; --dg-netbg: rgba(255,255,255,0.015);
+    --dg-box: #161d27; --dg-border: #2b3543; --dg-bright: #e8eef5; --dg-dim: #8593a6;
+    --dg-edge: #8aa0bf; --dg-good: #7ee787; --dg-good-bg: rgba(126,231,135,0.12);
+    --dg-secret: #ff7eb6; --dg-secret-bg: rgba(255,126,182,0.12); --dg-accent: #ffb454;
+  }
+  :root[data-theme='light'] {
+    --dg-page: #ffffff; --dg-netbg: rgba(0,0,0,0.015);
+    --dg-box: #ffffff; --dg-border: #d0d7de; --dg-bright: #18222e; --dg-dim: #57636f;
+    --dg-edge: #6b7789; --dg-good: #1a7f37; --dg-good-bg: #dafbe1;
+    --dg-secret: #b8228f; --dg-secret-bg: #f4dcec; --dg-accent: #b45309;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme]) {
+      --dg-page: #ffffff; --dg-netbg: rgba(0,0,0,0.015);
+      --dg-box: #ffffff; --dg-border: #d0d7de; --dg-bright: #18222e; --dg-dim: #57636f;
+      --dg-edge: #6b7789; --dg-good: #1a7f37; --dg-good-bg: #dafbe1;
+      --dg-secret: #b8228f; --dg-secret-bg: #f4dcec; --dg-accent: #b45309;
+    }
+  }
+</style>

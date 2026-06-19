@@ -1,0 +1,116 @@
+---
+// Render the real ticket markdown (the same file the MCP server hands out) as a
+// tracker-style issue card, so the post reads like looking at the ticket in Jira
+// or a GitHub issue rather than at raw markdown source.
+import { Content } from '../../demo-reliable-agents/mcp/tickets/NOTES-4567.md';
+interface Props {
+  status?: string;
+  source?: string;
+}
+const { status = 'Open', source = 'notes-tracker' } = Astro.props;
+---
+
+<div class="tk">
+  <div class="tk-bar">
+    <span class="tk-status">{status}</span>
+    <span class="tk-source">{source}</span>
+  </div>
+  <div class="tk-body">
+    <Content />
+  </div>
+</div>
+
+<style is:global>
+  .tk {
+    margin: 1.6rem 0;
+    border: 1px solid var(--tk-border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--tk-bg);
+  }
+  .tk-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.9rem;
+    background: var(--tk-headbg);
+    border-bottom: 1px solid var(--tk-border);
+  }
+  .tk-status {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--tk-open);
+    background: var(--tk-open-bg);
+    padding: 0.12rem 0.5rem;
+    border-radius: 999px;
+  }
+  .tk-source {
+    font-size: 0.78rem;
+    color: var(--tk-dim);
+  }
+  .tk-body {
+    padding: 0.4rem 1.1rem 1rem;
+  }
+  .tk-body h1 {
+    font-size: 1.15rem;
+    margin: 0.8rem 0 0.4rem;
+    color: var(--tk-text);
+  }
+  .tk-body h2 {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--tk-dim);
+    margin: 1rem 0 0.4rem;
+  }
+  .tk-body ul {
+    margin: 0;
+    padding-left: 1.2rem;
+  }
+  .tk-body li {
+    margin: 0.3rem 0;
+    color: var(--tk-text);
+    line-height: 1.5;
+  }
+  .tk-body code {
+    font-size: 0.85em;
+    background: var(--tk-code-bg);
+    padding: 0.08em 0.34em;
+    border-radius: 4px;
+  }
+
+  :root {
+    --tk-bg: #11161e;
+    --tk-headbg: #161d27;
+    --tk-border: #2b3543;
+    --tk-text: #d5dde8;
+    --tk-dim: #8593a6;
+    --tk-open: #3fb950;
+    --tk-open-bg: rgba(63, 185, 80, 0.15);
+    --tk-code-bg: #1d2733;
+  }
+  :root[data-theme='light'] {
+    --tk-bg: #ffffff;
+    --tk-headbg: #f4f6f9;
+    --tk-border: #d0d7de;
+    --tk-text: #1f2328;
+    --tk-dim: #636c76;
+    --tk-open: #1a7f37;
+    --tk-open-bg: #dafbe1;
+    --tk-code-bg: #eef1f4;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme]) {
+      --tk-bg: #ffffff;
+      --tk-headbg: #f4f6f9;
+      --tk-border: #d0d7de;
+      --tk-text: #1f2328;
+      --tk-dim: #636c76;
+      --tk-open: #1a7f37;
+      --tk-open-bg: #dafbe1;
+      --tk-code-bg: #eef1f4;
+    }
+  }
+</style>

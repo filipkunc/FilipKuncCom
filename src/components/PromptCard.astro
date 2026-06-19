@@ -1,0 +1,56 @@
+---
+// A terminal-style prompt: the shell invocation, then the Claude Code prompt
+// line with the task. So it reads as something typed into Claude Code from a
+// shell, not as a windowed app. Static, themed with CSS vars, no animation.
+interface Props {
+  prompt: string;
+  cwd?: string;
+}
+const { prompt, cwd = 'notes-api' } = Astro.props;
+---
+
+<div class="pc" role="img" aria-label={`Claude Code prompt: ${prompt}`}>
+  <div class="pc-line"><span class="pc-dim">{cwd} $</span> claude</div>
+  <div class="pc-line"><span class="pc-caret">&gt;</span> {prompt}</div>
+</div>
+
+<style is:global>
+  .pc {
+    margin: 1.6rem 0;
+    border: 1px solid var(--pc-border);
+    border-radius: 8px;
+    background: var(--pc-bg);
+    padding: 0.9rem 1.05rem;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 0.9rem;
+    line-height: 1.75;
+    color: var(--pc-text);
+  }
+  .pc-line { white-space: pre-wrap; word-break: break-word; }
+  .pc-dim { color: var(--pc-dim); }
+  .pc-caret { color: var(--pc-accent); font-weight: 700; }
+
+  :root {
+    --pc-bg: #0d1117;
+    --pc-border: #2b3543;
+    --pc-text: #e6edf3;
+    --pc-dim: #8593a6;
+    --pc-accent: #ff9e64;
+  }
+  :root[data-theme='light'] {
+    --pc-bg: #f6f8fa;
+    --pc-border: #d0d7de;
+    --pc-text: #1f2328;
+    --pc-dim: #636c76;
+    --pc-accent: #bc5215;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme]) {
+      --pc-bg: #f6f8fa;
+      --pc-border: #d0d7de;
+      --pc-text: #1f2328;
+      --pc-dim: #636c76;
+      --pc-accent: #bc5215;
+    }
+  }
+</style>

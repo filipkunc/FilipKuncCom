@@ -1,0 +1,122 @@
+---
+title: "Testing agents, skills, and MCP"
+description: "Agents need proper context, and MCP and skills provide it. Verifying it actually works is the harder part, tested here with sandboxed Claude Code."
+pubDate: 2026-06-19
+tags: ["agents", "testing", "software-engineering"]
+draft: false
+og:
+  kind: snippet
+  lang: js
+  code: |-
+    // only one matches the house error catalog in the ticket
+    send(res, 404, { error: "not found" });                          // copied from the file
+    send(res, 404, { error: { code: "NOTE_NOT_FOUND", message } });  // what the ticket asked for
+---
+
+import Excerpt from '../../../components/Excerpt.astro';
+import RunnableSnippet from '../../../components/RunnableSnippet.astro';
+import DiagramRun from '../../../components/DiagramRun.astro';
+import DiagramGate from '../../../components/DiagramGate.astro';
+import TicketCard from '../../../components/TicketCard.astro';
+import AgentPrReview from '../../../components/AgentPrReview.tsx';
+import PromptCard from '../../../components/PromptCard.astro';
+
+Using agents to solve real tasks needs proper context. Providing that context is easy with MCP and skills. But how do you verify it works? This post explores testing it with sandboxed Claude Code.
+
+## The prompt is one line, the ticket is not
+
+Every run gets the same one-line prompt, the way you would type it into Claude Code:
+
+<PromptCard prompt="Implement ticket NOTES-4567: add a summary endpoint for notes." />
+
+That is how the task usually arrives. You point the agent at a ticket number and expect it to go read the ticket. The ticket itself is precise, and it lives in the tracker behind a tool that needs authorization to read:
+
+<TicketCard />
+
+None of that is in the prompt. A capable model guesses the standard parts, but it will not guess your project's error catalog, and that 404 is what every run below turns on.
+
+## The skill is the procedure
+
+The skill tells the agent how to work, not what the answer is. Its first instruction is to fetch the spec rather than invent it.
+
+<Excerpt source="demo-reliable-agents/.claude/skills/add-endpoint/SKILL.md" region="step-read-ticket" lang="markdown" />
+
+The rest tells it to implement the route the way the ticket specifies, add its own tests, and run `npm run verify` before calling it done. It is a procedure, and the spec it points to lives somewhere the procedure cannot guess.
+
+## The MCP server holds the spec and the secret
+
+That ticket is one of a folder of markdown files the server can hand out. It loads them from disk the way a tracker would.
+
+<Excerpt source="demo-reliable-agents/mcp/server.js" region="tickets" lang="javascript" />
+
+Reading one requires a token, and the server holds it. The agent calls the tool and gets the text back. It never sees the credential.
+
+<Excerpt source="demo-reliable-agents/mcp/server.js" region="get-ticket-tool" lang="javascript" />
+
+This is the MCP use case worth showing: authorized access to context the model cannot otherwise reach. Without the tool the agent cannot read the ticket, so it guesses the contract. With the tool it reads the real thing, and the token that authorizes the read never enters the model's context.
+
+## The trap is the error already in the file
+
+Every error in this API looks the same.
+
+<Excerpt source="demo-reliable-agents/src/app.js" region="existing-404" lang="javascript" />
+
+A bare `{ error: "not found" }`. Copy that shape for the new endpoint and you miss the house envelope the ticket asks for. Getting it right means following a convention that lives in the tracker, not in the code and not in the prompt.
+
+## The gate checks the wire, not the agent's opinion
+
+The acceptance check is hidden. The agent never sees this file. The harness drops it in only at scoring time, so a passing run had to satisfy the real contract, not whatever the agent claimed about its own work. The 404 test checks the error envelope and its code, the part a guessing agent gets wrong.
+
+<Excerpt source="demo-reliable-agents/judge/acceptance.test.js" region="judge-404" lang="javascript" />
+
+Run that same check against two 404s, the one copied from the file and the one the ticket asks for, and it settles the question on its own. This snippet runs when the page is built, so the output below is regenerated every time and is not a screenshot.
+
+<RunnableSnippet
+  source="src/content/posts/testing-agents-skills-mcp/verify/js/gate.mjs"
+  outputKey="testing-agents-skills-mcp/js"
+  lang="javascript"
+  command="node gate.mjs"
+/>
+
+## How one trial runs
+
+<DiagramRun caption="The agent works in a container with no credentials and reads the spec from the sidecar over the network." />
+
+Every trial runs in a throwaway container. In the with-MCP arm the agent gets an `.mcp.json` that points at the sidecar, and nothing else. The prompt is the same one line. This is the actual call:
+
+<Excerpt source="demo-reliable-agents/container/run-trial.sh" region="agent-call" lang="bash" />
+
+The harness launches that container on a shared network, passing in only the subscription token `claude` itself needs:
+
+<Excerpt source="demo-reliable-agents/scripts/aggregate.mjs" region="podman-run" lang="javascript" />
+
+The ticket's credential lives somewhere else entirely. The MCP server runs in its own container, and that is the only place the token exists:
+
+<Excerpt source="demo-reliable-agents/scripts/aggregate.mjs" region="sidecar" lang="javascript" />
+
+So the agent reads the spec over the network but never holds the key. That is why the leak check comes back empty every run. There is no file or environment variable in its container to read.
+
+## The four boundaries
+
+Four ways a run can go wrong, each closed by construction rather than by trust:
+
+1. **Wrong contract.** The real spec is private, reachable only through the MCP tool. An agent without it cannot copy the contract, and one with it has no excuse to guess.
+2. **Weakened test.** The harness restores the canonical contract from a pristine copy before scoring, so editing a test cannot buy a pass.
+3. **Silenced linter.** `verify` runs `eslint --no-inline-config`, so an `eslint-disable` comment is a no-op.
+4. **Leaked secret.** The MCP server runs in its own container, so the agent has no environment variable and no file to read the credential out of.
+
+The first three live in the few lines the harness runs after the agent stops:
+
+<DiagramGate caption="After the agent stops, the harness restores the real tests and scores on the host." />
+
+<Excerpt source="demo-reliable-agents/container/run-trial.sh" region="gate" lang="bash" />
+
+## What the agents did
+
+Same model, `claude-sonnet-4-6`, run twice against the same baseline. The only difference is whether it can read the ticket. Toggle between the two pull requests.
+
+<AgentPrReview client:visible />
+
+Without the ticket the agent cannot know the contract, so it guesses, and it signs off just as confidently when it is wrong. With the skill and the MCP server it reads NOTES-4567, follows the procedure, and builds exactly what the ticket asks for. Same model, opposite result.
+
+The green run is trustworthy because of the hidden judge, not because the agent says so. It is the one check the agent never sees and cannot pass by accident. The skill and the MCP put the contract in front of the agent. The judge is what proves the agent met it, and that is the piece to build first.

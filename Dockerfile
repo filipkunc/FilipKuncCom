@@ -28,6 +28,10 @@ COPY scripts ./scripts
 # (CUDA/OpenCL/Slang live here, outside src). Build-stage only; the runtime
 # image takes just dist + server-dist below.
 COPY bench ./bench
+# The testing-agents-skills-mcp post excerpts this demo workspace and imports the
+# ticket markdown at build time. Build-stage only (git-archive excludes its
+# node_modules/results, which are gitignored).
+COPY demo-reliable-agents ./demo-reliable-agents
 
 # The build bakes the commit into "view on GitHub" source links, so the line
 # anchors are pinned to exactly what shipped. No .git here, hence the arg.
