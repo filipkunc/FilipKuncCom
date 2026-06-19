@@ -1,0 +1,34 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import PostList from '../../../components/PostList.astro';
+import Pagination from '../../../components/Pagination.astro';
+import { getSortedPosts, PAGE_SIZE, pageUrl } from '../../../lib/posts';
+
+export async function getStaticPaths() {
+  const allPosts = await getSortedPosts();
+  const totalPages = Math.max(1, Math.ceil(allPosts.length / PAGE_SIZE));
+  // Page 1 lives at /posts (index.astro); this route covers pages 2..N.
+  const pages = [];
+  for (let page = 2; page <= totalPages; page++) {
+    const start = (page - 1) * PAGE_SIZE;
+    pages.push({
+      params: { page: String(page) },
+      props: { posts: allPosts.slice(start, start + PAGE_SIZE), page, totalPages },
+    });
+  }
+  return pages;
+}
+
+const { posts, page, totalPages } = Astro.props;
+---
+
+<Layout title={`Posts — page ${page}`} description="All posts on filipkunc.com.">
+  <h1>Posts</h1>
+  <PostList posts={posts} />
+  <Pagination
+    current={page}
+    total={totalPages}
+    prevUrl={pageUrl(page - 1)}
+    nextUrl={page < totalPages ? pageUrl(page + 1) : undefined}
+  />
+</Layout>

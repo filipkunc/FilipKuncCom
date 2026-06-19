@@ -1,0 +1,27 @@
+---
+// Newer/Older nav for the paginated posts list. Page 1 lives at /posts, later
+// pages at /posts/page/N, so each caller passes the resolved URLs as strings.
+interface Props {
+  current: number;
+  total: number;
+  prevUrl?: string;
+  nextUrl?: string;
+}
+const { current, total, prevUrl, nextUrl } = Astro.props;
+---
+
+{total > 1 && (
+  <nav class="pagination" aria-label="Posts pages">
+    {prevUrl ? (
+      <a rel="prev" href={prevUrl}>← Newer posts</a>
+    ) : (
+      <span class="pagination-spacer"></span>
+    )}
+    <span class="pagination-status">Page {current} of {total}</span>
+    {nextUrl ? (
+      <a rel="next" href={nextUrl}>Older posts →</a>
+    ) : (
+      <span class="pagination-spacer"></span>
+    )}
+  </nav>
+)}

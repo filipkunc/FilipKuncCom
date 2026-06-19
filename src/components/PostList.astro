@@ -1,0 +1,24 @@
+---
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+  posts: CollectionEntry<'posts'>[];
+}
+const { posts } = Astro.props;
+---
+
+{posts.length === 0 ? (
+  <p class="post-meta">No posts yet.</p>
+) : (
+  <ul class="post-list">
+    {posts.map((post) => (
+      <li>
+        <a href={`/posts/${post.id}`}>{post.data.title}</a>
+        <div class="post-meta">
+          {post.data.pubDate.toISOString().slice(0, 10)}
+          {post.data.description ? ` — ${post.data.description}` : ''}
+        </div>
+      </li>
+    ))}
+  </ul>
+)}

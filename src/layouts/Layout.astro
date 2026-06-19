@@ -12,13 +12,15 @@ interface Props {
   publishedDate?: Date;
 }
 
+// Markdown/MDX pages that set `layout:` pass their frontmatter under
+// `Astro.props.frontmatter`; .astro pages pass props directly. Support both.
 const {
   title,
   description,
   type = 'website',
   image = '/og-default.png',
   publishedDate,
-} = Astro.props;
+} = Astro.props.frontmatter ?? Astro.props;
 const fullTitle = title === 'filipkunc.com' ? title : `${title} — filipkunc.com`;
 
 // Fall back to the site tagline so pages without their own description still
@@ -94,7 +96,7 @@ const imageURL = new URL(image, Astro.site).href;
         </a>
         <span class="spacer"></span>
         <a href="/posts">posts</a>
-        <a href="/meshmaker">meshmaker</a>
+        <a href="/about">about</a>
         <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle dark and light theme" title="Toggle theme">
           <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
           <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
@@ -260,6 +262,10 @@ const imageURL = new URL(image, Astro.site).href;
       .post-list { list-style: none; padding: 0; }
       .post-list li { padding: 0.75rem 0; border-bottom: 1px solid var(--rule); }
       .post-meta { color: var(--muted); font-size: 0.9rem; }
+      .pagination { display: flex; align-items: center; gap: 1rem; margin-top: 1.5rem; }
+      .pagination-status { color: var(--muted); font-size: 0.9rem; margin: 0 auto; }
+      .pagination-spacer { flex: 0 0 auto; }
+      .more-link { text-align: right; }
       table {
         border-collapse: collapse;
         margin: 1.25rem 0;
