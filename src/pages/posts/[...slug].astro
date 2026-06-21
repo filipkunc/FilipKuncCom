@@ -3,6 +3,7 @@ import Layout from '../../layouts/Layout.astro';
 import { getCollection, render, type CollectionEntry } from 'astro:content';
 import type { GetStaticPaths } from 'astro';
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 
 export const getStaticPaths: GetStaticPaths = async () => {
   // Drafts stay out of the production build but are routable in `astro dev`,
@@ -22,8 +23,14 @@ const { post } = Astro.props as Props;
 const { Content } = await render(post);
 
 // Use the per-post OG image (scripts/gen-og.mjs -> public/og/<slug>.png) when
-// one exists; otherwise Layout falls back to the site-wide banner.
-const ogImage = fs.existsSync(`public/og/${post.id}.png`) ? `/og/${post.id}.png` : undefined;
+// one exists; otherwise Layout falls back to the site-wide banner. Append a
+// short content hash so the URL changes whenever the banner does: social
+// scrapers (LinkedIn especially) cache the image binary by URL, and a stale
+// thumbnail only clears when the URL itself is new.
+const ogPath = `public/og/${post.id}.png`;
+const ogImage = fs.existsSync(ogPath)
+  ? `/og/${post.id}.png?v=${crypto.createHash('sha1').update(fs.readFileSync(ogPath)).digest('hex').slice(0, 8)}`
+  : undefined;
 ---
 
 <Layout
