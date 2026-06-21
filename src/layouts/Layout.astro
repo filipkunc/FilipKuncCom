@@ -53,6 +53,12 @@ const imageURL = new URL(image, Astro.site).href;
     <meta property="og:description" content={metaDescription} />
     <meta property="og:url" content={canonicalURL} />
     <meta property="og:image" content={imageURL} />
+    <!-- Banners are generated at a fixed 1200x630 (scripts/gen-og.mjs). Declaring
+         the dimensions makes LinkedIn render the large card instead of a thumbnail. -->
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={fullTitle} />
     {type === 'article' && publishedDate && (
       <meta property="article:published_time" content={publishedDate.toISOString()} />
     )}
