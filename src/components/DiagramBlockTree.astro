@@ -1,0 +1,59 @@
+---
+// What the document model looks like as data. A chunk of article becomes a tree
+// of Block nodes, and the recursive fields (a paragraph's inline spans, a list's
+// items) are where the tree nests. Hand-authored SVG, themed by figure.diagram.
+---
+
+<figure class="diagram frb frb-blocks">
+  <svg viewBox="0 0 760 330" role="img"
+    aria-label="An article fragment becomes an Article holding a Vec of Block. A heading block, a paragraph block whose spans field is a list of Inline nodes (Text, a nested Bold, Text, a nested Link), and a list block whose items are themselves lists of Block. The recursive fields, spans and items, are where the tree nests.">
+    <!-- trunk + elbows from the Article root to its three blocks -->
+    <path class="tree" d="M52,52 V236 M52,84 H92 M52,140 H92 M52,236 H92" />
+    <!-- paragraph -> spans -->
+    <path class="tree" d="M112,148 V188 H156" />
+    <!-- list -> items -->
+    <path class="tree" d="M112,244 V328 M112,284 H156 M112,328 H156" />
+
+    <text class="node root" x="40" y="40">Article &#123; blocks: Vec&lt;Block&gt; &#125;</text>
+
+    <text class="node" x="96" y="88">Block::Heading &#123; level: 1 &#125;<tspan class="ex">  "A heading"</tspan></text>
+
+    <text class="node" x="96" y="144">Block::Paragraph</text>
+    <text class="node" x="160" y="192"><tspan class="rec">spans:</tspan> [ Text, Bold["bold"], Text, Link["link"] ]</text>
+
+    <text class="node" x="96" y="240">Block::List &#123; ordered: false &#125;</text>
+    <text class="node" x="160" y="288"><tspan class="rec">item:</tspan> [ Block::Paragraph ]<tspan class="ex">  "one"</tspan></text>
+    <text class="node" x="160" y="328"><tspan class="rec">item:</tspan> [ Block::Paragraph ]<tspan class="ex">  "two"</tspan></text>
+  </svg>
+  <figcaption>
+    An article fragment as data. A block holds inline <span class="mono">spans</span>, and a list's
+    <span class="mono">items</span> are themselves blocks, so the same tree nests both ways.
+  </figcaption>
+</figure>
+
+<style>
+  figure.frb-blocks .tree {
+    fill: none;
+    stroke: var(--rule);
+    stroke-width: 1.5;
+  }
+  figure.frb-blocks .node {
+    font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Menlo, monospace;
+    font-size: 13.5px;
+    fill: var(--fg);
+  }
+  figure.frb-blocks .node.root {
+    font-weight: 600;
+  }
+  figure.frb-blocks .node .ex {
+    fill: var(--muted);
+  }
+  figure.frb-blocks .node .rec {
+    fill: var(--accent);
+    font-weight: 600;
+  }
+  figure.frb-blocks figcaption .mono {
+    font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Menlo, monospace;
+    font-size: 0.9em;
+  }
+</style>

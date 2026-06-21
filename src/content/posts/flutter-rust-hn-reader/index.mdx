@@ -1,0 +1,123 @@
+---
+title: "Calling Rust from Flutter with flutter_rust_bridge"
+description: "How a Flutter UI and a Rust core talk through flutter_rust_bridge: typed data, sync and async calls, and streams, built into a Hacker News reader."
+pubDate: 2026-06-21
+draft: false
+tags: ["rust", "flutter", "ffi", "android", "mobile"]
+og:
+  kind: snippet
+  lang: dart
+  code: |-
+    // The Rust core is just a Dart object: build it once, then call it.
+    final engine = ReaderEngine(dbPath: path);
+
+    final article = await engine.fetchArticle(url: url);  // async, a Future
+    final saved = engine.isBookmarked(id: id);            // sync, a value
+    engine.prefetch(urls: top).listen(onProgress);        // a stream of events
+---
+
+import Excerpt from "../../../components/Excerpt.astro";
+import DiagramBlockTree from "../../../components/DiagramBlockTree.astro";
+import DiagramFrbData from "../../../components/DiagramFrbData.astro";
+import DiagramFrbCalls from "../../../components/DiagramFrbCalls.astro";
+import DiagramFrbStream from "../../../components/DiagramFrbStream.astro";
+import feed from "./feed.png";
+import reader from "./reader.png";
+import comments from "./comments.png";
+import math from "./math.png";
+import imageZoom from "./image-zoom.png";
+
+Flutter is a good way to build a UI and an awkward way to do CPU-heavy work. Rust is the opposite. [flutter_rust_bridge](https://cjycode.com/flutter_rust_bridge/) wires the two together: you write plain Rust, run a codegen step, and call it from Dart with real types instead of hand-rolled byte buffers.
+
+This post is a tour of that boundary. The running example is a small app I built to exercise it, a Hacker News reader whose Rust core fetches each linked page, extracts a clean article, and hands Flutter a structured document to render.
+
+<figure class="shots">
+  <img src={feed.src} width={feed.width} height={feed.height} alt="The story feed, a list of Hacker News top stories with domain and comment-count chips" />
+  <img src={reader.src} width={reader.width} height={reader.height} alt="The reader view rendering a cleaned article in one consistent typographic style" />
+  <img src={comments.src} width={comments.width} height={comments.height} alt="The threaded comment tree, collapsible, drawn by the same block renderer as the article" />
+  <figcaption>The app in three screens: the story feed, a cleaned reading view, and threaded comments. All three are the same document model, produced once in Rust and rendered by one Flutter switch.</figcaption>
+</figure>
+
+Three things cross that boundary: **data**, **calls**, and **streams**. First, the glue that makes them feel ordinary.
+
+## From Dart, the Rust core is just an object
+
+Initialize the bridge once at startup, build the core, then call it like any Dart class. flutter_rust_bridge (FRB from here on) turns each Rust function into a Dart method.
+
+<Excerpt source="src/content/posts/flutter-rust-hn-reader/code/main.dart" region="init" lang="dart" label="lib/main.dart" href="https://github.com/filipkunc/hn_reader/blob/69db593d4b24f9829971a30ab8947bbe8c1074fd/lib/main.dart#L10-L17" />
+
+`engine` is a handle to a live Rust object. It owns one HTTP client and one SQLite connection, built once and reused for every call. Every screen holds it and calls methods on it.
+
+<Excerpt source="src/content/posts/flutter-rust-hn-reader/code/engine.rs" region="handle" lang="rust" label="rust/src/api/engine.rs" href="https://github.com/filipkunc/hn_reader/blob/69db593d4b24f9829971a30ab8947bbe8c1074fd/rust/src/api/engine.rs#L12-L23" />
+
+What those methods look like is the rest of the post: the data they pass, whether they run sync or async, and how a stream delivers many results.
+
+## Data: Rust types become Dart types
+
+Methods pass typed values, not bytes or JSON. Declare a type in Rust and the bindings give you an equivalent Dart class, fields and all. The reader's payload is a document model, a tree of blocks and inline spans, so the UI never touches HTML.
+
+<Excerpt source="src/content/posts/flutter-rust-hn-reader/code/model.rs" region="model" lang="rust" label="rust/src/api/model.rs" href="https://github.com/filipkunc/hn_reader/blob/69db593d4b24f9829971a30ab8947bbe8c1074fd/rust/src/api/model.rs#L6-L40" />
+
+A fragment of article becomes a tree of these nodes. A block holds inline spans, and a list's items are themselves blocks, so it nests both ways.
+
+<DiagramBlockTree />
+
+An enum with data is the interesting case. FRB turns it into a Dart sealed class, one subclass per variant.
+
+<DiagramFrbData />
+
+Each variant becomes a named Dart class, `Block_Heading` and friends, carrying the same fields.
+
+<Excerpt source="src/content/posts/flutter-rust-hn-reader/code/model_gen.dart" region="block-heading" lang="dart" label="lib/src/rust/api/model.dart (generated)" href="https://github.com/filipkunc/hn_reader/blob/69db593d4b24f9829971a30ab8947bbe8c1074fd/lib/src/rust/api/model.dart#L70-L90" />
+
+The UI renders these with one exhaustive `switch`, the only place article styling lives. Add a variant in Rust, rerun `flutter_rust_bridge_codegen generate`, and the switch stops compiling until you handle it.
+
+<Excerpt source="src/content/posts/flutter-rust-hn-reader/code/reader_view.dart" region="render" lang="dart" label="lib/reader_view.dart" href="https://github.com/filipkunc/hn_reader/blob/69db593d4b24f9829971a30ab8947bbe8c1074fd/lib/reader_view.dart#L40-L68" />
+
+The same enums model failure. A fetch returns `ContentKind`, not an `Article`, so PDFs, video, and paywalls are named cases the UI must handle, not blank screens.
+
+<Excerpt source="src/content/posts/flutter-rust-hn-reader/code/model.rs" region="contentkind" lang="rust" label="rust/src/api/model.rs › ContentKind" href="https://github.com/filipkunc/hn_reader/blob/69db593d4b24f9829971a30ab8947bbe8c1074fd/rust/src/api/model.rs#L75-L84" />
+
+## Calls: sync or async
+
+By default a method is async. A `pub async fn` runs on a Rust worker thread, off the UI isolate, and returns a Dart `Future`. Use it for anything that does real work, like fetching and parsing a page, which must never block the UI.
+
+<Excerpt source="src/content/posts/flutter-rust-hn-reader/code/engine.rs" region="fetch" lang="rust" label="rust/src/api/engine.rs › fetch_article" href="https://github.com/filipkunc/hn_reader/blob/69db593d4b24f9829971a30ab8947bbe8c1074fd/rust/src/api/engine.rs#L65-L69" />
+
+From Dart it is a plain `await`.
+
+<Excerpt source="src/content/posts/flutter-rust-hn-reader/code/story_tile.dart" region="open" lang="dart" label="lib/story_tile.dart › openStory" href="https://github.com/filipkunc/hn_reader/blob/69db593d4b24f9829971a30ab8947bbe8c1074fd/lib/story_tile.dart#L10-L20" />
+
+<DiagramFrbCalls />
+
+The exception is `#[frb(sync)]`, which runs inline on the UI isolate and returns the value directly, no Future. That is why the `ReaderEngine` constructor earlier needed no `await`. Keep it for cheap, non-blocking work, like a one-row "is this bookmarked" lookup. Anything that can block belongs on a worker thread.
+
+## Streams: many values over time
+
+For results that arrive over time, a Rust function takes a `StreamSink<T>` and Dart receives a `Stream<T>`. The reader prefetches the top articles when the feed loads and reports each as it lands.
+
+<Excerpt source="src/content/posts/flutter-rust-hn-reader/code/engine.rs" region="prefetch" lang="rust" label="rust/src/api/engine.rs › prefetch" href="https://github.com/filipkunc/hn_reader/blob/69db593d4b24f9829971a30ab8947bbe8c1074fd/rust/src/api/engine.rs#L83-L103" />
+
+The call returns at once and the sink keeps delivering after. On the Dart side it is a `Stream` you listen to.
+
+<DiagramFrbStream />
+
+<Excerpt source="src/content/posts/flutter-rust-hn-reader/code/feed_screen.dart" region="prefetch" lang="dart" label="lib/feed_screen.dart › _startPrefetch" href="https://github.com/filipkunc/hn_reader/blob/69db593d4b24f9829971a30ab8947bbe8c1074fd/lib/feed_screen.dart#L33-L41" />
+
+By the time you tap a story, its page is already cached, so the reader opens instantly and works offline.
+
+## What the typed model buys you
+
+Typed data, a long-lived handle, and a stream cover most of what you need to put a Rust core under a Flutter app. And the typed model keeps paying off. Every feature after the first reading view was the same move: add a case to the Rust enum and a branch to the renderer.
+
+Comments came for free, HTML fragments parsed into the same `Block` list and drawn by the same renderer, so the threaded comments up top needed no UI code of their own. Math is detected from raw LaTeX and typeset by the renderer. Images flow through as `Block::Image` with a pinch-to-zoom viewer. None of it touched the boundary.
+
+<figure class="shots">
+  <img src={math.src} width={math.width} height={math.height} alt="An article with LaTeX typeset inline, detected from raw KaTeX delimiters the page never ran" />
+  <img src={imageZoom.src} width={imageZoom.width} height={imageZoom.height} alt="A full-resolution article screenshot opened in the pinch-to-zoom image viewer" />
+  <figcaption>Math typeset from raw LaTeX, and full-resolution images in a pinch-to-zoom viewer. Each was a new <code>Block</code> case plus a branch in the one renderer.</figcaption>
+</figure>
+
+One caveat: editing the Rust API means rerunning codegen and a full app restart. There is no hot reload across the bridge.
+
+The full code is at [github.com/filipkunc/hn_reader](https://github.com/filipkunc/hn_reader).

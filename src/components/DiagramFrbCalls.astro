@@ -1,0 +1,67 @@
+---
+// Two ways to call into Rust. A #[frb(sync)] method runs inline on the Dart
+// isolate and returns a value, for cheap work with no I/O. A normal method runs
+// on a Rust worker thread and returns a Future, so the UI never blocks.
+---
+
+<figure class="diagram frb frb-calls">
+  <svg viewBox="0 0 760 280" role="img"
+    aria-label="A #[frb(sync)] Rust method, such as isBookmarked, runs on the Dart isolate and returns a value immediately. A normal async Rust method, such as fetchArticle, runs on a Rust worker thread and returns a Future the UI awaits, so the UI thread never blocks.">
+    <defs>
+      <marker id="frbc-arrow" viewBox="0 0 10 10" refX="8.5" refY="5"
+        markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" />
+      </marker>
+    </defs>
+
+    <!-- sync lane -->
+    <text class="lane-tag" x="30" y="34" text-anchor="start">sync · #[frb(sync)]</text>
+    <g class="node">
+      <rect class="box" x="30" y="44" width="230" height="62" rx="9" />
+      <text class="box-label" x="145" y="76">Dart isolate</text>
+    </g>
+    <g class="node">
+      <rect class="box" x="500" y="44" width="230" height="62" rx="9" />
+      <text class="box-label" x="615" y="76">Rust, same thread</text>
+    </g>
+    <text class="edge-label" x="380" y="58" text-anchor="middle">isBookmarked(id)</text>
+    <line class="edge" x1="262" y1="66" x2="498" y2="66" marker-end="url(#frbc-arrow)" />
+    <text class="edge-label" x="380" y="86" text-anchor="middle">returns bool, inline</text>
+    <line class="edge back" x1="498" y1="94" x2="262" y2="94" marker-end="url(#frbc-arrow)" />
+
+    <!-- async lane -->
+    <text class="lane-tag" x="30" y="178" text-anchor="start">async · default</text>
+    <g class="node">
+      <rect class="box" x="30" y="188" width="230" height="62" rx="9" />
+      <text class="box-label" x="145" y="220">Dart isolate</text>
+    </g>
+    <g class="node">
+      <rect class="box key" x="500" y="188" width="230" height="62" rx="9" />
+      <text class="box-label" x="615" y="220">Rust worker thread</text>
+    </g>
+    <text class="edge-label" x="380" y="202" text-anchor="middle">await fetchArticle(url)</text>
+    <line class="edge" x1="262" y1="210" x2="498" y2="210" marker-end="url(#frbc-arrow)" />
+    <text class="edge-label" x="380" y="230" text-anchor="middle">Future&lt;ContentKind&gt;, later</text>
+    <line class="edge back" x1="498" y1="238" x2="262" y2="238" marker-end="url(#frbc-arrow)" />
+  </svg>
+  <figcaption>
+    A <code>#[frb(sync)]</code> method returns inline on the Dart isolate, for cheap work with no I/O. A
+    normal method runs on a Rust worker thread and hands back a Future, so the UI thread never blocks.
+  </figcaption>
+</figure>
+
+<style>
+  figure.frb-calls .box.key {
+    fill: color-mix(in srgb, var(--accent) 14%, transparent);
+    stroke: var(--accent);
+  }
+  figure.frb-calls .lane-tag {
+    font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Menlo, monospace;
+    font-size: 12px;
+    fill: var(--muted);
+  }
+  figure.frb-calls .edge.back {
+    stroke: var(--muted);
+    stroke-dasharray: 5 4;
+  }
+</style>

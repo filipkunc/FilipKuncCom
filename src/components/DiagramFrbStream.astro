@@ -1,0 +1,81 @@
+---
+// A StreamSink lets Rust push many values over time. Dart calls prefetch once,
+// gets control back immediately, and then receives a PrefetchEvent as each URL
+// finishes, consumed as an ordinary Dart Stream. Drawn as a sequence diagram.
+---
+
+<figure class="diagram frb frb-stream">
+  <svg viewBox="0 0 760 300" role="img"
+    aria-label="Dart calls prefetch with a list of URLs and a sink, then gets control back immediately. The Rust core then pushes a PrefetchEvent back to Dart as each URL finishes, which Dart consumes as a Stream.">
+    <defs>
+      <marker id="frbs-arrow" viewBox="0 0 10 10" refX="8.5" refY="5"
+        markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" />
+      </marker>
+      <marker id="frbs-arrow-key" viewBox="0 0 10 10" refX="8.5" refY="5"
+        markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path class="key-head" d="M0,0 L10,5 L0,10 z" />
+      </marker>
+    </defs>
+
+    <!-- actors -->
+    <g class="node">
+      <rect class="box" x="60" y="20" width="180" height="46" rx="9" />
+      <text class="box-label" x="150" y="44">Dart (UI)</text>
+    </g>
+    <g class="node">
+      <rect class="box" x="520" y="20" width="180" height="46" rx="9" />
+      <text class="box-label" x="610" y="44">Rust core</text>
+    </g>
+
+    <!-- lifelines -->
+    <line class="lifeline" x1="150" y1="66" x2="150" y2="280" />
+    <line class="lifeline" x1="610" y1="66" x2="610" y2="280" />
+
+    <!-- the call -->
+    <line class="edge" x1="150" y1="100" x2="610" y2="100" marker-end="url(#frbs-arrow)" />
+    <text class="edge-label" x="380" y="92" text-anchor="middle">prefetch(urls, sink)</text>
+
+    <!-- control returns immediately -->
+    <line class="edge back" x1="610" y1="128" x2="150" y2="128" marker-end="url(#frbs-arrow)" />
+    <text class="edge-label" x="380" y="120" text-anchor="middle">returns at once, UI keeps running</text>
+
+    <!-- streamed events -->
+    <line class="edge cross" x1="610" y1="178" x2="150" y2="178" marker-end="url(#frbs-arrow-key)" />
+    <text class="edge-label" x="380" y="170" text-anchor="middle">sink.add(PrefetchEvent &#123; index: 0 &#125;)</text>
+    <line class="edge cross" x1="610" y1="212" x2="150" y2="212" marker-end="url(#frbs-arrow-key)" />
+    <text class="edge-label" x="380" y="204" text-anchor="middle">sink.add(PrefetchEvent &#123; index: 1 &#125;)</text>
+    <line class="edge cross" x1="610" y1="246" x2="150" y2="246" marker-end="url(#frbs-arrow-key)" />
+    <text class="edge-label" x="380" y="238" text-anchor="middle">… one per URL, as it finishes</text>
+
+    <text class="bracket" x="724" y="216" text-anchor="end">Dart sees a Stream</text>
+  </svg>
+  <figcaption>
+    Dart calls <code>prefetch</code> once and gets control straight back. The sink keeps delivering a
+    <code>PrefetchEvent</code> per URL afterward, which Dart consumes as an ordinary <code>Stream</code>.
+  </figcaption>
+</figure>
+
+<style>
+  figure.frb-stream .lifeline {
+    stroke: var(--rule);
+    stroke-dasharray: 4 4;
+    stroke-width: 1;
+  }
+  figure.frb-stream .edge.back {
+    stroke: var(--muted);
+    stroke-dasharray: 5 4;
+  }
+  figure.frb-stream .edge.cross {
+    stroke: var(--accent);
+    stroke-width: 2;
+  }
+  figure.frb-stream .key-head {
+    fill: var(--accent);
+  }
+  figure.frb-stream .bracket {
+    font-size: 12px;
+    fill: var(--muted);
+    font-style: italic;
+  }
+</style>

@@ -1,0 +1,75 @@
+---
+// flutter_rust_bridge mirrors a Rust type as a Dart type. An enum with data
+// becomes a sealed class with one subclass per variant, which the UI can switch
+// over exhaustively. Hand-authored SVG, themed by the shared figure.diagram styles.
+---
+
+<figure class="diagram frb frb-data">
+  <svg viewBox="0 0 760 250" role="img"
+    aria-label="A Rust enum variant, Block::Heading with level and spans, is mirrored by flutter_rust_bridge codegen into a Dart sealed-class subclass, Block_Heading with the same fields. The Dart UI then switches over the sealed class exhaustively.">
+    <defs>
+      <marker id="frbd-arrow" viewBox="0 0 10 10" refX="8.5" refY="5"
+        markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" />
+      </marker>
+    </defs>
+
+    <!-- Rust side -->
+    <g class="node">
+      <rect class="box" x="30" y="40" width="290" height="86" rx="9" />
+      <text class="box-label">
+        <tspan class="tag" x="175" y="63">Rust enum</tspan>
+        <tspan class="box-code" x="175" y="88">enum Block &#123;</tspan>
+        <tspan class="box-code" x="175" y="107">&#160;&#160;Heading &#123; level, spans &#125;, … &#125;</tspan>
+      </text>
+    </g>
+
+    <!-- Dart side -->
+    <g class="node">
+      <rect class="box key" x="440" y="40" width="290" height="86" rx="9" />
+      <text class="box-label">
+        <tspan class="tag" x="585" y="63">Dart sealed class</tspan>
+        <tspan class="box-code" x="585" y="88">sealed class Block &#123;&#125;</tspan>
+        <tspan class="box-code" x="585" y="107">class Block_Heading … extends Block</tspan>
+      </text>
+    </g>
+
+    <line class="edge" x1="322" y1="83" x2="438" y2="83" marker-end="url(#frbd-arrow)" />
+    <text class="edge-label" x="380" y="74" text-anchor="middle">codegen</text>
+
+    <!-- the UI consumes it -->
+    <line class="edge" x1="585" y1="126" x2="585" y2="178" marker-end="url(#frbd-arrow)" />
+    <g class="node">
+      <rect class="box ghost" x="430" y="180" width="310" height="44" rx="9" />
+      <text class="box-label box-code" x="585" y="203">switch (block) &#123; case Block_Heading: … &#125;</text>
+    </g>
+  </svg>
+  <figcaption>
+    A Rust enum with data becomes a Dart sealed class, one subclass per variant. The UI switches over it
+    exhaustively, so a new variant is a compile error until it is handled.
+  </figcaption>
+</figure>
+
+<style>
+  figure.frb .box.key {
+    fill: color-mix(in srgb, var(--accent) 14%, transparent);
+    stroke: var(--accent);
+  }
+  figure.frb .box.ghost {
+    fill: none;
+    stroke-dasharray: 5 5;
+    opacity: 0.85;
+  }
+  figure.frb .tag {
+    font-size: 12px;
+    font-weight: 600;
+    fill: var(--muted);
+    letter-spacing: 0.02em;
+  }
+  figure.frb .box-code {
+    fill: var(--fg);
+  }
+  figure.frb-data .box-code {
+    font-size: 12.5px;
+  }
+</style>
