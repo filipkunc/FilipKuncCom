@@ -27,7 +27,7 @@ The original code was a tangle of C++/CLI and C#. The same `.mm` files were shar
 
 First came a clean-room `WebGL2/` folder with a CMake build and the engine rewritten as plain C++17 against OpenGL 3.3, the desktop profile closest to WebGL2. Only once that ran natively did I add Emscripten as a second build target, where the same C++ compiles to WASM against WebGL2, which is OpenGL ES 3.0 in the browser. Every feature could be verified on the desktop build first, then again on the web.
 
-That engine is about 22K lines of C++ handling mesh topology, selection, undo and redo, OBJ and glTF I/O, and UV unwrapping. None of the interesting algorithms were rewritten for the web. The seam-based UV unwrap is still the same Least Squares Conformal Mapping solver it always was, and subdivision still leans on a production library, which turned out to be one of the nicer surprises of the port.
+That engine is about 22K lines of C++ handling mesh topology, selection, undo and redo, OBJ and glTF I/O, and UV unwrapping. The core editing came across from the original, but some of the harder pieces were built fresh during the port with Claude and Copilot rather than translated. The seam-based UV unwrap is a Least Squares Conformal Mapping solver the old app never had, and subdivision leans on a production library, one of the nicer surprises of the port.
 
 ![The WebGL2 port running in the browser, a textured cube box-unwrapped in the UV editor.](./unwrap.png)
 *The WebGL2 port at filipkunc.com/meshmaker, a box-unwrapped textured cube in the UV editor.*
