@@ -1,48 +1,29 @@
 ---
-// Click-to-load YouTube facade. Shows a local poster image and loads the
-// privacy-enhanced youtube-nocookie player only when the reader clicks, so the
-// page makes no third-party requests until then. 16:9, themed by figure CSS vars.
-import { Image } from 'astro:assets';
-
+// Responsive, lazy-loaded YouTube embed on the privacy-enhanced youtube-nocookie
+// domain. Standard inline player: YouTube's own thumbnail and play button, plays
+// in place on click. 16:9, themed corners.
 interface Props {
-  id: string;               // YouTube video id
-  poster: ImageMetadata;    // local thumbnail, imported by the caller
-  title?: string;           // accessible label / iframe title
-  start?: number;           // optional start offset in seconds
+  id: string;            // YouTube video id
+  title?: string;        // iframe title for accessibility
+  start?: number;        // optional start offset in seconds
 }
 
-const { id, poster, title = 'Play video', start } = Astro.props;
+const { id, title = 'YouTube video', start } = Astro.props;
 
-const params = new URLSearchParams({ autoplay: '1', rel: '0' });
+const params = new URLSearchParams({ rel: '0' });
 if (start) params.set('start', String(start));
 const src = `https://www.youtube-nocookie.com/embed/${id}?${params.toString()}`;
 ---
 
 <div class="yt">
-  <button class="yt-facade" type="button" data-src={src} aria-label={title}>
-    <Image src={poster} alt={title} loading="lazy" />
-    <span class="yt-play" aria-hidden="true">
-      <svg viewBox="0 0 68 48" width="68" height="48">
-        <path class="yt-play-bg" d="M66.5 7.7c-.8-2.9-3-5.1-5.9-5.9C55.3.5 34 .5 34 .5S12.7.5 7.4 1.8C4.5 2.6 2.3 4.8 1.5 7.7.2 13 .2 24 .2 24s0 11 1.3 16.3c.8 2.9 3 5.1 5.9 5.9C12.7 47.5 34 47.5 34 47.5s21.3 0 26.6-1.3c2.9-.8 5.1-3 5.9-5.9C67.8 35 67.8 24 67.8 24s0-11-1.3-16.3z"/>
-        <path d="M27 34V14l18 10z" fill="#fff"/>
-      </svg>
-    </span>
-  </button>
+  <iframe
+    src={src}
+    title={title}
+    loading="lazy"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+    allowfullscreen
+  ></iframe>
 </div>
-
-<script>
-  for (const btn of document.querySelectorAll<HTMLButtonElement>('.yt-facade')) {
-    btn.addEventListener('click', () => {
-      const iframe = document.createElement('iframe');
-      iframe.src = btn.dataset.src!;
-      iframe.title = btn.getAttribute('aria-label') || 'YouTube video';
-      iframe.allow =
-        'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
-      iframe.allowFullscreen = true;
-      btn.replaceWith(iframe);
-    });
-  }
-</script>
 
 <style>
   .yt {
@@ -53,47 +34,11 @@ const src = `https://www.youtube-nocookie.com/embed/${id}?${params.toString()}`;
     overflow: hidden;
     background: #000;
   }
-  .yt :global(iframe),
-  .yt-facade {
+  .yt iframe {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
     border: 0;
-  }
-  .yt-facade {
-    padding: 0;
-    cursor: pointer;
-    background: #000;
-  }
-  .yt-facade :global(img) {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-    transition: opacity 0.2s ease;
-  }
-  .yt-facade:hover :global(img) {
-    opacity: 0.85;
-  }
-  .yt-play {
-    position: absolute;
-    inset: 0;
-    display: grid;
-    place-items: center;
-    pointer-events: none;
-  }
-  .yt-play-bg {
-    fill: #212121;
-    opacity: 0.8;
-    transition: fill 0.2s ease, opacity 0.2s ease;
-  }
-  .yt-facade:hover .yt-play-bg {
-    fill: #f00;
-    opacity: 1;
-  }
-  .yt-facade:focus-visible {
-    outline: 3px solid var(--accent, #4a8);
-    outline-offset: -3px;
   }
 </style>
