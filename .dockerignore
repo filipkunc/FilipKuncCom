@@ -30,6 +30,9 @@ scripts/flowfield/target
 !scripts/ast-explorer
 !scripts/ast-explorer/**
 scripts/ast-explorer/target
+# the meshmaker post excerpts C++/TS snippets mirrored from the MeshMaker repo
+!scripts/meshmaker
+!scripts/meshmaker/**
 README.md
 *.md
 .dockerignore
