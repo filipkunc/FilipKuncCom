@@ -17,6 +17,7 @@ Other scripts:
 - `npm run preview` — serve the built site
 - `npm run check` — type-check the site and the server
 - `npm run verify` — run the posts' code snippets and capture their output
+- `./deploy.sh --build-only` — build the deploy image without shipping it
 
 ## Layout
 
@@ -24,6 +25,6 @@ Other scripts:
 - `src/components/` — the interactive demos (Monaco editors, the type/JSON validator, diagrams)
 - `src/server/` — the static file server that ships in the image
 - `ansible/` — one-time provisioning for the box
-- `deploy.sh`, `rollback.sh` — build the image locally and ship it over SSH
+- `deploy.sh`, `rollback.sh` — build the image locally and ship it over SSH. `./deploy.sh --build-only` stops after the local build, reproducing the container's `.dockerignore` context so it catches issues that `npm run build` (which builds the working tree directly) cannot
 
 Some posts run their own code at build time, so the snippets you read are exactly what ran. The headers on those snippets link back to the lines here on GitHub. See `npm run verify` and `src/lib/snippets.ts` for how that works.
