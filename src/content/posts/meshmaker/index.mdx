@@ -10,11 +10,13 @@ og:
 ---
 
 import Excerpt from '../../../components/Excerpt.astro';
+import YouTube from '../../../components/YouTube.astro';
+import quadsEdgeLoops from './quads-edge-loops.jpg';
 
 I started working on [MeshMaker](https://github.com/filipkunc/MeshMaker) around 2009 to build a 3D mesh editor with very basic features and learn by doing. That same year I switched completely to Mac OS X as my daily driver and wanted to learn Objective-C, Core Graphics, and JavaScriptCore while reusing my old C++ code. I still think the original Objective-C++ hybrid was the best and easiest way to share C++ logic with native Cocoa UI. Around the same time I used C++/CLI with C# for the Windows port and C++ with Qt for the Linux port. I developed it intensively until around 2015, then spent most of my energy on other projects, my day job, and family.
 
-![The native macOS MeshMaker, edge loops selected on a quad mesh.](./edgeloops.png)
-*The original native macOS app, edge loops selected in Edges mode.*
+<YouTube id="sCezKOf22cc" poster={quadsEdgeLoops} title="MeshMaker: quads and edge loops" />
+*The original native macOS app, a walkthrough of quads and edge loops.*
 
 Recently I wanted to port it to the web so it would run on every platform with no install, and to see how far a large port could go driven purely by Claude and Copilot. It runs now.
 
