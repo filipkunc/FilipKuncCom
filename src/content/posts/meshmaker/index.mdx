@@ -27,7 +27,7 @@ The original code was a tangle of C++/CLI and C#. The same `.mm` files were shar
 
 First came a clean-room `WebGL2/` folder with a CMake build and the engine rewritten as plain C++17 against OpenGL 3.3, the desktop profile closest to WebGL2. Only once that ran natively did I add Emscripten as a second build target, where the same C++ compiles to WASM against WebGL2, which is OpenGL ES 3.0 in the browser. Every feature could be verified on the desktop build first, then again on the web.
 
-That engine is about 22K lines of C++ handling mesh topology, selection, undo and redo, OBJ and glTF I/O, and UV unwrapping. The core editing came across from the original, but some of the harder pieces were built fresh during the port with Claude and Copilot rather than translated. The seam-based UV unwrap is a Least Squares Conformal Mapping solver the old app never had, and subdivision leans on a production library, one of the nicer surprises of the port.
+That engine is about 22K lines of C++ handling mesh topology, selection, undo and redo, OBJ and glTF I/O, and UV unwrapping. Most of it came across from the original, including the subdivision. The one big algorithm the old app never had is the seam-based UV unwrap, a Least Squares Conformal Mapping solver built during the port with Claude and Copilot.
 
 ![The WebGL2 port running in the browser, a textured cube box-unwrapped in the UV editor.](./unwrap.png)
 *The WebGL2 port at filipkunc.com/meshmaker, a box-unwrapped textured cube in the UV editor.*
@@ -47,7 +47,7 @@ On the JavaScript side that is just `module.addCube()` or `module.subdivideSelec
 
 ## Pixar's subdivision in the browser
 
-Subdivision was the part I least wanted to reimplement. Smooth subdivision surfaces are fiddly to get right, and a hobby editor has no business hand-rolling them. So the port does not. It pulls in Pixar's own [OpenSubdiv](https://github.com/PixarAnimationStudios/OpenSubdiv) through CMake's FetchContent and compiles it to WASM alongside everything else.
+Smooth subdivision surfaces are fiddly to get right, and a hobby editor has no business hand-rolling them. MeshMaker never did. It has always leaned on Pixar's [OpenSubdiv](https://github.com/PixarAnimationStudios/OpenSubdiv) for them. The port keeps that dependency, pulled in through CMake's FetchContent, and compiles it to WASM alongside everything else, so the same library now runs in the browser.
 
 The engine just hands it a topology descriptor and asks for a refinement. The one bit of real logic is choosing the scheme from the mesh itself, Catmull-Clark for quads and Loop for triangle meshes, then carrying the per-corner UVs through as a face-varying channel so textures survive the subdivision.
 
