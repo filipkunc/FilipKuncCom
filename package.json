@@ -44,6 +44,7 @@
     "@astrojs/rss": "^4.0.18",
     "@jridgewell/gen-mapping": "^0.3.13",
     "@jridgewell/sourcemap-codec": "^1.5.5",
+    "@starfederation/datastar-sdk": "^1.0.0",
     "@typescript/vfs": "^1.6.4",
     "acorn": "^8.17.0",
     "acorn-typescript": "^1.4.13",

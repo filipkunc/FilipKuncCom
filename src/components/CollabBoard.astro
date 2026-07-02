@@ -1,0 +1,52 @@
+---
+// Embeds a live collab-board page (served by the Rust binary in
+// scripts/collab-board) in an iframe. In dev it points at the local board on
+// :8091; in production it points at the deployed board behind Caddy. The board
+// pages connect to their own origin for the WebSocket / SSE stream, so loading
+// them in an iframe keeps everything same-origin inside the frame.
+interface Props {
+  variant: 'sse' | 'ws';
+  height?: number;
+}
+const { variant, height = 500 } = Astro.props;
+const path = variant === 'sse' ? '/board' : '/';
+const label = variant === 'sse' ? 'data-star / SSE board' : 'WebSocket board';
+
+const isDev = import.meta.env.DEV;
+// The deployed board lives on its own subdomain (Caddy -> 127.0.0.1:8091, see
+// ansible/files/Caddyfile) because its pages use root-absolute URLs.
+const base = isDev ? 'http://localhost:8091' : 'https://board.filipkunc.com';
+const src = `${base}${path}`;
+---
+
+<figure class="board-embed">
+  {src ? (
+    <iframe
+      src={src}
+      title={label}
+      loading="lazy"
+      style={`width:100%;height:${height}px;border:1px solid var(--rule);border-radius:8px;background:#0d1018;`}
+    ></iframe>
+  ) : (
+    <div class="board-placeholder" style={`height:${height}px;`}>
+      Live {label}. Run <code>scripts/collab-board</code> locally, or open the deployed board.
+    </div>
+  )}
+  <figcaption>
+    {label}.{' '}
+    {src && (
+      <a href={src} target="_blank" rel="noopener">Open in a second tab</a>
+    )}
+    {src && ' to see presence (your cursor on one tab, theirs on the other).'}
+  </figcaption>
+</figure>
+
+<style>
+  .board-embed { margin: 1.5rem 0; }
+  .board-embed figcaption { font-size: 0.85rem; color: var(--muted); margin-top: 0.4rem; }
+  .board-placeholder {
+    display: flex; align-items: center; justify-content: center;
+    border: 1px dashed var(--rule); border-radius: 8px; color: var(--muted);
+    background: #0d1018; text-align: center; padding: 1rem;
+  }
+</style>

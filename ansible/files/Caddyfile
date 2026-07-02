@@ -12,6 +12,16 @@ www.filipkunc.com {
 	redir https://filipkunc.com{uri} permanent
 }
 
+# Live collab-board demo for the datastar-shared-board post. Its own subdomain
+# because the board pages use root-absolute URLs (/ws, /sse, /cursor) that the
+# post excerpts verbatim, so a path prefix on the apex would break them. The
+# flush_interval disables response buffering, which the SSE stream needs.
+board.filipkunc.com {
+	reverse_proxy 127.0.0.1:8091 {
+		flush_interval -1
+	}
+}
+
 filipkunc.com {
 	# Default encode whitelist skips application/octet-stream, but Emscripten
 	# ships its asset bundles (.data files) under that MIME type and they are

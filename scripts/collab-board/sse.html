@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shared board (data-star / SSE)</title>
+  <script type="module" src="https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.2/bundles/datastar.js"></script>
+  <style>
+    html, body { margin: 0; height: 100%; background: #0d1018; color: #cfd6e4; font-family: system-ui, sans-serif; }
+    #top { padding: 0.5rem 0.75rem; font-size: 0.85rem; display: flex; gap: 0.75rem; align-items: center; }
+    .tag { padding: 0.1rem 0.5rem; border-radius: 999px; font-size: 0.75rem; }
+    #board {
+      position: relative; width: 680px; height: 420px; max-width: 100%; margin: 0 auto;
+      background: #11151f; border: 1px solid #2a3550; border-radius: 8px; overflow: hidden;
+      touch-action: none; cursor: crosshair;
+      background-image: radial-gradient(#1b2233 1px, transparent 1px); background-size: 24px 24px;
+    }
+    #cursors, #boxes { position: absolute; inset: 0; }
+    #cursors { pointer-events: none; }
+    /* #region css */
+    .cursor {
+      position: absolute;
+      pointer-events: none;
+      will-change: transform;
+      z-index: 50;
+      /* ease each 30 Hz patch to its target instead of snapping */
+      transition: transform 0.045s linear;
+    }
+    /* #endregion */
+    .cursor svg { display: block; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5)); }
+    .cursor span { position: absolute; left: 14px; top: 12px; font-size: 0.7rem; font-weight: 600; padding: 1px 6px; border-radius: 999px; white-space: nowrap; color: #0d1018; }
+    .box { position: absolute; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.35); cursor: grab; touch-action: none; }
+    .box .handle { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize;
+      background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.7) 50%); border-bottom-right-radius: 6px; }
+    .box .held { position: absolute; left: 6px; top: 5px; font-size: 0.7rem; font-weight: 600; color: #0d1018; opacity: 0.8; }
+    .latbtn { font: inherit; font-size: 0.75rem; padding: 0.1rem 0.45rem; background: transparent; color: inherit; border: 1px solid #2a3550; border-radius: 4px; cursor: pointer; }
+    .latbtn.on { background: #1d3a5f; border-color: #5fd0ff; }
+  </style>
+</head>
+<!--
+  Two things to notice against the WebSocket board at /. Downstream, cursors and
+  boxes are server-rendered HTML morphed straight into the DOM at 30 Hz with no
+  interpolation, so on a high-refresh display they step. Upstream, every pointer
+  move is its own POST (SSE only goes one way, so input has nowhere else to go),
+  and a box you drag is server-owned: it moves only when the POST echoes back,
+  so it trails your pointer.
+-->
+<body
+  data-signals="{me: 0, color: '', name: '', mx: 0, my: 0, bl: 0, bt: 0, dragId: '', resize: false, grabx: 0, graby: 0, lat: 0}"
+  data-init="@get('/sse')"
+  data-on:pointerup__window="$dragId && ($dragId = '', @post('/release'))"
+>
+  <div id="top">
+    <span class="tag" style="background:#5b3a1d;">data-star / SSE</span>
+    <span style="color:#7f8aa3;">latency</span>
+    <button class="latbtn" data-on:click="$lat = 0" data-class:on="$lat === 0">0</button>
+    <button class="latbtn" data-on:click="$lat = 100" data-class:on="$lat === 100">100</button>
+    <button class="latbtn" data-on:click="$lat = 250" data-class:on="$lat === 250">250</button>
+  </div>
+  <!-- #region input -->
+  <div
+    id="board"
+    data-on:pointerenter="$bl = el.getBoundingClientRect().left, $bt = el.getBoundingClientRect().top"
+    data-on:pointermove="$mx = evt.clientX - $bl, $my = evt.clientY - $bt, @post('/cursor')"
+  >
+    <div id="boxes"><i id="box-anchor" style="display:none"></i></div>
+    <div id="cursors"><i id="cur-anchor" style="display:none"></i></div>
+  </div>
+  <!-- #endregion -->
+</body>
+</html>

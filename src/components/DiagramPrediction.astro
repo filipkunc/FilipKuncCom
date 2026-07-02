@@ -1,0 +1,92 @@
+---
+// Playable: your pointer sweeps back and forth. With prediction the box is glued
+// to it; without it the box waits for the server and trails behind by a round
+// trip. Press play and watch the gap open on the lower box.
+---
+
+<figure class="diagram predict-demo">
+  <svg viewBox="0 0 680 230" role="img"
+    aria-label="A pointer sweeps left and right. The box with prediction stays under the pointer. The box without prediction trails behind by a network round trip.">
+    <!-- guide: where your pointer actually is -->
+    <line class="pd-guide" x1="340" y1="38" x2="340" y2="202" />
+
+    <!-- pointer -->
+    <g class="pd-cursor">
+      <path d="M0 0 L0 17 L4.5 12.5 L7.5 19 L10 18 L7 11.5 L13 11.5 Z" />
+    </g>
+    <text class="pd-lane" x="40" y="30">your pointer</text>
+
+    <!-- with prediction: glued to the pointer -->
+    <text class="pd-lane" x="40" y="88">with prediction · instant</text>
+    <rect class="pd-box pd-pred" x="318" y="96" width="44" height="30" rx="5" />
+
+    <!-- without prediction: waits for the server, trails behind -->
+    <text class="pd-lane" x="40" y="158">without prediction · waits for the server</text>
+    <rect class="pd-box pd-server" x="318" y="166" width="44" height="30" rx="5" />
+  </svg>
+  <div class="diag-controls">
+    <button type="button" class="diag-play" aria-pressed="false">▶ play</button>
+    <span class="diag-hint">the lower box lags your pointer by a round trip</span>
+  </div>
+  <figcaption>
+    With prediction the box you drag is drawn from your own pointer, so it never lags. Without it the box can
+    only move once your input has reached the server and the new position has come back.
+  </figcaption>
+</figure>
+
+<style>
+  figure.predict-demo .pd-guide { stroke: var(--rule); stroke-width: 1; stroke-dasharray: 4 4; }
+  figure.predict-demo .pd-cursor path { fill: var(--fg); stroke: var(--bg); stroke-width: 1; }
+  figure.predict-demo .pd-box { stroke-width: 0; }
+  figure.predict-demo .pd-pred { fill: var(--accent); }
+  figure.predict-demo .pd-server { fill: var(--muted); }
+  figure.predict-demo .pd-lane { fill: var(--muted); font: 12px ui-sans-serif, system-ui, sans-serif; }
+  .diag-controls { display: flex; align-items: center; gap: 0.75rem; justify-content: center; margin-top: 0.5rem; }
+  .diag-play {
+    font: inherit; font-size: 0.8rem; padding: 0.2rem 0.7rem; cursor: pointer;
+    color: var(--fg); background: transparent; border: 1px solid var(--rule); border-radius: 999px;
+  }
+  .diag-play[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 18%, transparent); border-color: var(--accent); }
+  .diag-hint { font-size: 0.78rem; color: var(--muted); }
+</style>
+
+<script>
+  function setup(fig: HTMLElement) {
+    const cursor = fig.querySelector<SVGGElement>('.pd-cursor')!;
+    const guide = fig.querySelector<SVGLineElement>('.pd-guide')!;
+    const pred = fig.querySelector<SVGRectElement>('.pd-pred')!;
+    const server = fig.querySelector<SVGRectElement>('.pd-server')!;
+    const btn = fig.querySelector<HTMLButtonElement>('.diag-play')!;
+
+    const X0 = 130, X1 = 550, MID = (X0 + X1) / 2, AMP = (X1 - X0) / 2;
+    const PERIOD = 3600, LATENCY = 320;
+    const motion = (t: number) => MID + AMP * Math.sin((2 * Math.PI * t) / PERIOD);
+
+    let t = 0, raf = 0, prev = 0;
+    function place(x: number) {
+      cursor.setAttribute('transform', `translate(${x - 3}, 44)`);
+      guide.setAttribute('x1', String(x)); guide.setAttribute('x2', String(x));
+      pred.setAttribute('x', String(x - 22));
+      server.setAttribute('x', String(motion(t - LATENCY) - 22));
+    }
+    place(MID);
+
+    function frame(now: number) {
+      const dt = prev ? now - prev : 16;
+      prev = now; t += dt;
+      place(motion(t));
+      raf = requestAnimationFrame(frame);
+    }
+
+    btn.addEventListener('click', () => {
+      if (raf) {
+        cancelAnimationFrame(raf); raf = 0; prev = 0;
+        btn.setAttribute('aria-pressed', 'false'); btn.textContent = '▶ play';
+      } else {
+        btn.setAttribute('aria-pressed', 'true'); btn.textContent = '❚❚ pause';
+        raf = requestAnimationFrame(frame);
+      }
+    });
+  }
+  document.querySelectorAll<HTMLElement>('figure.predict-demo').forEach(setup);
+</script>

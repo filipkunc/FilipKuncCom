@@ -1,0 +1,99 @@
+---
+title: "A shared whiteboard with data-star, and where SSE runs out"
+description: "Building a live collaborative board with data-star over server-sent events, finding where real-time input hits a wall, and crossing it with the WebSocket prediction and interpolation games have used for years."
+pubDate: 2026-06-30
+draft: false
+tags: ["rust", "datastar", "websocket", "gamedev", "webdev"]
+og:
+  kind: snippet
+  lang: html
+  code: |-
+    <!-- The whole client: move the pointer, post it.
+         No socket, no state machine, just attributes. -->
+    <div data-on:pointermove="
+      $mx = evt.clientX, $my = evt.clientY, @post('/cursor')
+    ">
+      <div id="cursors"></div>
+      <div id="boxes"></div>
+    </div>
+---
+
+import CollabBoard from '../../../components/CollabBoard.astro';
+import Excerpt from '../../../components/Excerpt.astro';
+import DiagramTransports from '../../../components/DiagramTransports.astro';
+import DiagramPrediction from '../../../components/DiagramPrediction.astro';
+import DiagramInterpolation from '../../../components/DiagramInterpolation.astro';
+
+A few weeks ago I watched a [data-star](https://data-star.dev/) talk at a meetup and came away impressed. It drives a reactive UI straight from the server over one long-lived stream, in a declarative HTML style similar to HTMX, and [One Billion Checkboxes](https://checkboxes.andersmurphy.com/) running on it was striking. What kept nagging at me was latency. In games, and in collaborative editors like a [Miro](https://miro.com/) board, you want motion to feel smooth and immediate, so I asked about client-side prediction.
+
+## The board, the data-star way
+
+In the data-star's model the server owns the state and pushes HTML patches down the [Server Sent Event](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events) stream, and the browser morphs them into the DOM. Input goes back up as ordinary HTTP requests. For the board that means a stream that patches the cursor and box elements, and a POST for every pointer move.
+
+The nice thing is that the code is very declarative using mostly data attributes, hence the name `data-*`.
+
+<Excerpt source="scripts/collab-board/sse.html" region="input" lang="html" label="sse.html › the whole input layer" />
+
+On the server, one handler holds the stream open and, thirty times a second, renders every cursor and box to HTML and patches it in. A new viewer is correct on the first frame it receives.
+
+<Excerpt source="scripts/collab-board/src/main.rs" region="ds-stream" lang="rust" label="src/main.rs › the SSE stream" />
+
+The boxes are rendered server-side, `data-on` handlers and all. The browser never builds them, it receives them ready to use. This is the part that feels genuinely different coming from a client framework: the interactive markup is a `format!` on the server.
+
+<Excerpt source="scripts/collab-board/src/main.rs" region="ds-render" lang="rust" label="src/main.rs › boxes are HTML over the wire" />
+
+Here it is running. Open it in a second tab and your cursors chase each other around.
+
+<CollabBoard variant="sse" />
+
+For presence, this is lovely, and it is almost no code. Then you look closely, on a fast screen, and the first problem shows up.
+
+## The screen runs faster than the network
+
+My monitor refreshes 240 times a second. The server patches 30 times a second. Bind one straight to the other and every cursor holds still for eight frames and then jumps, which on a high-refresh display reads as a visible stutter. Phones are 120 Hz now as a baseline, so this is not an edge case.
+
+When I raised this, the answer was a CSS transition, and it is a good answer. One line, and each patched position eases toward its target instead of snapping.
+
+<Excerpt source="scripts/collab-board/sse.html" region="css" lang="css" label="sse.html › the smoothing, in one line" />
+
+That fixes the stutter for cursors. But it is an ease toward the latest value, not interpolation. It adds a sliver of delay, overshoots on direction changes, and does nothing for a box you are dragging, where easing toward a lagged position just smears the lag. We will come back to the difference.
+
+## Your own actions wait for the server
+
+Turn the latency dial on the board up to 250 ms and drag a box. It does not stick to your pointer. It trails a quarter second behind and catches up when you stop.
+
+That is not lag in the network sense, it is the model. The box is a server-owned element. It moves only once your POST is applied and the next patch echoes the new position back, and there is no declarative way to move it sooner. You can drag it client-side and POST only the final position, which feels instant to you but hides the drag from everyone else. Or you can predict it from a local signal and stop the server overwriting it, which works but means you have left the model and started rebuilding what comes next by hand.
+
+## The only way up is another request
+
+SSE goes one direction. So every pointer move is its own POST, and data-star cancels any in-flight request to the same URL when a new one starts. A fast drag fires a stream of POSTs that mostly cancel each other, and under real latency the server sees only a fraction of them.
+
+None of this is data-star doing something wrong. It is SSE being what it is: a great pipe downward, nothing upward, and a framework that owns the DOM so there is no seam left for you to predict or interpolate in. Which is exactly the seam the other approach is built around.
+
+<DiagramTransports />
+
+## The game way: a socket, prediction, interpolation
+
+Real-time games solved this a long time ago, and the canonical writeups still hold up: Glenn Fiedler's [Gaffer On Games](https://gafferongames.com/) and Gabriel Gambetta's [client-server series](https://www.gabrielgambetta.com/client-server-game-architecture.html). The shape is always the same. A channel that goes both ways, a client that acts on its own input immediately, smooth interpolation of everything it does not control, and reconciliation against the server's authoritative truth. Same board, a WebSocket in place of SSE-plus-POST.
+
+The socket carries everything both ways. Input goes up it, and a 30 Hz snapshot of the whole world comes down it, the same full-state-every-tick model the SSE board used, just on a duplex pipe.
+
+<Excerpt source="scripts/collab-board/src/main.rs" region="ws-handler" lang="rust" label="src/main.rs › one socket, both directions" />
+
+The box you drag renders from your own pointer, so it is instant at any latency. The catch is the release. The server is still a round trip behind, so dropping the prediction right then snaps the box back to where the server still thinks it is. That was a real bug in my first version. The fix is to hold it where you left it until the server catches up, then hand off once they agree. That hold is reconciliation, the same idea that keeps a predicted character from rubber-banding.
+
+<DiagramPrediction />
+
+<Excerpt source="scripts/collab-board/ws.html" region="predict" lang="js" label="ws.html › predict the box you hold, reconcile on release" />
+
+Everyone else's cursors and boxes are drawn about 100 ms in the past, on the line between the two snapshots that bracket that moment. It is the real version of the CSS transition: a line between two positions the server actually sent, not an ease toward the latest. Same trick whether the moving thing is a spaceship or someone else's mouse.
+
+<DiagramInterpolation />
+
+<Excerpt source="scripts/collab-board/ws.html" region="interp" lang="js" label="ws.html › interpolate everyone else" />
+
+Here is the WebSocket board, same latency dial. Turn it to 250 ms and drag a box, and it stays under your pointer.
+
+<CollabBoard variant="ws" />
+
+Both boards are the same Rust binary, behind the two transports. The [full source is on GitHub](https://github.com/filipkunc/FilipKuncCom/tree/main/scripts/collab-board).

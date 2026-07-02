@@ -57,5 +57,15 @@ scripts/ast-explorer/target/
 !scripts/ast-explorer/dist/
 !scripts/ast-explorer/dist/oxc_wasm_web.wasm
 
+
+# collab-board: the axum server (WebSocket + data-star SSE) for the shared-board
+# post is a standalone binary; target/ is the local cargo build dir. The
+# ws.html/sse.html clients and src/ are excerpted by the post, so they ARE
+# committed. (Cargo.lock committed: application, not a library.)
+scripts/collab-board/target/
+
 # Post research dossiers: working notes, never shipped
 research/
+
+# Parked tokio-websocket-shooter branch: local cargo build dir of its checkout
+scripts/websocket-shooter/target/

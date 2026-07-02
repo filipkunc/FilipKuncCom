@@ -1,0 +1,25 @@
+[package]
+name = "collab-board"
+version = "0.1.0"
+edition = "2024"
+
+# Both transports for the shared-board post live in one binary: an axum app that
+# serves the two client pages, handles WebSocket upgrades on /ws, and streams
+# data-star SSE on /sse. Keeping them in one process on one runtime is the whole
+# point, so neither side can be blamed for being a slower server than the other.
+
+[[bin]]
+name = "collab-board"
+path = "src/main.rs"
+
+[dependencies]
+axum = { version = "0.8", features = ["ws"] }
+tokio = { version = "1", features = ["full"] }
+datastar = { version = "0.3", features = ["axum"] }
+asynk-strim = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+futures = "0.3"
+
+[profile.release]
+opt-level = 2

@@ -1,0 +1,62 @@
+---
+// The shape of the two transports. data-star is a one-way SSE stream down plus
+// a fresh POST per event up; the WebSocket is a single duplex socket. Static
+// SVG, themed by the shared figure.diagram CSS.
+---
+
+<figure class="diagram transports">
+  <svg viewBox="0 0 680 320" role="img"
+    aria-label="data-star sends a continuous server-sent-events stream down and one POST per pointer move up, of which only the latest survives. A WebSocket carries frames both ways on one connection.">
+    <defs>
+      <marker id="tr-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" />
+      </marker>
+    </defs>
+
+    <!-- data-star -->
+    <text class="tr-tag" x="40" y="30">data-star · SSE down, POST up</text>
+    <g class="node">
+      <rect class="box" x="40" y="48" width="120" height="44" rx="9" />
+      <text class="box-label" x="100" y="70">Browser</text>
+    </g>
+    <g class="node">
+      <rect class="box" x="520" y="48" width="120" height="44" rx="9" />
+      <text class="box-label" x="580" y="70">Server</text>
+    </g>
+    <!-- SSE stream down (server -> browser) -->
+    <line class="edge" x1="518" y1="64" x2="164" y2="64" marker-end="url(#tr-arrow)" />
+    <text class="edge-label" x="341" y="56" text-anchor="middle">SSE stream · ~30 patches / sec</text>
+    <!-- POST up (browser -> server) -->
+    <line class="edge up" x1="162" y1="84" x2="516" y2="84" marker-end="url(#tr-arrow)" />
+    <text class="edge-label" x="341" y="100" text-anchor="middle">one POST per pointer move</text>
+    <text class="tr-note" x="341" y="116" text-anchor="middle">only the latest survives, the rest cancel</text>
+
+    <line class="tr-divider" x1="40" y1="170" x2="640" y2="170" />
+
+    <!-- WebSocket -->
+    <text class="tr-tag" x="40" y="206">WebSocket · one duplex socket</text>
+    <g class="node">
+      <rect class="box" x="40" y="224" width="120" height="44" rx="9" />
+      <text class="box-label" x="100" y="246">Browser</text>
+    </g>
+    <g class="node">
+      <rect class="box" x="520" y="224" width="120" height="44" rx="9" />
+      <text class="box-label" x="580" y="246">Server</text>
+    </g>
+    <line class="edge" x1="162" y1="246" x2="518" y2="246" marker-start="url(#tr-arrow)" marker-end="url(#tr-arrow)" />
+    <text class="edge-label" x="341" y="238" text-anchor="middle">frames both ways, one connection</text>
+  </svg>
+  <figcaption>
+    SSE only flows one way, so input has nowhere to go but a separate request per event. A WebSocket is
+    a single channel both ways, which is the seam prediction and interpolation need.
+  </figcaption>
+</figure>
+
+<style>
+  figure.transports .tr-tag {
+    fill: var(--fg); font: 600 13px ui-sans-serif, system-ui, sans-serif;
+  }
+  figure.transports .edge.up { stroke: var(--muted); stroke-dasharray: 6 4; }
+  figure.transports .tr-note { fill: var(--muted); font: italic 12px ui-sans-serif, system-ui, sans-serif; }
+  figure.transports .tr-divider { stroke: var(--rule); stroke-width: 1; }
+</style>

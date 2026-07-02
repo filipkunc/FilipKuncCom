@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shared board (WebSocket)</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #0d1018; color: #cfd6e4; font-family: system-ui, sans-serif; }
+    #top { padding: 0.5rem 0.75rem; font-size: 0.85rem; display: flex; gap: 0.75rem; align-items: center; }
+    .tag { padding: 0.1rem 0.5rem; border-radius: 999px; font-size: 0.75rem; }
+    #board {
+      position: relative; width: 680px; height: 420px; max-width: 100%; margin: 0 auto;
+      background: #11151f; border: 1px solid #2a3550; border-radius: 8px; overflow: hidden;
+      touch-action: none; cursor: crosshair;
+      background-image: radial-gradient(#1b2233 1px, transparent 1px); background-size: 24px 24px;
+    }
+    .box { position: absolute; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.35); cursor: grab; }
+    .box .handle { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize;
+      background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.7) 50%); border-bottom-right-radius: 6px; }
+    .box .held { position: absolute; left: 6px; top: 5px; font-size: 0.7rem; font-weight: 600; color: #0d1018; opacity: 0.8; }
+    .cursor { position: absolute; pointer-events: none; will-change: transform; z-index: 50; }
+    .cursor svg { display: block; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5)); }
+    .cursor span { position: absolute; left: 14px; top: 12px; font-size: 0.7rem; font-weight: 600; padding: 1px 6px; border-radius: 999px; white-space: nowrap; color: #0d1018; }
+    .latbtn { font: inherit; font-size: 0.75rem; padding: 0.1rem 0.45rem; background: transparent; color: inherit; border: 1px solid #2a3550; border-radius: 4px; cursor: pointer; }
+    .latbtn.on { background: #1d3a5f; border-color: #5fd0ff; }
+  </style>
+</head>
+<body>
+  <div id="top">
+    <span class="tag" style="background:#1d3a5f;">WebSocket</span>
+    <span style="color:#7f8aa3;">latency</span>
+    <button class="latbtn on" data-ms="0">0</button>
+    <button class="latbtn" data-ms="100">100</button>
+    <button class="latbtn" data-ms="250">250</button>
+  </div>
+  <div id="board"></div>
+
+  <script type="module">
+    const INTERP_MS = 100;          // render remote state this far in the past
+    const board = document.getElementById('board');
+
+    let me = null;                  // { id, color, name }
+    let cfg = { w: 680, h: 420, min: 48 }; // board size + min box, from init
+    const snaps = [];               // { t, cursors:Map, boxes:Map } receive-stamped, for interpolation
+    const cursorEls = new Map();    // id -> element
+    const boxEls = new Map();       // id -> { el, handle, held }
+
+    // After you release a box, the server is still a latency behind, so its
+    // snapshot still shows the box where it started. Dropping the prediction
+    // right away would snap the box back there and then drift it forward as the
+    // delayed moves arrive. Instead, hold the released box at its final
+    // predicted geometry until a snapshot catches up to it, then hand off. This
+    // is the relay-server version of the shooter's reconciliation latch.
+    const pending = new Map();      // id -> {x,y,w,h} held until the server agrees
+
+    // The box this client is actively dragging: rendered from local mouse, not
+    // from the server, so it tracks the pointer with zero latency. Everyone
+    // else's view of it comes through the normal interpolated snapshot path.
+    let drag = null;                // { id, mode:'move'|'resize', dx, dy, box:{x,y,w,h} }
+
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws = new WebSocket(`${proto}//${location.host}/ws`);
+    ws.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+      if (msg.t === 'init') {
+        me = { id: msg.id, color: msg.color, name: msg.name };
+        cfg = msg.board;
+      } else if (msg.t === 'state') {
+        const cursors = new Map(msg.cursors.map((c) => [c.id, c]));
+        const boxes = new Map(msg.boxes.map((b) => [b.id, b]));
+        snaps.push({ t: performance.now(), cursors, boxes });
+        while (snaps.length > 2 && snaps[0].t < performance.now() - 1000) snaps.shift();
+      }
+    };
+
+    const send = (o) => ws.readyState === 1 && ws.send(JSON.stringify(o));
+
+    // Latency control. The server delays applying this socket's input by the
+    // chosen ms, so you can feel prediction holding the dragged box to the
+    // pointer while the other tab (and the released box) lags behind.
+    document.querySelectorAll('.latbtn').forEach((b) => b.addEventListener('click', () => {
+      document.querySelectorAll('.latbtn').forEach((x) => x.classList.remove('on'));
+      b.classList.add('on');
+      send({ t: 'lat', ms: Number(b.dataset.ms) });
+    }));
+
+    // --- input -------------------------------------------------------------
+    let mouse = null;               // latest board-space pointer position
+    function boardXY(e) {
+      const r = board.getBoundingClientRect();
+      return { x: e.clientX - r.left, y: e.clientY - r.top };
+    }
+
+    board.addEventListener('pointermove', (e) => { mouse = boardXY(e); });
+    board.addEventListener('pointerleave', () => { mouse = null; });
+
+    board.addEventListener('pointerdown', (e) => {
+      const boxEl = e.target.closest('.box');
+      if (!boxEl) return;
+      const id = boxEl.dataset.id;
+      const cur = latestBox(id);
+      if (!cur) return;
+      const p = boardXY(e);
+      const mode = e.target.classList.contains('handle') ? 'resize' : 'move';
+      drag = { id, mode, dx: p.x - cur.x, dy: p.y - cur.y, box: { x: cur.x, y: cur.y, w: cur.w, h: cur.h } };
+      boxEl.setPointerCapture(e.pointerId);
+      send({ t: 'grab', id });
+    });
+
+    // The optimistic drag must obey the same bounds the server does, or the
+    // predicted box overshoots the clamp and snaps back when the snapshot lands.
+    // This mirrors World::move_box in board.rs exactly.
+    function clampBox(b) {
+      b.x = clamp(b.x, 0, cfg.w - cfg.min);
+      b.y = clamp(b.y, 0, cfg.h - cfg.min);
+      b.w = clamp(b.w, cfg.min, cfg.w - b.x);
+      b.h = clamp(b.h, cfg.min, cfg.h - b.y);
+    }
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+    board.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      const p = boardXY(e);
+      if (drag.mode === 'move') {
+        drag.box.x = p.x - drag.dx;
+        drag.box.y = p.y - drag.dy;
+      } else {
+        drag.box.w = p.x - drag.box.x;
+        drag.box.h = p.y - drag.box.y;
+      }
+      clampBox(drag.box);
+    });
+
+    const endDrag = (e) => {
+      if (!drag) return;
+      send({ t: 'box', id: drag.id, ...drag.box });
+      send({ t: 'release', id: drag.id });
+      pending.set(drag.id, { ...drag.box }); // hold here until the server catches up
+      drag = null;
+    };
+    board.addEventListener('pointerup', endDrag);
+    board.addEventListener('pointercancel', endDrag);
+
+    // The latest known geometry for a box: my live drag if I hold it, else the
+    // newest snapshot. Used to seed a drag so it doesn't jump on grab.
+    function latestBox(id) {
+      if (drag && drag.id === id) return drag.box;
+      for (let i = snaps.length - 1; i >= 0; i--) if (snaps[i].boxes.has(id)) return snaps[i].boxes.get(id);
+      return null;
+    }
+
+    // #region interp
+    // The two snapshots bracketing a time in the past, to interpolate between.
+    function bracket(renderTime) {
+      let s0, s1;
+      for (const s of snaps) { if (s.t <= renderTime) s0 = s; else { s1 = s; break; } }
+      return [s0, s1];
+    }
+    const lerp = (a, b, f) => a + (b - a) * f;
+
+    function frame() {
+      const now = performance.now();
+
+      // One send per displayed frame, never the full 240 Hz of the screen.
+      if (mouse && me) send({ t: 'cursor', x: mouse.x, y: mouse.y });
+      if (drag) send({ t: 'box', id: drag.id, ...drag.box });
+
+      // Render INTERP_MS in the past, interpolated between the two snapshots there.
+      const renderTime = now - INTERP_MS;
+      const [s0, s1] = bracket(renderTime);
+      const f = s0 && s1 ? Math.max(0, Math.min(1, (renderTime - s0.t) / (s1.t - s0.t || 1))) : 0;
+
+      renderCursors(s0, s1, f);
+      renderBoxes(s0, s1, f);
+      requestAnimationFrame(frame);
+    }
+
+    function renderCursors(s0, s1, f) {
+      const seen = new Set();
+      const src = s1 ?? s0;
+      if (src) {
+        for (const [id, c] of src.cursors) {
+          if (me && id === me.id) continue; // your own cursor is the real OS one
+          seen.add(id);
+          const a = s0 && s0.cursors.get(id);
+          const b = s1 && s1.cursors.get(id);
+          const x = a && b ? lerp(a.x, b.x, f) : c.x;
+          const y = a && b ? lerp(a.y, b.y, f) : c.y;
+          let el = cursorEls.get(id);
+          if (!el) { el = makeCursor(c); cursorEls.set(id, el); board.appendChild(el); }
+          el.style.transform = `translate(${x}px, ${y}px)`;
+        }
+      }
+      for (const [id, el] of cursorEls) if (!seen.has(id)) { el.remove(); cursorEls.delete(id); }
+    }
+    // #endregion
+
+    // #region predict
+    function renderBoxes(s0, s1, f) {
+      const src = s1 ?? s0;
+      if (!src) return;
+      for (const [id, b] of src.boxes) {
+        // Where the server says this box is, interpolated in the past.
+        const a = s0 && s0.boxes.get(id);
+        const b1 = s1 && s1.boxes.get(id);
+        const interp = a && b1
+          ? { x: lerp(a.x, b1.x, f), y: lerp(a.y, b1.y, f), w: lerp(a.w, b1.w, f), h: lerp(a.h, b1.h, f) }
+          : b;
+
+        let geo;
+        if (drag && drag.id === id) {
+          geo = drag.box;             // dragging: follow my pointer
+        } else if (pending.has(id)) {
+          geo = pending.get(id);      // released: hold until the server catches up
+          const close = (p, q) => Math.abs(p - q) < 0.5;
+          if (close(interp.x, geo.x) && close(interp.y, geo.y) && close(interp.w, geo.w) && close(interp.h, geo.h)) {
+            pending.delete(id);       // caught up, no jump: hand back to interpolation
+          }
+        } else {
+          geo = interp;
+        }
+        let rec = boxEls.get(id);
+        if (!rec) rec = makeBox(id, b.color);
+        const { el, held } = rec;
+        el.style.transform = `translate(${geo.x}px, ${geo.y}px)`;
+        el.style.width = `${geo.w}px`;
+        el.style.height = `${geo.h}px`;
+        const holder = b.heldBy;
+        const holderName = holder && [...src.cursors.values()].find((c) => String(c.id) === holder);
+        const mineHeld = me && holder === String(me.id);
+        el.style.outline = holder && !mineHeld ? '2px solid #fff' : 'none';
+        held.textContent = holder && !mineHeld && holderName ? holderName.name : '';
+      }
+    }
+    // #endregion
+
+    function makeBox(id, color) {
+      const el = document.createElement('div');
+      el.className = 'box';
+      el.dataset.id = id;
+      el.style.background = color;
+      const handle = document.createElement('div');
+      handle.className = 'handle';
+      const held = document.createElement('div');
+      held.className = 'held';
+      el.appendChild(handle);
+      el.appendChild(held);
+      board.appendChild(el);
+      const rec = { el, handle, held };
+      boxEls.set(id, rec);
+      return rec;
+    }
+
+    function makeCursor(c) {
+      const el = document.createElement('div');
+      el.className = 'cursor';
+      el.innerHTML = `<svg width="22" height="22" viewBox="0 0 22 22"><path d="M2 2 L2 17 L6.5 12.5 L9.5 19 L12 18 L9 11.5 L15 11.5 Z" fill="${c.color}" stroke="#0d1018" stroke-width="1"/></svg><span style="background:${c.color}">${c.name}</span>`;
+      return el;
+    }
+
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

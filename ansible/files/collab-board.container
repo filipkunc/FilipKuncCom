@@ -1,0 +1,31 @@
+# Podman Quadlet unit for the collab-board server (a SEPARATE container from
+# the static site, running alongside it on the same box). Ansible drops this at
+# ~deploy/.config/containers/systemd/collab-board.container —
+# `systemctl --user daemon-reload` generates a collab-board.service.
+#
+# The image is built and shipped by hand (no Rust toolchain on the box):
+#   podman build -t collab-board:latest scripts/collab-board
+#   podman save collab-board:latest | gzip | ssh deploy@filipkunc.com \
+#     'gunzip | podman load'
+#   systemctl --user restart collab-board
+#
+# Caddy fronts it at board.filipkunc.com, proxied to 127.0.0.1:8091
+# (see ansible/files/Caddyfile).
+[Unit]
+Description=filipkunc.com collab-board server (rootless podman Quadlet)
+Wants=network-online.target
+After=network-online.target
+
+[Container]
+Image=localhost/collab-board:latest
+ContainerName=collab-board
+PublishPort=127.0.0.1:8091:8091
+Environment=ADDR=0.0.0.0:8091
+
+[Service]
+Restart=on-failure
+TimeoutStartSec=60
+TimeoutStopSec=10
+
+[Install]
+WantedBy=default.target
