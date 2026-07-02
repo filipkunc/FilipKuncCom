@@ -1,0 +1,53 @@
+---
+// The four-step conversation with /dev/kvm that builds a virtual machine:
+// open the device, create a VM, give it memory, create a vCPU. Static SVG,
+// themed by the shared figure.diagram CSS.
+---
+
+<figure class="diagram kvm-machine">
+  <svg viewBox="0 0 720 200" role="img"
+    aria-label="Four steps build the machine: Kvm::new opens /dev/kvm, create_vm makes a VM, set_user_memory_region gives it an mmap'd region as guest RAM, and create_vcpu makes a virtual CPU.">
+    <defs>
+      <marker id="km-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" />
+      </marker>
+    </defs>
+
+    <g class="node">
+      <rect class="box" x="8" y="70" width="150" height="58" rx="9" />
+      <text class="box-label box-code" x="83" y="93">Kvm::new()</text>
+      <text class="km-sub" x="83" y="114">open /dev/kvm</text>
+    </g>
+    <line class="edge" x1="160" y1="99" x2="196" y2="99" marker-end="url(#km-arrow)" />
+
+    <g class="node">
+      <rect class="box" x="198" y="70" width="150" height="58" rx="9" />
+      <text class="box-label box-code" x="273" y="93">create_vm()</text>
+      <text class="km-sub" x="273" y="114">an empty VM</text>
+    </g>
+    <line class="edge" x1="350" y1="99" x2="386" y2="99" marker-end="url(#km-arrow)" />
+
+    <g class="node">
+      <rect class="box" x="388" y="70" width="164" height="58" rx="9" />
+      <text class="box-label box-code" x="470" y="93">set_user_memory</text>
+      <text class="km-sub" x="470" y="114">an mmap becomes guest RAM</text>
+    </g>
+    <line class="edge" x1="554" y1="99" x2="590" y2="99" marker-end="url(#km-arrow)" />
+
+    <g class="node">
+      <rect class="box" x="592" y="70" width="120" height="58" rx="9" />
+      <text class="box-label box-code" x="652" y="93">create_vcpu</text>
+      <text class="km-sub" x="652" y="114">a CPU to run</text>
+    </g>
+  </svg>
+  <figcaption>Four calls stand up a machine. Everything after is setting that CPU's registers and running it.</figcaption>
+</figure>
+
+<style>
+  figure.kvm-machine .km-sub {
+    fill: var(--muted);
+    font: 12px ui-sans-serif, system-ui, sans-serif;
+    text-anchor: middle;
+  }
+  figure.kvm-machine .box-code { dominant-baseline: auto; }
+</style>

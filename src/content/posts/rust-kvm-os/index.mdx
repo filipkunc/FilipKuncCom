@@ -1,0 +1,154 @@
+---
+title: "A tiny OS on KVM, both sides in Rust"
+description: "Building a minimal hypervisor with kvm-ioctls and a no_std Rust kernel it boots straight into long mode, then giving it a screen, a mouse, a software rasterizer, and enough syscalls to run a real Linux binary."
+pubDate: 2026-07-02
+draft: false
+tags: ["rust", "kvm", "osdev", "no_std", "virtualization"]
+og:
+  kind: screenshot
+  src: torus.png
+---
+
+import Excerpt from "../../../components/Excerpt.astro";
+import DiagramKvmMachine from "../../../components/DiagramKvmMachine.astro";
+import DiagramDoorbell from "../../../components/DiagramDoorbell.astro";
+import torusVideo from "./torus.webm";
+import interactVideo from "./interact.webm";
+
+Years ago I worked through most of [nand2tetris](https://www.nand2tetris.org/), building a computer up from NAND gates. What I never got to was the other direction, running something interesting on real hardware where every layer between the metal and the pixels is yours.
+
+This is that, on [Linux KVM](https://docs.kernel.org/virt/kvm/api.html). There are two programs. One is a hypervisor that talks to `/dev/kvm` and sets up a virtual machine. The other is a kernel that runs inside it, entered directly in 64-bit mode with no BIOS and no bootloader, so the first instruction the machine ever runs is ours. By the end it draws a spinning shaded torus, takes mouse and keyboard input, and runs an unmodified static Linux binary.
+
+<video controls autoplay loop muted playsinline>
+  <source src={torusVideo} type="video/webm" />
+</video>
+*One full revolution, recorded frame by frame out of guest memory. Software-rasterized in the guest with its own z-buffer and per-face lighting. No GPU, no graphics API, no libraries below it.*
+
+Everything here runs on a plain Fedora laptop. On Fedora `/dev/kvm` is world read-write by default, so the hypervisor is an ordinary user program with no privileges and no setup.
+
+## The smallest virtual machine
+
+KVM turns virtualization into a short conversation with the kernel. You open `/dev/kvm`, ask for a VM, give it some memory, and ask for a virtual CPU. The [kvm-ioctls](https://github.com/rust-vmm/kvm) crate wraps each of those in a method.
+
+<DiagramKvmMachine />
+
+Guest memory is just an ordinary `mmap` in the hypervisor. You hand its address to KVM, and from then on the guest's physical address 0 is the start of that region.
+
+<Excerpt source="src/content/posts/rust-kvm-os/code/vmm.rs" region="vm-setup" lang="rust" label="vmm/src/main.rs" href="https://github.com/filipkunc/rust-kvm-os/blob/235b708c2bdf3871fdfbf5e3f8a7418ee07d7cf1/vmm/src/main.rs#L425-L437" />
+
+That is the entire machine. What is missing is everything a physical CPU would inherit from firmware. The CPU comes up expecting 16-bit [real mode](https://en.wikipedia.org/wiki/Real_mode), with no page tables and no idea it should be running our code. On real hardware the BIOS and a bootloader spend thousands of lines climbing from there up to a modern 64-bit environment. Because we own the virtual CPU, we can skip all of it and just set the registers to the state we want.
+
+[Long mode](https://en.wikipedia.org/wiki/Long_mode), the modern 64-bit state, needs [page tables](https://wiki.osdev.org/Paging), so we write them into guest memory ourselves. Identity-mapping the first gigabyte, where physical address equals virtual address, takes exactly three pages. One top-level table points to one pointer table, which points to one directory of 512 entries covering two megabytes each.
+
+<Excerpt source="src/content/posts/rust-kvm-os/code/vmm.rs" region="page-tables" lang="rust" label="vmm/src/main.rs › identity map" href="https://github.com/filipkunc/rust-kvm-os/blob/235b708c2bdf3871fdfbf5e3f8a7418ee07d7cf1/vmm/src/main.rs#L99-L106" />
+
+Then we set the control registers to switch on paging and long mode, point them at those tables, and fill in the segment registers by hand. This is the reset sequence a bootloader normally performs, compressed into one struct we write before the CPU runs a single instruction.
+
+<Excerpt source="src/content/posts/rust-kvm-os/code/vmm.rs" region="sregs" lang="rust" label="vmm/src/main.rs › long-mode entry" href="https://github.com/filipkunc/rust-kvm-os/blob/235b708c2bdf3871fdfbf5e3f8a7418ee07d7cf1/vmm/src/main.rs#L180-L206" />
+
+We also set the SSE-enable bits here, so the guest can use floating point and vector instructions from its very first line without touching a control register. The instruction pointer goes to the kernel's entry, the stack pointer to a region we reserved, and the CPU is ready.
+
+Now we run it. `vcpu.run()` enters the guest and returns when the guest does something that needs us. A first kernel only does three such things. It writes bytes to a port as its serial console, asks to exit, or halts.
+
+<Excerpt source="src/content/posts/rust-kvm-os/code/vmm.rs" region="run-loop" lang="rust" label="vmm/src/main.rs › the run loop" href="https://github.com/filipkunc/rust-kvm-os/blob/235b708c2bdf3871fdfbf5e3f8a7418ee07d7cf1/vmm/src/main.rs#L217-L260" />
+
+If the guest ever faults with no handler installed, the fault escalates to a [triple fault](https://wiki.osdev.org/Triple_Fault), and KVM reports it as a shutdown. For a kernel with no exception handling yet, that is a free crash channel. Any bad memory access lands in that arm of the loop.
+
+## The kernel
+
+The guest is a `no_std` Rust program. No standard library, no operating system beneath it, panic set to abort. It talks to the outside world through the one device we agreed on, the serial port, by writing bytes to it with the `out` instruction.
+
+<Excerpt source="src/content/posts/rust-kvm-os/code/lib.rs" region="serial" lang="rust" label="kernel/src/lib.rs › serial" href="https://github.com/filipkunc/rust-kvm-os/blob/235b708c2bdf3871fdfbf5e3f8a7418ee07d7cf1/kernel/src/lib.rs#L10-L25" />
+
+Implementing `core::fmt::Write` on top of that one byte-at-a-time port gives us `writeln!` and everything that formats through it, which is the whole console. A first kernel is then just a `_start` that prints a line and exits:
+
+<Excerpt source="src/content/posts/rust-kvm-os/code/hello.rs" lang="rust" label="kernel/src/bin/hello.rs" href="https://github.com/filipkunc/rust-kvm-os/blob/235b708c2bdf3871fdfbf5e3f8a7418ee07d7cf1/kernel/src/bin/hello.rs" />
+
+```
+hello from ring 0
+sqrt(3*3 + 4*4) = 5
+[vmm] guest requested exit with code 0
+```
+
+The `sqrt` line is there to prove a point. It compiles to a real `sqrtss` instruction running on the CPU's floating-point unit, not a software emulation. That takes one piece of setup. Rust's bare-metal x86-64 target is soft-float by default, meaning it avoids the vector registers entirely, which is the safe choice for a kernel but slow for anything that does math. We want the opposite, so the kernel builds against a small custom target that turns SSE back on.
+
+<Excerpt source="src/content/posts/rust-kvm-os/code/target.json" lang="json" label="kernel/x86_64-kernel.json" href="https://github.com/filipkunc/rust-kvm-os/blob/235b708c2bdf3871fdfbf5e3f8a7418ee07d7cf1/kernel/x86_64-kernel.json" />
+
+A linker script places the kernel at a fixed address that the hypervisor's [ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) loader reads, and a two-line Cargo config builds the standard library from source against this target. With that, the guest is ordinary Rust. It has floats, arrays, iterators, and the borrow checker, just nothing underneath it.
+
+## A screen and a mouse
+
+A framebuffer is only a block of memory the display reads, so we make one. We pick a region of guest RAM and agree that it holds 640 by 480 pixels in the format the window expects, and the guest draws by writing pixels there. The hypervisor, which can see all of guest memory, copies that region into a desktop window every frame.
+
+The window and its event loop live on the hypervisor's main thread using [winit](https://github.com/rust-windowing/winit) and [softbuffer](https://github.com/rust-windowing/softbuffer), while the virtual CPU runs on its own thread. The two take turns. The guest draws a frame, the host displays it and collects input, and only then does the guest draw the next one. One port write is the whole handshake.
+
+<DiagramDoorbell />
+
+When the guest finishes a frame it writes to a port, which exits to the hypervisor. The host blits the framebuffer, fills a small mailbox in guest memory with the latest input and the current time, and lets the guest run again. Because the guest is stopped the entire time the host touches that shared memory, there is no lock and no race, just a struct the host writes while the guest is parked.
+
+<Excerpt source="src/content/posts/rust-kvm-os/code/vmm.rs" region="release" lang="rust" label="vmm/src/main.rs › hand off a frame" href="https://github.com/filipkunc/rust-kvm-os/blob/235b708c2bdf3871fdfbf5e3f8a7418ee07d7cf1/vmm/src/main.rs#L305-L325" />
+
+The input events themselves borrow their shape from Linux. Each is eight bytes of type, code, and value, the same layout the kernel's [evdev](https://docs.kernel.org/input/input.html) interface uses, and winit hands us real Linux key codes on Wayland, so the guest reads them with no translation.
+
+<Excerpt source="src/content/posts/rust-kvm-os/code/shared.rs" region="mailbox" lang="rust" label="shared/src/lib.rs › the mailbox" href="https://github.com/filipkunc/rust-kvm-os/blob/235b708c2bdf3871fdfbf5e3f8a7418ee07d7cf1/shared/src/lib.rs#L40-L73" />
+
+The guest side is a loop that reads the mailbox, applies the events, draws, and signals done. Here it is as a paint program, where the mouse leaves a trail and keys change the color.
+
+<Excerpt source="src/content/posts/rust-kvm-os/code/paint.rs" region="loop" lang="rust" label="kernel/src/bin/paint.rs › the frame loop" href="https://github.com/filipkunc/rust-kvm-os/blob/235b708c2bdf3871fdfbf5e3f8a7418ee07d7cf1/kernel/src/bin/paint.rs#L94-L124" />
+
+## A rasterizer
+
+With floats, a framebuffer, and input, the guest has everything a software renderer needs. The torus at the top is a mesh of triangles, projected to the screen and filled one pixel at a time.
+
+The fill step is the classic [edge-function rasterizer](https://fgiesen.wordpress.com/2013/02/08/triangle-rasterization-in-practice/). For each pixel it checks whether the point lies inside the triangle by testing three signed areas, and if so, interpolates depth to decide whether this triangle is nearer than whatever is already there. The depth buffer is a second array the size of the screen.
+
+<Excerpt source="src/content/posts/rust-kvm-os/code/torus.rs" region="raster" lang="rust" label="kernel/src/bin/torus.rs › fill_triangle" href="https://github.com/filipkunc/rust-kvm-os/blob/235b708c2bdf3871fdfbf5e3f8a7418ee07d7cf1/kernel/src/bin/torus.rs#L112-L143" />
+
+Everything around it is just as plain. The torus is built from two angles of sine and cosine, rotated by the camera, projected by dividing by depth, and each face is shaded by how much it points at the light. About two thousand triangles a frame, all in the guest, all on the CPU we set up by hand. Drag orbits the camera, the wheel zooms, space toggles the spin.
+
+<video controls autoplay loop muted playsinline>
+  <source src={interactVideo} type="video/webm" />
+</video>
+*Orbiting with the mouse. The window is the hypervisor, the pixels and the camera are the kernel's.*
+
+## Running a real Linux binary
+
+The last piece is the one that sounds hardest and turns out to be mechanical. A static Linux executable is self-contained, with no shared libraries and no dynamic linker. To run one, the kernel has to do what the Linux kernel does at `exec` time, and then answer the handful of system calls the program makes.
+
+The hypervisor drops the executable's bytes into guest memory. The kernel parses its ELF headers and copies each loadable segment to the address it wants, zeroing the gap that becomes uninitialized data.
+
+<Excerpt source="src/content/posts/rust-kvm-os/code/linux.rs" region="load" lang="rust" label="kernel/src/bin/linux.rs › load the program" href="https://github.com/filipkunc/rust-kvm-os/blob/235b708c2bdf3871fdfbf5e3f8a7418ee07d7cf1/kernel/src/bin/linux.rs#L65-L110" />
+
+Then it builds the stack the program expects to wake up on. Linux hands a new process its argument count, its arguments, its environment, and an [auxiliary vector](https://lwn.net/Articles/519085/) of key-value pairs describing the machine. A C library reads all of it before `main` runs, so we lay it out in the exact order.
+
+<Excerpt source="src/content/posts/rust-kvm-os/code/linux.rs" region="auxv" lang="rust" label="kernel/src/bin/linux.rs › the process stack" href="https://github.com/filipkunc/rust-kvm-os/blob/235b708c2bdf3871fdfbf5e3f8a7418ee07d7cf1/kernel/src/bin/linux.rs#L112-L141" />
+
+When the program runs a [`syscall`](https://www.felixcloutier.com/x86/syscall) instruction, the CPU jumps to an address we register in a [model-specific register](https://en.wikipedia.org/wiki/Model-specific_register). That handler is the only assembly in the whole project, about twenty lines. It saves the program's registers, switches to our own stack, calls a Rust function, and returns. It cannot use the usual `sysret`, because that would drop to user mode and the program is already running alongside the kernel in [ring 0](https://en.wikipedia.org/wiki/Protection_ring), so it returns with a plain jump.
+
+<Excerpt source="src/content/posts/rust-kvm-os/code/linux.rs" region="stub" lang="rust" label="kernel/src/bin/linux.rs › syscall entry" href="https://github.com/filipkunc/rust-kvm-os/blob/235b708c2bdf3871fdfbf5e3f8a7418ee07d7cf1/kernel/src/bin/linux.rs#L145-L172" />
+
+The Rust side is a `match` on the syscall number, and it is short because a small program asks for little. `write` sends its bytes to our serial console. `brk` and `mmap` hand back slices of a bump allocator. `arch_prctl` sets the thread-pointer register the C library needs. `exit_group` writes our exit port.
+
+<Excerpt source="src/content/posts/rust-kvm-os/code/linux.rs" region="handler" lang="rust" label="kernel/src/bin/linux.rs › the syscalls" href="https://github.com/filipkunc/rust-kvm-os/blob/235b708c2bdf3871fdfbf5e3f8a7418ee07d7cf1/kernel/src/bin/linux.rs#L189-L254" />
+
+The test program is plain C, compiled against [musl](https://musl.libc.org/) as a static binary. Nothing about it knows it is not running on Linux.
+
+<Excerpt source="src/content/posts/rust-kvm-os/code/hello.c" lang="c" label="programs/hello.c" href="https://github.com/filipkunc/rust-kvm-os/blob/235b708c2bdf3871fdfbf5e3f8a7418ee07d7cf1/programs/hello.c" />
+
+```
+hello from Linux userspace
+  1 squared is 1
+  2 squared is 4
+  3 squared is 9
+[kernel] program exited with 42
+```
+
+The `printf` calls reach `write`, which reaches our serial port. The return value from `main` becomes an `exit_group` that becomes our exit port, and the code propagates all the way back to the shell that launched the hypervisor.
+
+## Where this stops
+
+This is about as far as the easy road goes. The program runs in ring 0 with no memory protection, one process, no threads, no files. Each of those is a real project on its own. That gap is also why a hobby kernel that wants to run something like [Mesa](https://www.mesa3d.org/) for real OpenGL is a multi-year effort rather than a weekend one. It would mean implementing enough of the Linux ABI to satisfy a full C library and a pile of shared objects, not the two dozen syscalls a static hello world touches.
+
+But the shape of the thing is all here, and it is smaller than it sounds. A hypervisor that fits on a screen, a kernel with floats and a framebuffer, and a syscall layer thin enough to read in one sitting. Every layer between the metal and the pixels, and none of it a black box.
+
+The full code is at [github.com/filipkunc/rust-kvm-os](https://github.com/filipkunc/rust-kvm-os).
