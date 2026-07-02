@@ -56,3 +56,6 @@ scripts/flowfield/target/
 scripts/ast-explorer/target/
 !scripts/ast-explorer/dist/
 !scripts/ast-explorer/dist/oxc_wasm_web.wasm
+
+# Post research dossiers: working notes, never shipped
+research/
