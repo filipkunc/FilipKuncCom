@@ -276,6 +276,11 @@ const imageURL = new URL(image, Astro.site).href;
         border-collapse: collapse;
         margin: 1.25rem 0;
         font-size: 0.95em;
+        /* Wide tables scroll within themselves instead of stretching the page,
+           same as code blocks. */
+        display: block;
+        overflow-x: auto;
+        max-width: fit-content;
       }
       th, td {
         padding: 0.45rem 0.75rem;
