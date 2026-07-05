@@ -1,0 +1,287 @@
+---
+// Scrubbable replay of a captured load run. Six small-multiple panels drawn
+// from a capture.py JSON snapshot (1s Prometheus range data); one shared time
+// cursor across all panels, driven by pointer scrub or the play button.
+// Colors are the validated chart pair (see figure styles): orange = primary
+// series, blue = secondary.
+interface Props {
+  data: {
+    t0: number;
+    t1: number;
+    metrics: Record<string, [number, number][]>;
+  };
+}
+const { data } = Astro.props;
+
+// Time axis is relative to scenario start (t0), in seconds.
+const rel = (pts: [number, number][]) => pts.map(([t, v]) => [t - data.t0, v] as [number, number]);
+const kv = rel(data.metrics['vllm:kv_cache_usage_perc']).map(([t, v]) => [t, v * 100] as [number, number]);
+const running = rel(data.metrics['vllm:num_requests_running']);
+const waiting = rel(data.metrics['vllm:num_requests_waiting']);
+const gpuSm = rel(data.metrics['nvml_gpu_utilization_percent']);
+const gpuMem = rel(data.metrics['nvml_memory_controller_utilization_percent']);
+const power = rel(data.metrics['nvml_power_watts']);
+
+// Counters become deltas: preemptions as a 0-based running count, generated
+// tokens as a per-second rate.
+const preemptRaw = rel(data.metrics['vllm:num_preemptions_total']);
+const preempt = preemptRaw.map(([t, v]) => [t, v - preemptRaw[0][1]] as [number, number]);
+const genRaw = rel(data.metrics['vllm:generation_tokens_total']);
+const tokRate: [number, number][] = [];
+for (let i = 1; i < genRaw.length; i++) {
+  const dt = genRaw[i][0] - genRaw[i - 1][0];
+  if (dt > 0) tokRate.push([genRaw[i][0], Math.max(0, (genRaw[i][1] - genRaw[i - 1][1]) / dt)]);
+}
+
+const all = [kv, running, waiting, preempt, tokRate, gpuSm, gpuMem, power];
+const tMin = Math.min(...all.map((s) => s[0]?.[0] ?? 0));
+const tMax = Math.max(...all.map((s) => s[s.length - 1]?.[0] ?? 1));
+
+type Series = { name: string; pts: [number, number][]; cls: string; step?: boolean };
+type Panel = { title: string; max?: number; series: Series[] };
+const panels: Panel[] = [
+  { title: 'KV cache used, %', max: 100, series: [{ name: 'kv', pts: kv, cls: 'c1' }] },
+  {
+    title: 'requests',
+    series: [
+      { name: 'running', pts: running, cls: 'c1' },
+      { name: 'waiting', pts: waiting, cls: 'c2' },
+    ],
+  },
+  { title: 'preemptions since start', series: [{ name: 'preempted', pts: preempt, cls: 'c1', step: true }] },
+  { title: 'output tokens, tok/s', series: [{ name: 'tok/s', pts: tokRate, cls: 'c1' }] },
+  {
+    title: 'GPU busy, %', max: 100,
+    series: [
+      { name: 'compute (SM)', pts: gpuSm, cls: 'c1' },
+      { name: 'memory bus', pts: gpuMem, cls: 'c2' },
+    ],
+  },
+  { title: 'GPU power, W', series: [{ name: 'power', pts: power, cls: 'c1' }] },
+];
+
+// Round a data max up to a clean axis max so tick labels read well.
+function niceMax(v: number): number {
+  const pow = 10 ** Math.floor(Math.log10(v));
+  const m = v / pow;
+  const f = [1, 1.2, 1.6, 2, 2.4, 3, 4, 5, 6, 8, 10].find((c) => m <= c) ?? 10;
+  return f * pow;
+}
+const panelMax = (p: Panel) =>
+  p.max ?? niceMax(Math.max(1, ...p.series.flatMap((q) => q.pts.map(([, v]) => v))) * 1.02);
+
+// Geometry: 2 x 3 grid inside one responsive SVG. Each panel keeps a left
+// gutter for its y-axis labels.
+const COLS = 2, PW = 310, PH = 126, GX = 34, GY = 36, MX = 12, MY = 10, YGUT = 34;
+const W = MX * 2 + COLS * PW + GX;
+const ROWS = Math.ceil(panels.length / COLS);
+const H = MY + ROWS * (PH + GY) - 14;
+const PLOT_TOP = 26, PLOT_BOT = PH - 14, plotW = PW - YGUT;
+
+function panelPos(i: number) {
+  return { px: MX + (i % COLS) * (PW + GX), py: MY + Math.floor(i / COLS) * (PH + GY) };
+}
+const x = (t: number) => YGUT + ((t - tMin) / (tMax - tMin)) * plotW;
+const yOf = (p: Panel, v: number) => PLOT_BOT - (v / panelMax(p)) * (PLOT_BOT - PLOT_TOP);
+function poly(p: Panel, s: Series): string {
+  const out: string[] = [];
+  s.pts.forEach(([t, v], i) => {
+    if (s.step && i > 0) out.push(`${x(t).toFixed(1)},${yOf(p, s.pts[i - 1][1]).toFixed(1)}`);
+    out.push(`${x(t).toFixed(1)},${yOf(p, v).toFixed(1)}`);
+  });
+  return out.join(' ');
+}
+const fmtTick = (v: number) => (v >= 1000 ? `${v / 1000}k` : String(Math.round(v * 10) / 10));
+const yTicks = (p: Panel) => [0, panelMax(p) / 2, panelMax(p)];
+const xTicks = Array.from({ length: Math.floor((tMax - Math.max(0, tMin)) / 10) + 1 }, (_, i) => i * 10);
+
+// Readout values the client script interpolates while scrubbing. Each field
+// reserves the width of its widest value so the line never shifts.
+const mkField = (label: string, unit: string, pts: [number, number][]) => ({
+  label, unit, pts,
+  pad: Math.max(...pts.map(([, v]) => `${Math.round(v)}${unit}`.length)),
+});
+const clientData = {
+  tMin, tMax,
+  geo: { mx: MX, gut: YGUT, plotW, stride: PW + GX },
+  fields: [
+    mkField('KV', '%', kv),
+    mkField('running', '', running),
+    mkField('waiting', '', waiting),
+    mkField('preempted', '', preempt),
+    mkField('tok/s', '', tokRate),
+    mkField('SM', '%', gpuSm),
+    mkField('power', ' W', power),
+  ],
+};
+---
+
+<figure class="diagram metrics-replay">
+  <svg viewBox={`0 0 ${W} ${H}`} role="img"
+    aria-label="Six charts of one overload run: KV cache use rises to 100 percent, requests queue and get preempted, token throughput saturates, and the GPU sits at full utilization. Drag to inspect any moment.">
+    {panels.map((p, i) => {
+      const { px, py } = panelPos(i);
+      const bottomRow = Math.floor(i / COLS) === ROWS - 1;
+      return (
+        <g transform={`translate(${px} ${py})`}>
+          <text class="mr-title" x={YGUT} y="12">{p.title}</text>
+          {p.series.length > 1 && p.series.map((s, si) => (
+            <g transform={`translate(${PW - p.series.length * 94 + si * 94} 4)`}>
+              <rect class={`mr-swatch ${s.cls}`} x="0" y="1" width="10" height="4" rx="2" />
+              <text class="mr-legend" x="14" y="7">{s.name}</text>
+            </g>
+          ))}
+          {yTicks(p).map((v) => (
+            <>
+              <line class={v === 0 ? 'mr-base' : 'mr-grid'} x1={YGUT} y1={yOf(p, v)} x2={PW} y2={yOf(p, v)} />
+              <text class="mr-tick" x={YGUT - 5} y={yOf(p, v) + 3} text-anchor="end">{fmtTick(v)}</text>
+            </>
+          ))}
+          {xTicks.map((t) => (
+            <>
+              <line class="mr-grid" x1={x(t)} y1={PLOT_TOP} x2={x(t)} y2={PLOT_BOT} />
+              {bottomRow && (
+                <text class="mr-tick" x={x(t)} y={PLOT_BOT + 12} text-anchor="middle">
+                  {t === xTicks[xTicks.length - 1] ? `${t}s` : t}
+                </text>
+              )}
+            </>
+          ))}
+          {p.series.map((s) => (
+            <polyline class={`mr-line ${s.cls}`} points={poly(p, s)} />
+          ))}
+          <line class="mr-cursor" x1={YGUT} y1={PLOT_TOP - 8} x2={YGUT} y2={PLOT_BOT} />
+        </g>
+      );
+    })}
+  </svg>
+  <div class="diag-controls">
+    <button type="button" class="diag-play" aria-pressed="false">▶ replay</button>
+    <span class="diag-hint">drag across a chart to inspect</span>
+  </div>
+  <output class="mr-readout" aria-live="off">
+    <span class="mr-field"><span class="mr-fval mr-time" style="min-width:5ch">t+0s</span></span>
+    {clientData.fields.map((f, i) => (
+      <span class="mr-field">
+        <span class="mr-flabel">{f.label}</span>
+        <span class="mr-fval" data-f={i} style={`min-width:${f.pad}ch`}>–</span>
+      </span>
+    ))}
+  </output>
+  <figcaption><slot /></figcaption>
+  <script type="application/json" class="mr-data" set:html={JSON.stringify(clientData)} />
+</figure>
+
+<style define:vars={{ plotW: PW, cursorTop: PLOT_TOP - 8, cursorBot: PLOT_BOT }}>
+  figure.metrics-replay {
+    --ch1: #f05a1e;
+    --ch2: #3f8edd;
+  }
+  :global(:root[data-theme='light']) figure.metrics-replay { --ch1: #c34a16; --ch2: #1f6fc4; }
+  @media (prefers-color-scheme: light) {
+    :global(:root:not([data-theme])) figure.metrics-replay { --ch1: #c34a16; --ch2: #1f6fc4; }
+  }
+  figure.metrics-replay svg { cursor: crosshair; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+  .mr-title { fill: var(--fg); font: 600 12px ui-sans-serif, system-ui, sans-serif; }
+  .mr-legend, .mr-tick { fill: var(--muted); font: 10px ui-sans-serif, system-ui, sans-serif; }
+  .mr-tick { font-variant-numeric: tabular-nums; }
+  .mr-base { stroke: var(--rule); stroke-width: 1; }
+  .mr-grid { stroke: var(--rule); stroke-width: 1; opacity: 0.55; stroke-dasharray: 2 4; }
+  .mr-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .mr-line.c1 { stroke: var(--ch1); }
+  .mr-line.c2 { stroke: var(--ch2); }
+  .mr-swatch.c1 { fill: var(--ch1); }
+  .mr-swatch.c2 { fill: var(--ch2); }
+  .mr-cursor { stroke: var(--fg); stroke-width: 1; opacity: 0; }
+  figure.metrics-replay.scrubbed .mr-cursor { opacity: 0.55; }
+  .diag-controls { display: flex; align-items: center; gap: 0.75rem; justify-content: center; margin-top: 0.5rem; flex-wrap: wrap; }
+  .diag-play {
+    font: inherit; font-size: 0.8rem; padding: 0.2rem 0.7rem; cursor: pointer;
+    color: var(--fg); background: transparent; border: 1px solid var(--rule); border-radius: 999px;
+  }
+  .diag-play[aria-pressed='true'] { background: color-mix(in srgb, var(--accent) 18%, transparent); border-color: var(--accent); }
+  .mr-readout {
+    display: flex; flex-wrap: wrap; justify-content: center; column-gap: 1rem; row-gap: 0.1rem;
+    margin-top: 0.35rem;
+    font: 0.78rem ui-monospace, monospace; font-variant-numeric: tabular-nums;
+  }
+  .mr-field { white-space: nowrap; }
+  .mr-flabel { color: var(--muted); margin-right: 0.4ch; }
+  .mr-fval { display: inline-block; text-align: right; color: var(--fg); }
+  .diag-hint { font-size: 0.78rem; color: var(--muted); }
+</style>
+
+<script>
+  function setup(fig: HTMLElement) {
+    const svg = fig.querySelector<SVGSVGElement>('svg')!;
+    const cursors = [...fig.querySelectorAll<SVGLineElement>('.mr-cursor')];
+    const btn = fig.querySelector<HTMLButtonElement>('.diag-play')!;
+    const timeEl = fig.querySelector<HTMLElement>('.mr-time')!;
+    const valEls = [...fig.querySelectorAll<HTMLElement>('.mr-fval[data-f]')];
+    const data = JSON.parse(fig.querySelector('.mr-data')!.textContent!) as {
+      tMin: number; tMax: number;
+      geo: { mx: number; gut: number; plotW: number; stride: number };
+      fields: { label: string; unit: string; pts: [number, number][]; pad: number }[];
+    };
+    const { mx, gut, plotW, stride } = data.geo;
+    let raf = 0;
+
+    const at = (pts: [number, number][], t: number) => {
+      let v = pts[0]?.[1] ?? 0;
+      for (const [pt, pv] of pts) { if (pt <= t) v = pv; else break; }
+      return v;
+    };
+
+    function show(t: number) {
+      t = Math.max(data.tMin, Math.min(data.tMax, t));
+      fig.classList.add('scrubbed');
+      const cx = gut + ((t - data.tMin) / (data.tMax - data.tMin)) * plotW;
+      for (const c of cursors) { c.setAttribute('x1', String(cx)); c.setAttribute('x2', String(cx)); }
+      timeEl.textContent = `t+${Math.max(0, t).toFixed(0)}s`;
+      data.fields.forEach((f, i) => {
+        valEls[i].textContent = `${Math.round(at(f.pts, t))}${f.unit}`;
+      });
+    }
+
+    function stop() {
+      cancelAnimationFrame(raf); raf = 0;
+      btn.setAttribute('aria-pressed', 'false'); btn.textContent = '▶ replay';
+    }
+
+    // Pointer x anywhere on the svg maps to time across every panel's plot.
+    // Panels share x geometry, so use the svg's own coordinate space.
+    function scrub(ev: PointerEvent) {
+      const pt = new DOMPoint(ev.clientX, ev.clientY).matrixTransform(svg.getScreenCTM()!.inverse());
+      const local = (((pt.x - mx) % stride) + stride) % stride;
+      const inPlot = Math.max(0, Math.min(local - gut, plotW));
+      show(data.tMin + (inPlot / plotW) * (data.tMax - data.tMin));
+    }
+    svg.addEventListener('pointerdown', (ev) => {
+      stop();
+      svg.setPointerCapture(ev.pointerId);
+      scrub(ev);
+    });
+    svg.addEventListener('pointermove', (ev) => { if (ev.buttons) scrub(ev); });
+
+    // Replay sweeps the cursor across the whole run in ~10s, once.
+    btn.addEventListener('click', () => {
+      if (raf) { stop(); return; }
+      btn.setAttribute('aria-pressed', 'true'); btn.textContent = '❚❚ pause';
+      const dur = 10000;
+      const begin = performance.now();
+      const frame = (now: number) => {
+        const f = (now - begin) / dur;
+        show(data.tMin + f * (data.tMax - data.tMin));
+        if (f < 1) raf = requestAnimationFrame(frame);
+        else stop();
+      };
+      raf = requestAnimationFrame(frame);
+    });
+
+    // Populate the readout with the run's starting values; the cursor itself
+    // stays hidden until the first scrub.
+    show(Math.max(0, data.tMin));
+    fig.classList.remove('scrubbed');
+  }
+  document.querySelectorAll<HTMLElement>('figure.metrics-replay').forEach(setup);
+</script>

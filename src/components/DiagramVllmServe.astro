@@ -1,0 +1,85 @@
+---
+// How vLLM serves under load: the scheduler admits requests from the waiting
+// queue into the running batch, every generated token takes one KV cache
+// block, and when the pool runs out a running request is preempted back to
+// the queue. Static SVG, themed by the shared figure.diagram CSS.
+const rowTokens = [9, 6, 11, 4];
+const POOL_COLS = 18, POOL_USED = 33;
+---
+
+<figure class="diagram vllm-serve">
+  <svg viewBox="0 0 680 300" role="img"
+    aria-label="Requests enter a waiting queue. The scheduler admits them into the running batch while KV cache blocks fit. Each running request holds a row of KV blocks that grows by one block per generated token, all drawn from one shared pool of about 33k tokens. When the pool is full, a running request is preempted back to the waiting queue and recomputes its blocks later.">
+    <defs>
+      <marker id="vs-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" />
+      </marker>
+    </defs>
+
+    <!-- incoming requests -->
+    <text class="vs-tag" x="8" y="78">requests</text>
+    <line class="edge" x1="8" y1="95" x2="36" y2="95" marker-end="url(#vs-arrow)" />
+    <line class="edge" x1="8" y1="107" x2="36" y2="107" marker-end="url(#vs-arrow)" />
+    <line class="edge" x1="8" y1="119" x2="36" y2="119" marker-end="url(#vs-arrow)" />
+
+    <!-- waiting queue -->
+    <g class="node">
+      <rect class="box" x="40" y="80" width="150" height="54" rx="9" />
+      <text class="box-label" x="115" y="111">waiting queue</text>
+    </g>
+
+    <!-- admit -->
+    <line class="edge" x1="190" y1="107" x2="298" y2="107" marker-end="url(#vs-arrow)" />
+    <text class="edge-label" x="245" y="99" text-anchor="middle">admit</text>
+
+    <!-- running batch: one row of KV blocks per request -->
+    <g class="node">
+      <rect class="box" x="300" y="40" width="340" height="140" rx="9" />
+      <text class="box-label" x="470" y="60">running batch</text>
+      {rowTokens.map((count, r) => (
+        <>
+          {Array.from({ length: count }, (_, i) => (
+            <rect class="vs-kv" x={315 + i * 15} y={74 + r * 25} width="12" height="12" rx="2" />
+          ))}
+          <text class="vs-grow" x={315 + count * 15 + 4} y={84 + r * 25}>+</text>
+        </>
+      ))}
+    </g>
+
+    <!-- preempt loop -->
+    <path class="edge vs-preempt" d="M 300 160 H 115 V 138" marker-end="url(#vs-arrow)" />
+    <text class="edge-label" x="207" y="177" text-anchor="middle">cache full → preempt</text>
+    <text class="edge-label" x="207" y="191" text-anchor="middle">rejoins later, recomputes</text>
+
+    <!-- blocks come from the shared pool -->
+    <line class="edge" x1="470" y1="180" x2="470" y2="208" marker-end="url(#vs-arrow)" />
+    <text class="edge-label" x="480" y="199">one block per generated token</text>
+
+    <!-- KV cache pool -->
+    <g class="node">
+      <rect class="box" x="300" y="212" width="340" height="76" rx="9" />
+      <text class="box-label" x="470" y="230">KV cache · ~33k tokens</text>
+      {Array.from({ length: POOL_COLS * 2 }, (_, i) => (
+        <rect
+          class={`vs-kv ${i < POOL_USED ? '' : 'vs-free'}`}
+          x={310 + (i % POOL_COLS) * 18}
+          y={i < POOL_COLS ? 240 : 258}
+          width="14" height="14" rx="2"
+        />
+      ))}
+    </g>
+  </svg>
+  <figcaption>
+    One decode step reads the weights once and advances every running request by one token,
+    so each step also takes one block per request from the pool. The scheduler's whole job
+    is deciding who runs when the pool cannot hold everyone.
+  </figcaption>
+</figure>
+
+<style>
+  figure.vllm-serve .vs-tag { fill: var(--muted); font: 12px ui-sans-serif, system-ui, sans-serif; }
+  figure.vllm-serve .vs-kv { fill: var(--accent); opacity: 0.75; }
+  figure.vllm-serve .vs-kv.vs-free { fill: none; stroke: var(--rule); stroke-width: 1.5; opacity: 1; }
+  figure.vllm-serve .vs-grow { fill: var(--muted); font: 600 13px ui-monospace, monospace; }
+  figure.vllm-serve .vs-preempt { stroke-dasharray: 5 4; }
+</style>

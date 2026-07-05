@@ -1,0 +1,114 @@
+{
+  "title": "vLLM serving",
+  "uid": "vllm-serving",
+  "timezone": "browser",
+  "refresh": "5s",
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+    {
+      "id": 1, "type": "timeseries", "title": "TTFT quantiles",
+      "gridPos": { "x": 0, "y": 0, "w": 8, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum by (le) (rate(vllm:time_to_first_token_seconds_bucket[$__rate_interval])))", "legendFormat": "p50" },
+        { "expr": "histogram_quantile(0.90, sum by (le) (rate(vllm:time_to_first_token_seconds_bucket[$__rate_interval])))", "legendFormat": "p90" },
+        { "expr": "histogram_quantile(0.99, sum by (le) (rate(vllm:time_to_first_token_seconds_bucket[$__rate_interval])))", "legendFormat": "p99" }
+      ]
+    },
+    {
+      "id": 2, "type": "timeseries", "title": "Inter-token latency quantiles",
+      "gridPos": { "x": 8, "y": 0, "w": 8, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum by (le) (rate(vllm:inter_token_latency_seconds_bucket[$__rate_interval])))", "legendFormat": "p50" },
+        { "expr": "histogram_quantile(0.90, sum by (le) (rate(vllm:inter_token_latency_seconds_bucket[$__rate_interval])))", "legendFormat": "p90" }
+      ]
+    },
+    {
+      "id": 3, "type": "timeseries", "title": "Where request time goes (p90)",
+      "gridPos": { "x": 16, "y": 0, "w": 8, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [
+        { "expr": "histogram_quantile(0.90, sum by (le) (rate(vllm:request_queue_time_seconds_bucket[$__rate_interval])))", "legendFormat": "queue" },
+        { "expr": "histogram_quantile(0.90, sum by (le) (rate(vllm:request_prefill_time_seconds_bucket[$__rate_interval])))", "legendFormat": "prefill" },
+        { "expr": "histogram_quantile(0.90, sum by (le) (rate(vllm:request_decode_time_seconds_bucket[$__rate_interval])))", "legendFormat": "decode" },
+        { "expr": "histogram_quantile(0.90, sum by (le) (rate(vllm:e2e_request_latency_seconds_bucket[$__rate_interval])))", "legendFormat": "e2e" }
+      ]
+    },
+    {
+      "id": 4, "type": "timeseries", "title": "Scheduler: running vs waiting",
+      "gridPos": { "x": 0, "y": 8, "w": 8, "h": 8 },
+      "targets": [
+        { "expr": "vllm:num_requests_running", "legendFormat": "running" },
+        { "expr": "vllm:num_requests_waiting", "legendFormat": "waiting" },
+        { "expr": "vllm:num_requests_waiting_by_reason", "legendFormat": "waiting: {{reason}}" }
+      ]
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "KV cache usage",
+      "gridPos": { "x": 8, "y": 8, "w": 8, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "max": 1 } },
+      "targets": [
+        { "expr": "vllm:kv_cache_usage_perc", "legendFormat": "kv cache" }
+      ]
+    },
+    {
+      "id": 6, "type": "timeseries", "title": "Preemptions",
+      "gridPos": { "x": 16, "y": 8, "w": 8, "h": 8 },
+      "targets": [
+        { "expr": "increase(vllm:num_preemptions_total[1m])", "legendFormat": "preemptions/min" }
+      ]
+    },
+    {
+      "id": 7, "type": "timeseries", "title": "Token throughput",
+      "gridPos": { "x": 0, "y": 16, "w": 8, "h": 8 },
+      "targets": [
+        { "expr": "rate(vllm:prompt_tokens_total[$__rate_interval])", "legendFormat": "prompt tok/s" },
+        { "expr": "rate(vllm:generation_tokens_total[$__rate_interval])", "legendFormat": "generation tok/s" }
+      ]
+    },
+    {
+      "id": 8, "type": "timeseries", "title": "Estimated FLOPs and memory traffic",
+      "gridPos": { "x": 8, "y": 16, "w": 8, "h": 8 },
+      "targets": [
+        { "expr": "rate(vllm:estimated_flops_per_gpu_total[$__rate_interval])", "legendFormat": "FLOP/s" },
+        { "expr": "rate(vllm:estimated_read_bytes_per_gpu_total[$__rate_interval])", "legendFormat": "read B/s" },
+        { "expr": "rate(vllm:estimated_write_bytes_per_gpu_total[$__rate_interval])", "legendFormat": "write B/s" }
+      ]
+    },
+    {
+      "id": 9, "type": "timeseries", "title": "Prefix cache hit rate",
+      "gridPos": { "x": 16, "y": 16, "w": 8, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "max": 1 } },
+      "targets": [
+        { "expr": "rate(vllm:prefix_cache_hits_total[$__rate_interval]) / rate(vllm:prefix_cache_queries_total[$__rate_interval])", "legendFormat": "hit rate" }
+      ]
+    },
+    {
+      "id": 10, "type": "timeseries", "title": "GPU utilization",
+      "gridPos": { "x": 0, "y": 24, "w": 8, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "percent", "max": 100 } },
+      "targets": [
+        { "expr": "nvml_gpu_utilization_percent", "legendFormat": "SM" },
+        { "expr": "nvml_memory_controller_utilization_percent", "legendFormat": "memory controller" }
+      ]
+    },
+    {
+      "id": 11, "type": "timeseries", "title": "GPU memory",
+      "gridPos": { "x": 8, "y": 24, "w": 8, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "bytes" } },
+      "targets": [
+        { "expr": "nvml_memory_used_bytes", "legendFormat": "used" },
+        { "expr": "nvml_memory_total_bytes", "legendFormat": "total" }
+      ]
+    },
+    {
+      "id": 12, "type": "timeseries", "title": "GPU power / temperature",
+      "gridPos": { "x": 16, "y": 24, "w": 8, "h": 8 },
+      "targets": [
+        { "expr": "nvml_power_watts", "legendFormat": "watts" },
+        { "expr": "nvml_temperature_celsius", "legendFormat": "celsius" }
+      ]
+    }
+  ]
+}

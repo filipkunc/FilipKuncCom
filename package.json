@@ -35,6 +35,7 @@
     "@types/react-dom": "^19.2.3",
     "@webgpu/types": "^0.1.70",
     "astro": "^6.3.0",
+    "marked": "^18.0.5",
     "shiki": "^4.2.0",
     "typescript": "^6.0.0",
     "yaml": "^2.9.0"

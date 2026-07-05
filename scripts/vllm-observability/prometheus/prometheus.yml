@@ -1,0 +1,16 @@
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  # 1s scrape so captured replays have per-second resolution
+  - job_name: vllm
+    metrics_path: /metrics
+    scrape_interval: 1s
+    static_configs:
+      # vLLM runs natively on the host; host.containers.internal is podman's host alias
+      - targets: ["host.containers.internal:8000"]
+
+  - job_name: gpu
+    scrape_interval: 1s
+    static_configs:
+      - targets: ["host.containers.internal:9835"]

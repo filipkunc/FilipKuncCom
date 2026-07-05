@@ -38,6 +38,12 @@ scripts/collab-board/target
 # the meshmaker post excerpts C++/TS snippets mirrored from the MeshMaker repo
 !scripts/meshmaker
 !scripts/meshmaker/**
+# the llm-serving-observability post reads compose.yaml, serve.sh,
+# prometheus.yml and agent.py excerpts from this workspace at build time
+# (.venv and capture output are local-only)
+!scripts/vllm-observability
+!scripts/vllm-observability/**
+scripts/vllm-observability/.venv
 README.md
 *.md
 .dockerignore

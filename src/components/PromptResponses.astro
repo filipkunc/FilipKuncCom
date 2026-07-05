@@ -1,0 +1,116 @@
+---
+// Pick a load-generator prompt, read the model's actual response. Panels are
+// server-rendered markdown (thinking collapsed by default); the select only
+// swaps visibility. Data comes from capture_prompts.py: one unloaded request
+// per prompt, same shape as the load run.
+import { renderMd } from '../lib/md';
+
+interface Item {
+  prompt: string;
+  thinking: string;
+  answer: string;
+  completion_tokens: number;
+  finish_reason: string;
+}
+interface Props {
+  items: Item[];
+}
+const { items } = Astro.props;
+
+const rendered = await Promise.all(
+  items.map(async (it) => ({
+    ...it,
+    thinkingHtml: it.thinking ? await renderMd(it.thinking) : '',
+    answerHtml: it.answer ? await renderMd(it.answer) : '',
+  }))
+);
+---
+
+<figure class="diagram prompt-responses">
+  <details class="pr-wrap">
+    <summary class="pr-summary">the eight prompts and what came back</summary>
+    <label class="pr-label">
+      prompt
+      <select class="pr-select">
+        {rendered.map((it, i) => (
+          <option value={i}>{it.prompt}</option>
+        ))}
+      </select>
+    </label>
+    {rendered.map((it, i) => (
+      <div class="pr-item" data-item={i} hidden={i !== 0}>
+        <p class="pr-stats">
+          {it.completion_tokens} completion tokens ·{' '}
+          {it.finish_reason === 'length' ? 'hit the 1024 token cap' : 'finished on its own'}
+        </p>
+        {it.thinkingHtml && (
+          <details class="pr-thinking">
+            <summary>thinking</summary>
+            <div class="pr-md" set:html={it.thinkingHtml} />
+          </details>
+        )}
+        {it.answerHtml
+          ? <div class="pr-md" set:html={it.answerHtml} />
+          : <p class="pr-none">No answer. The whole token budget went to thinking.</p>}
+      </div>
+    ))}
+  </details>
+  <figcaption><slot /></figcaption>
+</figure>
+
+<style>
+  figure.prompt-responses { text-align: left; }
+  .pr-summary {
+    cursor: pointer; text-align: center; font-size: 0.85rem; color: var(--muted);
+    padding: 0.45rem 0.9rem; border: 1px solid var(--rule); border-radius: 999px;
+    width: fit-content; margin: 0 auto; list-style-position: inside;
+  }
+  .pr-wrap[open] .pr-summary { margin-bottom: 0.7rem; color: var(--fg); border-color: var(--accent); }
+  .pr-label {
+    display: flex; align-items: center; gap: 0.6rem; justify-content: center;
+    font-size: 0.8rem; color: var(--muted);
+  }
+  .pr-select {
+    font: inherit; font-size: 0.85rem; color: var(--fg);
+    background: var(--bg); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 0.3rem 0.5rem; max-width: 100%;
+  }
+  .pr-item {
+    margin-top: 0.7rem; padding: 0.7rem 0.9rem; font-size: 0.85rem;
+    border: 1px solid var(--rule); border-radius: 8px;
+  }
+  .pr-item[hidden] { display: none; }
+  .pr-stats { margin: 0 0 0.4rem; font: 0.75rem ui-monospace, monospace; color: var(--muted); }
+  .pr-thinking { margin: 0.4rem 0; }
+  .pr-thinking summary {
+    cursor: pointer; font-size: 0.72rem; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--muted);
+  }
+  .pr-none { color: var(--muted); font-style: italic; }
+  .pr-md :global(p) { margin: 0.4rem 0; }
+  .pr-md :global(pre) {
+    padding: 0.6rem 0.8rem; border: 1px solid var(--rule); border-radius: 6px;
+    font-size: 0.8rem; overflow-x: auto;
+  }
+  .pr-md :global(h1), .pr-md :global(h2), .pr-md :global(h3), .pr-md :global(h4) {
+    font-size: 0.95em; margin: 0.7rem 0 0.3rem;
+  }
+  .pr-md :global(table) {
+    display: block; overflow-x: auto; border-collapse: collapse;
+    font-size: 0.8rem; margin: 0.5rem 0;
+  }
+  .pr-md :global(th), .pr-md :global(td) {
+    border: 1px solid var(--rule); padding: 0.25rem 0.6rem; text-align: left;
+  }
+  .pr-md :global(th) { color: var(--muted); font-weight: 600; }
+</style>
+
+<script>
+  for (const fig of document.querySelectorAll<HTMLElement>('figure.prompt-responses')) {
+    const select = fig.querySelector<HTMLSelectElement>('.pr-select')!;
+    const panels = [...fig.querySelectorAll<HTMLElement>('.pr-item')];
+    select.addEventListener('change', () => {
+      for (const p of panels) p.hidden = p.dataset.item !== select.value;
+    });
+  }
+</script>

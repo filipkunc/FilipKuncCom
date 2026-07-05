@@ -1,0 +1,135 @@
+---
+title: "LLM serving observability from scratch"
+description: "vLLM, Prometheus, Grafana and Jaeger on one desktop GPU: replaying an overload run and tracing a tool-calling agent down to the code it ran."
+pubDate: 2026-07-05
+tags: ["llm", "vllm", "observability", "opentelemetry"]
+draft: false
+og:
+  kind: screenshot
+  src: og-trace.png
+---
+
+import CodeFile from '../../../components/CodeFile.astro';
+import DiagramVllmServe from '../../../components/DiagramVllmServe.astro';
+import Footnotes from '../../../components/Footnotes.astro';
+import PromptResponses from '../../../components/PromptResponses.astro';
+import promptResponses from './prompt-responses.json';
+import { readSource, sourceUrl, locateRegion } from '../../../lib/snippets';
+
+export const WS = 'scripts/vllm-observability';
+export const composeSrc = readSource(`${WS}/compose.yaml`);
+export const promSrc = readSource(`${WS}/prometheus/prometheus.yml`);
+export const serveSrc = readSource(`${WS}/serve.sh`);
+export const sandbox = locateRegion(readSource(`${WS}/agent.py`), 'sandbox');
+export const loadRun = '$ ' + overload.cmd.join(' ') + '\n' + overload.stdout.trim();
+import MetricsReplay from '../../../components/MetricsReplay.astro';
+import TraceWaterfall from '../../../components/TraceWaterfall.astro';
+import overload from './overload.json';
+import agent from './agent.json';
+
+<Footnotes />
+
+An OpenAI-compatible endpoint looks the same whether it is healthy or seconds from falling over. I wanted to see the inside, so I put [vLLM](https://docs.vllm.ai/) on my desktop's RTX 5070 Ti, pointed [Prometheus](https://prometheus.io/) at its metrics, sent its [OpenTelemetry](https://opentelemetry.io/) traces to [Jaeger](https://www.jaegertracing.io/), and pushed until the scheduler had to make decisions. Everything below is captured data from those runs, rendered from committed JSON, no dashboard screenshots. The code blocks are read from the actual files at build time, and the whole setup lives in [scripts/vllm-observability](https://github.com/filipkunc/FilipKuncCom/tree/main/scripts/vllm-observability) if you want to run it yourself.
+
+## The stack
+
+The observability side is three containers, no GPU needed, so rootless podman is enough.
+
+<CodeFile code={composeSrc} lang="yaml" filename="compose.yaml" href={sourceUrl(`${WS}/compose.yaml`)} />
+
+vLLM runs natively on the host and Prometheus reaches it through podman's host alias.
+
+<CodeFile code={promSrc} lang="yaml" filename="prometheus/prometheus.yml" href={sourceUrl(`${WS}/prometheus/prometheus.yml`)} />
+
+One command serves [the model](https://huggingface.co/unsloth/qwen3.5-4b), exposes `/metrics`, ships traces, and enables tool calls.
+
+<CodeFile code={serveSrc} lang="sh" filename="serve.sh" href={sourceUrl(`${WS}/serve.sh`)} />
+
+Getting an 8 GB model onto a 16 GB desktop card took three failed startups, and three of those flags are the scar tissue: the compiler override feeds [FlashInfer](https://github.com/flashinfer-ai/flashinfer)'s kernel JIT,[^nvcc] image inputs are off because profiling the vision encoder OOMs the card,[^vl] and the memory target stays at 0.7 to leave room for the desktop itself.[^vram] Without `OTEL_SERVICE_NAME`, traces land in Jaeger as `unknown_service`.
+
+GPU metrics come from a 20-line [nvidia-ml-py](https://pypi.org/project/nvidia-ml-py/) exporter instead of [DCGM](https://developer.nvidia.com/dcgm), which would want the GPU-in-container setup this machine does not have.
+
+## Serving 32 requests at once on one GPU
+
+Every request being generated keeps its attention state in GPU memory, the [KV cache](https://arxiv.org/abs/2309.06180), and that state grows by one entry per generated token. After the weights take their 8 GB, this card has room for about 33k tokens of it.
+
+<DiagramVllmServe />
+
+So 64 requests at concurrency 32, each generating up to 1024 tokens, cannot fit. At full depth the batch wants 32 × 1k, which is the entire cache.
+
+The requests themselves are nothing special, and that is deliberate. The load generator round-robins eight short programming questions as chat completions, each allowed up to 1024 tokens. These are the real responses, captured one at a time on an idle server:
+
+<PromptResponses items={promptResponses}>
+  Five of the eight hit the 1024 token cap and the shortest still took 454 tokens.
+  A reasoning model thinks long by default, and that is exactly what fills the KV cache.
+</PromptResponses>
+
+The load generator streams these and measures the [two standard serving metrics](https://docs.nvidia.com/nim/benchmarking/llm/latest/metrics.html) per request. TTFT, time to first token, is how long until the first token arrives. TPOT, time per output token, is how fast tokens stream after that.
+
+<CodeFile code={loadRun} lang="text" filename="the captured run · overload.json"
+  href={sourceUrl('src/content/posts/llm-serving-observability/overload.json')} />
+
+Note `64 ok, 0 failed`. Overloading a serving stack does not produce errors, it produces latency. The server admits what fits, queues the rest, and every request eventually completes. The cost shows up in TTFT, which is 147ms at the median but 5.3 seconds at p99, while TPOT stays flat at 17ms. The timeline shows why. Drag across any chart.
+
+<MetricsReplay data={overload}>
+  One overload run, captured from Prometheus at 1s resolution. Drag to inspect any moment,
+  or press replay.
+</MetricsReplay>
+
+The KV cache fills, and once it is full the scheduler starts evicting running requests to make room, which is the preemptions panel. An evicted request keeps its place but has to recompute its cache when it gets back in. Requests that cannot start at all sit in the waiting queue, and that queue time is exactly the exploding TTFT. A request at the back waits seconds for its first token, then streams at the same 17ms per token as everyone else. Under overload, TTFT is queueing, not compute.
+
+The GPU panels show the other half. A request has two phases. Prefill processes the whole prompt in one parallel pass, then decode generates tokens one at a time. This run is almost all decode, and every generated token reads essentially all 8 GB of weights once, so the memory bus saturates before anything else. The GPU's compute units, the SMs (streaming multiprocessors) in the chart, sit at 100% while the memory bus is above 90%. That is this card doing all it can.
+
+A single request decodes at about 87 tok/s. The batch sustains 1439 tok/s. That gap is [continuous batching](https://www.anyscale.com/blog/continuous-batching-llm-inference): while one request waits on memory for its next token, the same weight reads serve the other 31.
+
+## Tracing one conversation with tool calls
+
+The overload run showed the whole herd under pressure. This is the opposite experiment, one conversation on an idle server with a single trace following it end to end. The same queue, prefill and decode from above reappear inside every vLLM span, now for one request you can name.
+
+To make the trace worth reading I gave the model a job it cannot do alone, solving $x^x = 10$ to ten decimal places. Thinking alone, a 4B model burns thousands of tokens on longhand Newton iteration for four correct decimals at best. With a python tool it writes the method, runs it, and answers exactly.
+
+The tool is model-written code in a throwaway container with no network:
+
+<CodeFile code={sandbox.code} lang="python" filename="agent.py"
+  href={sourceUrl(`${WS}/agent.py`, sandbox.startLine, sandbox.endLine)} />
+
+The agent loop opens a root span, every model turn and tool execution becomes a child, and vLLM joins the same trace through the [W3C `traceparent`](https://www.w3.org/TR/trace-context/) header. One session, one trace.
+
+<TraceWaterfall trace={agent.trace} metrics={agent.metrics}>
+  The whole agent session as one distributed trace, GPU telemetry from the same capture
+  aligned on top. Click any span. Model turns carry the thinking and the decision, tool
+  spans carry the exact code and its stdout, vLLM spans break down into queue, prefill
+  and decode.
+</TraceWaterfall>
+
+Click through and the session tells its own story. The model reaches for `numpy`, the sandbox answers `ModuleNotFoundError`, the next thinking block switches to the standard library, and the last span carries the answer. The GPU works during every model turn and idles during every tool call.
+
+The answer, $x = \frac{\ln 10}{W(\ln 10)} \approx 2.5061841456$ with $W$ the [Lambert W function](https://en.wikipedia.org/wiki/Lambert_W_function), came out exact to all ten places in three tool calls and 1030 completion tokens. The longhand attempts spent 14k tokens for four decimals.
+
+## What the gen_ai spans actually contain
+
+The per-request latency split that powers the phase bars above is the most useful thing vLLM's tracing emits, and it is not in the [OpenTelemetry GenAI semantic conventions](https://github.com/open-telemetry/semantic-conventions-genai) at all. The conventions moved to their own repository and are still marked Development, so this is a comparison against a moving target. Checked as of July 2026, on vLLM 0.24.0, the current release, and the attribute names are [unchanged on vLLM main](https://github.com/vllm-project/vllm/blob/main/vllm/tracing/utils.py). What vLLM emits versus what the spec says:
+
+| vLLM emits | the spec says |
+| --- | --- |
+| span name `llm_request` | `{operation} {model}`, so `chat unsloth/qwen3.5-4b` |
+| — | `gen_ai.operation.name`, `gen_ai.provider.name`, the only two required attributes |
+| `gen_ai.usage.prompt_tokens`, `gen_ai.usage.completion_tokens` | renamed to `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens` |
+| — | `gen_ai.usage.reasoning.output_tokens` |
+| `gen_ai.request.id` holding the completion id | that is `gen_ai.response.id` |
+| `gen_ai.latency.time_in_queue`, `time_in_model_prefill`, `time_in_model_decode` | — |
+| — | `gen_ai.response.time_to_first_chunk`, measured from the client |
+
+This is not a stale corner of vLLM either. The community keeps [adding to the nonstandard set](https://github.com/vllm-project/vllm/issues/41788) rather than renaming it toward the spec.
+
+The two empty cells at the bottom are the interesting ones. The spec's only timing attribute is client-side, so the conventions treat the model as a black box over the wire, and vLLM's view from inside the server has no standard home. The reasoning row cuts the other way. The spec can account for thinking tokens separately, and vLLM leaves that empty while serving a reasoning model whose thinking is most of the bill.
+
+The mismatch matters because backends key off the standard names. [Datadog's LLM Observability](https://www.datadoghq.com/blog/llm-otel-semantic-convention/) ingests OTel GenAI spans natively and maps `gen_ai.request.model`, `gen_ai.usage.input_tokens` and `gen_ai.provider.name` into its own schema for latency, tokens and cost. [Dynatrace's AI Observability](https://docs.dynatrace.com/docs/observe/dynatrace-for-ai-observability) does the same over OTLP, alongside [OpenLLMetry](https://github.com/traceloop/openllmetry) and [OpenInference](https://github.com/Arize-ai/openinference). Point either at vLLM's spans as they are and none of that special handling should fire, because the span name is wrong, the required attributes are absent, and the token counts hide under the old names. The traces still arrive as plain spans, but the LLM-specific views have nothing to grab. Until vLLM catches up with the spec, the practical fix is renaming attributes in an [OTel collector transform](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/transformprocessor) between vLLM and the backend.
+
+*I work at Dynatrace. This is a personal post written on my own time and hardware, not reviewed or endorsed by my employer, and both vendor descriptions above come from public documentation.*
+
+[^nvcc]: FlashInfer JIT-compiles its CUDA kernels with nvcc on first startup, and CUDA 13.2 refuses Fedora 44's gcc 16 as a host compiler. Fedora packages `gcc15` for exactly this case, and `NVCC_PREPEND_FLAGS='-ccbin /usr/bin/g++-15'` points every nvcc invocation at it. The first startup spends ten minutes compiling, later ones reuse the cache.
+
+[^vl]: Qwen3.5-4B is a vision-language model. At startup vLLM profiles worst-case memory including the vision encoder at default batch limits, and that profiling pass alone OOMs a 16 GB card even though the weights are only 8 GB. `--limit-mm-per-prompt '{"image": 0, "video": 0}'` skips the vision path entirely.
+
+[^vram]: GNOME and Chrome hold one to two fluctuating gigabytes of VRAM that vLLM's `--gpu-memory-utilization` accounting cannot see. At 0.8 the engine OOMed while allocating the KV cache, at 0.7 everything fits with the KV cache taking what is left, about 33k tokens.

@@ -1,0 +1,70 @@
+---
+// In-place footnotes. GFM renders [^ref] as sup links that jump to a list at
+// the end of the post; this progressively enhances them so a click unfolds
+// the note right below the current paragraph instead (second click, Escape,
+// or another marker folds it back). The end-of-post list stays as the no-JS
+// fallback and for print. Import once per post that uses footnotes.
+---
+
+<style is:global>
+  sup a[data-footnote-ref] {
+    text-decoration: none;
+    padding: 0 0.25em;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+  }
+  sup a[data-footnote-ref].fn-open {
+    background: var(--accent);
+    color: var(--bg);
+  }
+  aside.fn-inline {
+    margin: 0.6rem 0;
+    padding: 0.6rem 0.9rem;
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    font-size: 0.88em;
+    color: var(--fg);
+  }
+  aside.fn-inline > :first-child { margin-top: 0; }
+  aside.fn-inline > :last-child { margin-bottom: 0; }
+</style>
+
+<script>
+  const refs = [...document.querySelectorAll<HTMLAnchorElement>('sup a[data-footnote-ref]')];
+
+  function close(ref: HTMLAnchorElement) {
+    ref.classList.remove('fn-open');
+    ref.setAttribute('aria-expanded', 'false');
+    document.querySelector(`aside.fn-inline[data-for="${ref.id}"]`)?.remove();
+  }
+
+  function open(ref: HTMLAnchorElement) {
+    const li = document.querySelector(ref.hash.replace(/"/g, ''));
+    if (!li) return;
+    const note = document.createElement('aside');
+    note.className = 'fn-inline';
+    note.dataset.for = ref.id;
+    note.innerHTML = li.innerHTML;
+    note.querySelector('[data-footnote-backref]')?.remove();
+    // Unfold after the block the marker sits in, so the reading position holds.
+    const block = ref.closest('p, li, td') ?? ref.parentElement!;
+    block.after(note);
+    ref.classList.add('fn-open');
+    ref.setAttribute('aria-expanded', 'true');
+  }
+
+  for (const ref of refs) {
+    ref.setAttribute('role', 'button');
+    ref.setAttribute('aria-expanded', 'false');
+    ref.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      const wasOpen = ref.classList.contains('fn-open');
+      refs.forEach(close);
+      if (!wasOpen) open(ref);
+    });
+  }
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape') refs.forEach(close);
+  });
+</script>
