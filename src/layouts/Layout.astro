@@ -361,6 +361,15 @@ const imageURL = new URL(image, Astro.site).href;
         color: var(--muted);
         font-size: 0.85em;
       }
+      /* Full-column media (video embeds): kill the UA default 40px side
+         margins so the frame lines up with code blocks. */
+      figure.media { margin: 1.75rem 0; }
+      figure.media video { margin: 0; width: 100%; }
+      figure.media figcaption {
+        margin-top: 0.75rem;
+        color: var(--muted);
+        font-size: 0.85em;
+      }
       .code-wrap { position: relative; }
       .copy-btn {
         display: inline-flex;

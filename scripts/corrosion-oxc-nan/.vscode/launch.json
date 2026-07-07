@@ -1,0 +1,83 @@
+{
+    // Open THIS folder (scripts/corrosion-oxc-nan) in VS Code for these to appear.
+    // Native configs use CodeLLDB (vadimcn.vscode-lldb): it bundles its own lldb,
+    // coexists with clangd, and its formatters understand Rust types natively.
+    //
+    // The three-layer compound works launch-inverted to avoid any process picker:
+    // lldb launches node with --inspect-brk (deterministic port), and the JS
+    // debugger attaches to that port. One keypress, no prompts.
+    //
+    // "program" must be an absolute path; check yours with: command -v node
+    "version": "0.2.0",
+    "configurations": [
+        {
+            // Two layers, one click: lldb launches node, breakpoints bind in
+            // src/addon.cpp AND rust/src/lib.rs (cargo emits ordinary DWARF).
+            "name": "Native: lldb on node demo.js",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${env:HOME}/.nvm/versions/node/v24.17.0/bin/node",
+            "args": ["demo.js"],
+            "cwd": "${workspaceFolder}",
+            "env": { "OXC_NAN_DEBUG": "1" },
+            // Turns on CodeLLDB's language-aware formatters; without "rust",
+            // a String hover shows RawVec internals instead of the text.
+            "sourceLanguages": ["cpp", "rust"],
+            // V8 objects (v8::Local<...>) are tagged pointers into the JS heap;
+            // no formatter can render them, but node compiles in debug helpers.
+            // Type in the Debug Console:  v8obj result   |   v8bt
+            // (output appears in the terminal with node's stdout, not the console)
+            "initCommands": [
+                "command regex v8obj 's/(.+)/expr -- (void)_v8_internal_Print_Object((void*)*(unsigned long*)((%1).location_))/'",
+                "command alias v8bt expr -- (void)_v8_internal_Print_StackTrace()",
+                "command script import ${workspaceFolder}/debug/v8_formatters.py"
+            ],
+            "preLaunchTask": "build:debug"
+        },
+        // #region compound
+        {
+            // Compound half 1: same as above, but node waits on the inspector
+            // port until the JS debugger attaches. Not meant to run alone
+            // (node would wait forever), hence hidden from the dropdown.
+            "name": "helper: lldb on node --inspect-brk demo.js",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${env:HOME}/.nvm/versions/node/v24.17.0/bin/node",
+            "args": ["--inspect-brk=9229", "demo.js"],
+            "cwd": "${workspaceFolder}",
+            "env": { "OXC_NAN_DEBUG": "1" },
+            "sourceLanguages": ["cpp", "rust"],
+            "initCommands": [
+                "command regex v8obj 's/(.+)/expr -- (void)_v8_internal_Print_Object((void*)*(unsigned long*)((%1).location_))/'",
+                "command alias v8bt expr -- (void)_v8_internal_Print_StackTrace()",
+                "command script import ${workspaceFolder}/debug/v8_formatters.py"
+            ],
+            "preLaunchTask": "build:debug",
+            "presentation": { "hidden": true }
+        },
+        {
+            // Compound half 2: attach to the port instead of picking a pid.
+            // The long timeout covers the first cargo debug build of oxc.
+            "name": "helper: JS attach to port 9229",
+            "type": "node",
+            "request": "attach",
+            "port": 9229,
+            "timeout": 120000,
+            "continueOnAttach": true,
+            "presentation": { "hidden": true }
+        }
+        // #endregion compound
+    ],
+    "compounds": [
+        {
+            // All three layers: JS breakpoints in demo.js via the inspector,
+            // C++/Rust breakpoints via lldb, both hitting in one VS Code window.
+            "name": "All three layers (JS + native)",
+            "configurations": [
+                "helper: lldb on node --inspect-brk demo.js",
+                "helper: JS attach to port 9229"
+            ],
+            "stopAll": true
+        }
+    ]
+}

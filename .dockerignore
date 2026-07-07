@@ -16,6 +16,14 @@ scripts/*
 # the native-node-addons post reads its excerpts from this workspace at build time
 !scripts/addon-example
 !scripts/addon-example/**
+# the three-languages-one-debugger post reads its excerpts from this workspace
+# at build time (build dirs and node_modules are local-only)
+!scripts/corrosion-oxc-nan
+!scripts/corrosion-oxc-nan/**
+scripts/corrosion-oxc-nan/node_modules
+scripts/corrosion-oxc-nan/build
+scripts/corrosion-oxc-nan/build-debug
+scripts/corrosion-oxc-nan/rust/target
 # the text-rendering post imports the hb-gpu wasm, demo modules, and font
 # subsets from this workspace at build time
 !scripts/hb-editor

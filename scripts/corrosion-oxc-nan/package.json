@@ -1,0 +1,19 @@
+{
+  "name": "corrosion-oxc-nan",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tutorial: Rust (oxc) inside a C++ NaN addon, built with plain CMake + Corrosion",
+  "main": "index.js",
+  "scripts": {
+    "build": "cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build",
+    "build:debug": "cmake -B build-debug -DCMAKE_BUILD_TYPE=Debug && cmake --build build-debug",
+    "demo": "node demo.js",
+    "test": "node --test",
+    "test:native": "ctest --test-dir build --output-on-failure",
+    "debug": "npm run build:debug && OXC_NAN_DEBUG=1 gdb -q -x debug/session.gdb --args node demo.js",
+    "debug:dap": "npm run build:debug && node debug/replay-dap.js"
+  },
+  "dependencies": {
+    "nan": "^2.23.1"
+  }
+}

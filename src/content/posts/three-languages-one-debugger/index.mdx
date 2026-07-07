@@ -1,0 +1,121 @@
+---
+title: "Three languages, one debugger"
+description: "Rust inside a C++ Node addon via CMake and Corrosion, and one VS Code window that debugs JS, C++, and Rust together, V8 values decoded."
+pubDate: 2026-07-06
+draft: false
+tags: ["rust", "c++", "node.js", "cmake", "corrosion", "debugging", "lldb", "v8", "native addons"]
+og:
+  kind: snippet
+  lang: cmake
+  code: |-
+    corrosion_import_crate(MANIFEST_PATH rust/Cargo.toml)
+
+    # the Rust crate is now a normal CMake target
+    target_link_libraries(addon PRIVATE oxc_bridge)
+---
+
+import Excerpt from '../../../components/Excerpt.astro';
+import CodeTabs from '../../../components/CodeTabs.astro';
+import screencast from './vscode-session.webm';
+import screencastPoster from './vscode-session-poster.jpg?url';
+
+Adding Rust to a C++ Node addon is a build-system problem for one afternoon. The lasting cost is operational: a process where the JS stack ends in JIT gibberish, the C++ debugger shows Rust strings as raw structs, and a `v8::Local` is an opaque pointer. If nobody on the team can set a breakpoint on both sides of the boundary, every bug near it costs a day. This post builds the whole stack, then makes one VS Code window debug and test all of it.
+
+The running example wraps [oxc](https://oxc.rs) behind a C++ [NaN](https://github.com/nodejs/nan) addon: `node demo.js` calls C++, C++ calls Rust, Rust parses TypeScript and prints it back. Everything below is lifted from the `scripts/corrosion-oxc-nan` workspace, which builds, tests, and records its own debug sessions.
+
+## One build: Corrosion makes cargo a CMake target
+
+The Rust side of the build is three lines:
+
+<Excerpt source="scripts/corrosion-oxc-nan/CMakeLists.txt" region="corrosion" lang="cmake" />
+
+`corrosion_import_crate` reads the manifest and creates a CMake target named after the crate. Behind that target:
+
+- cargo runs on every build and its own incremental tracking decides what to recompile. A no-change build is a sub-second no-op, with no stamp file to go stale the way an `ExternalProject` recipe does.
+- `CMAKE_BUILD_TYPE` maps to cargo profiles: Release becomes `cargo build --release`, Debug becomes the dev profile with full debug info. That mapping is what makes the rest of this post work.
+- cargo output lands inside the CMake build tree, so `rm -rf build` cleans both worlds.
+- The native libraries a Rust staticlib needs (`pthread` and `dl` on Linux, `ws2_32` and friends on Windows) come from `rustc --print native-static-libs`, not from a hand-maintained list.
+
+Linking the crate then reads like any other CMake dependency:
+
+<Excerpt source="scripts/corrosion-oxc-nan/CMakeLists.txt" region="addon" lang="cmake" />
+
+No node-gyp and no cmake-js either. An nvm or tarball Node ships its own headers, so CMake just asks node where they live:
+
+<Excerpt source="scripts/corrosion-oxc-nan/CMakeLists.txt" region="node-headers" lang="cmake" />
+
+On Linux the addon's Node symbols simply stay undefined until node `dlopen()`s it, and macOS needs one linker flag for the same behavior. Windows is the platform where node-gyp still earns its keep, because the addon must link against `node.lib`.
+
+## The boundary: two functions, two rules
+
+The crate exports exactly two `extern "C"` functions, UTF-8 strings in, one JSON string out. Dumb on purpose: there are no `#[repr(C)]` struct layouts to keep in sync, and a boundary this small leaves only two rules to enforce. Rust allocated the result, so Rust frees it, because `free()` from C++ would pair two different allocators. And a panic must never unwind into a C frame, so the export wraps everything in `catch_unwind`. Both rules show up live in the debugger later: the freed `json` pointer turns to garbage in the Variables panel, and `catch_unwind` sits as a visible frame in the mixed stack.
+
+<CodeTabs group="boundary" tabs={[
+  { label: "Rust (C ABI)", source: "scripts/corrosion-oxc-nan/rust/src/lib.rs", region: "c-abi", lang: "rust" },
+  { label: "C++ (NaN glue)", source: "scripts/corrosion-oxc-nan/src/addon.cpp", region: "glue", lang: "cpp" },
+]} />
+
+## Breakpoints in all three layers
+
+The C++ and Rust halves need no ceremony. cargo emits ordinary DWARF, so under [CodeLLDB](https://github.com/vadimcn/codelldb) a breakpoint in `lib.rs` binds like any other. Two configuration details carry the rest of the weight.
+
+First, `"sourceLanguages": ["cpp", "rust"]` in the launch config switches on CodeLLDB's Rust formatters. Without it a `String` hover shows `RawVec` internals instead of the text, which is technically the truth and practically useless.
+
+Second, the JS layer. A native debugger cannot symbolize V8's JIT frames, so `demo.js` needs the inspector attached to the same process. The workable direction is not the obvious one. Attaching lldb to a JS-launched process means picking a pid out of a process list on every run. Launching node under lldb with `--inspect-brk` and letting the JS debugger attach to the port needs no picking at all, because ports are chosen up front and pids are not:
+
+<Excerpt source="scripts/corrosion-oxc-nan/.vscode/launch.json" region="compound" lang="jsonc" label="launch.json › compound" />
+
+Here is what that buys you, in one take: breakpoints set in `demo.js`, `addon.cpp`, and `lib.rs`, one F5 on the compound config, and the session steps through all three, with variables readable at every layer.
+
+<figure class="media">
+  <video controls preload="metadata" playsinline src={screencast} poster={screencastPoster} />
+  <figcaption>
+    The compound session: JS, C++, and Rust breakpoints hit in one window, the
+    hover on a <code>v8::Local</code> showing the decoded string.
+  </figcaption>
+</figure>
+
+The whole session is also scripted (`npm run debug` for terminal gdb, `npm run debug:dap` against the real CodeLLDB adapter over the Debug Adapter Protocol), so the debug setup itself is testable like any other code.
+
+## Seeing into V8
+
+One opacity survives all of that: a `v8::Local` renders as a single `location_` pointer. That one is not a formatter gap. The handle points into V8's garbage-collected heap, and the object behind it has no DWARF description at all.
+
+Node ships two escape hatches. The first: every node binary compiles in V8's own debug printers, and the launch config aliases them to `v8obj` (print the JS value behind a handle) and `v8bt` (print the JS stack with real file and line entries, the readable version of those anonymous JIT frames). Type them into the Debug Console at a native breakpoint. Their output appears in the terminal, because they print from inside the debuggee.
+
+The second fixes the hover itself. `debug/v8_formatters.py` is an lldb summary provider that decodes V8 strings, numbers, and `undefined`/`null`/`true`/`false` straight from process memory. Loaded via one `initCommands` line, it turns this:
+
+```text
+result = { location_ = 0x0000000006a1f7a8 }
+```
+
+into this:
+
+```text
+result = "{"code":"interface Point {\n\tx: number;\n\ty: number;…" (len 328)
+```
+
+There is no magic inside. Node publishes its own object layout as `v8dbg_*` constants, int32 globals baked into the binary for exactly this kind of tooling. The decoder looks offsets up by name and walks the object the way the heap sees it:
+
+<Excerpt source="scripts/corrosion-oxc-nan/debug/v8_formatters.py" region="decode" lang="python" label="v8_formatters.py › decode" />
+
+That is [llnode](https://github.com/nodejs/llnode)'s trick in miniature. And because the offsets come out of the binary being debugged, a node upgrade brings its own constants and the hover keeps working.
+
+## Tests in the same window
+
+The one-window rule extends to tests. Test Explorer shows all three layers, each through its native runner:
+
+- **C++** — the GoogleTest binary links `liboxc_bridge.a` directly and exercises the C ABI with no V8 in the room, so linking, ABI, and ownership regressions fail in a plain debuggable process instead of somewhere inside node. CMake Tools picks it up through CTest.
+- **Rust** — ordinary `#[cfg(test)]` units run by rust-analyzer, plus one `add_test` that bridges `cargo test` into CTest so both native layers run under a single `ctest`.
+- **JS** — `node:test` through the built addon, no test dependencies at all.
+
+<CodeTabs group="tests" tabs={[
+  { label: "C++ hits the FFI", source: "scripts/corrosion-oxc-nan/src/bridge_test.cpp", region: "gtest", lang: "cpp" },
+  { label: "Rust units", source: "scripts/corrosion-oxc-nan/rust/src/lib.rs", region: "tests", lang: "rust" },
+  { label: "JS through the addon", source: "scripts/corrosion-oxc-nan/test/addon.test.js", region: "node-test", lang: "js" },
+  { label: "CTest wiring", source: "scripts/corrosion-oxc-nan/CMakeLists.txt", region: "tests", lang: "cmake" },
+]} />
+
+## What to take
+
+The workspace at `scripts/corrosion-oxc-nan` is the whole setup: `CMakeLists.txt` for the build, `.vscode/launch.json` for the debugger, `debug/v8_formatters.py` for the hovers, and the scripted sessions that keep the setup from silently rotting. None of it is specific to oxc. Swap the crate and the two extern functions, and the rest carries over to any Rust-inside-C++ addon your team has to live with.

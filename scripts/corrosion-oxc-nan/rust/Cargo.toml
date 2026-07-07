@@ -1,0 +1,20 @@
+[package]
+name = "oxc_bridge"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+# staticlib = a .a / .lib archive that a C/C++ linker understands.
+# This is the whole trick: to CMake, the Rust crate is just another static
+# library. "lib" is alongside it so `cargo test` can link the unit tests.
+crate-type = ["staticlib", "lib"]
+
+[dependencies]
+oxc_allocator = "0.138"
+oxc_parser = "0.138"
+oxc_span = "0.138"
+oxc_codegen = "0.138"
+serde_json = "1"
+
+[profile.release]
+lto = true
