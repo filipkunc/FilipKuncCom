@@ -53,11 +53,12 @@ for (let i = 0; i < figures; i++) {
   await fig.locator(".s-stop").click();
 }
 
+const siteHost = new URL(POST_URL).host;
 const engineReqs = requests.filter(u => /strudel.*repl|repl\.js/i.test(u));
-const cdnEngine = engineReqs.filter(u => !u.includes("localhost"));
+const cdnEngine = engineReqs.filter(u => new URL(u).host !== siteHost);
 console.log("\nengine requests:", engineReqs);
-console.log(cdnEngine.length ? "FAIL: engine from CDN" : "engine served locally: ok");
-const external = [...new Set(requests.filter(u => !u.includes("localhost")).map(u => new URL(u).host))];
+console.log(cdnEngine.length ? "FAIL: engine from CDN" : "engine served from the site: ok");
+const external = [...new Set(requests.filter(u => new URL(u).host !== siteHost).map(u => new URL(u).host))];
 console.log("external hosts (samples etc.):", external);
 
 await browser.close();
