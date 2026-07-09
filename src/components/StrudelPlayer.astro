@@ -1,0 +1,283 @@
+---
+// Live Strudel embed: code editor + play/stop + optional visualization panel.
+//
+// Engine notes (hard-won, do not "simplify"):
+// - Loads the vendored CLASSIC @strudel/repl build (/strudel/repl.js). The
+//   +esm module build re-evaluates once per embed under Vite and the repeated
+//   customElements.define() calls leave the editor empty.
+// - <strudel-editor> builds its CodeMirror UI into a SIBLING div and leaves
+//   the host element empty, hence the :defined display:none below.
+// - Pattern code travels inside an HTML comment; comment syntax (-->) must
+//   not appear in it.
+// - Visualizations (.pianoroll() / .scope() / .punchcard()) all draw into one
+//   SHARED fullscreen overlay canvas (#test-canvas) appended to <body>, even
+//   with several editors on the page. The script below adopts that canvas
+//   into the .s-viz panel of whichever embed is playing.
+interface Props {
+  code: string;
+  /** height of the visualization panel in px; 0 = no panel */
+  viz?: number;
+  caption?: string;
+}
+const { code, viz = 0, caption = '' } = Astro.props;
+---
+
+<figure class="strudel" data-viz={viz}>
+  {viz > 0 && (
+    <div class="s-viz" style={`height:${viz}px`}>
+      <button class="s-poster" type="button" aria-label="Play">
+        <span class="s-poster-btn">▶</span>
+      </button>
+    </div>
+  )}
+  <div class="s-toolbar">
+    <button class="s-play" type="button">▶ play</button>
+    <button class="s-stop" type="button">■ stop</button>
+    <span class="s-hint">edit the code, then play again</span>
+  </div>
+  <strudel-editor set:html={`<!--\n${code}\n-->`}></strudel-editor>
+  <pre class="s-code">{code}</pre>
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<script>
+  const ENGINE_SRC = '/strudel/repl.js';
+
+  function loadEngine(): Promise<void> {
+    const w = window as any;
+    if (!w.__strudelEngine) {
+      w.__strudelEngine = new Promise<void>((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = ENGINE_SRC;
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error('failed to load strudel engine'));
+        document.head.appendChild(s);
+      }).then(() => customElements.whenDefined('strudel-editor'));
+    }
+    return w.__strudelEngine;
+  }
+
+  async function editorOf(host: any) {
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    while (!host.editor) await sleep(50);
+    // evaluate() throws "no code to evaluate" if called before the component
+    // has ingested the commented code into its CodeMirror doc, so wait for it
+    for (let i = 0; i < 40; i++) {
+      try {
+        if (host.editor.editor.state.doc.length > 0) return host.editor;
+      } catch {}
+      await sleep(50);
+    }
+    const comment = [...host.childNodes].find((n: Node) => n.nodeType === Node.COMMENT_NODE);
+    if (comment?.textContent) host.editor.setCode(comment.textContent.trim());
+    return host.editor;
+  }
+
+  // Move the shared overlay canvas into this embed's viz panel.
+  async function adoptCanvas(fig: Element) {
+    const slot = fig.querySelector<HTMLElement>('.s-viz');
+    for (let i = 0; i < 30; i++) {
+      const canvas = document.getElementById('test-canvas') as HTMLCanvasElement | null;
+      if (canvas) {
+        if (!slot) { canvas.style.display = 'none'; return; }
+        if (canvas.parentElement !== slot) slot.appendChild(canvas);
+        canvas.style.cssText = 'position:static;display:block;width:100%;height:100%;pointer-events:none';
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.round(slot.clientWidth * dpr);
+        canvas.height = Math.round(slot.clientHeight * dpr);
+        return;
+      }
+      await new Promise((r) => setTimeout(r, 100));
+    }
+  }
+
+  const figures = [...document.querySelectorAll('.strudel')];
+
+  // Boot the engine and swap the static <pre> for the live editor. Triggered
+  // lazily when an embed nears the viewport, so the page renders at its final
+  // size immediately and never jumps on play.
+  const inits = new Map<Element, Promise<any>>();
+  function initFigure(fig: Element): Promise<any> {
+    let p = inits.get(fig);
+    if (!p) {
+      p = (async () => {
+        await loadEngine();
+        const host = fig.querySelector('strudel-editor') as any;
+        const editor = await editorOf(host);
+        // The builtin solo mode makes every OTHER booted editor stop() when one
+        // starts, and that cleanup calls stopAllAnimations(undefined), killing
+        // the pianoroll/scope draw loop of the one that just started (all five
+        // embeds boot lazily, so four listeners fire on each play). Our play
+        // handler already stops the others BEFORE evaluate, which is safe.
+        editor.solo = false;
+        fig.classList.add('ready');
+        // inline style, not just the class flip: nothing (specificity, a
+        // stale HMR scope hash) may ever show the pre and the editor at once
+        const pre = fig.querySelector<HTMLElement>('.s-code');
+        if (pre) pre.style.display = 'none';
+        return editor;
+      })();
+      inits.set(fig, p);
+    }
+    return p;
+  }
+  // The engine resets the shared canvas to fullscreen dimensions on window
+  // resize (debounced 200ms); re-fit it to whichever embed is playing.
+  let resizeT: ReturnType<typeof setTimeout>;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeT);
+    resizeT = setTimeout(() => {
+      const playing = figures.find((f) => f.classList.contains('playing'));
+      if (playing) adoptCanvas(playing);
+    }, 300);
+  });
+
+  const io = new IntersectionObserver(
+    (entries) => {
+      for (const en of entries) {
+        if (en.isIntersecting) {
+          initFigure(en.target);
+          io.unobserve(en.target);
+        }
+      }
+    },
+    { rootMargin: '300px' },
+  );
+  figures.forEach((f) => io.observe(f));
+
+  async function stopAll(except?: Element) {
+    for (const fig of figures) {
+      if (fig === except) continue;
+      const host = fig.querySelector('strudel-editor') as any;
+      if (host?.editor) host.editor.stop();
+      fig.classList.remove('playing');
+    }
+  }
+
+  for (const fig of figures) {
+    const playBtn = fig.querySelector<HTMLButtonElement>('.s-play')!;
+    const stopBtn = fig.querySelector<HTMLButtonElement>('.s-stop')!;
+    fig.querySelector<HTMLButtonElement>('.s-poster')?.addEventListener('click', () => playBtn.click());
+    playBtn.addEventListener('click', async () => {
+      playBtn.disabled = true;
+      try {
+        const editor = await initFigure(fig);
+        await stopAll(fig);
+        editor.evaluate();
+        fig.classList.add('playing');
+        fig.classList.add('played');
+        adoptCanvas(fig);
+      } finally {
+        playBtn.disabled = false;
+      }
+    });
+    stopBtn.addEventListener('click', async () => {
+      const host = fig.querySelector('strudel-editor') as any;
+      if (host?.editor) host.editor.stop();
+      fig.classList.remove('playing');
+    });
+  }
+</script>
+
+<style>
+  .strudel {
+    margin: 1.5rem 0;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #0d1018;
+  }
+  .s-viz {
+    position: relative;
+    background: #0d1018;
+    border-bottom: 1px solid color-mix(in srgb, #fff 8%, transparent);
+  }
+  /* poster: fills the reserved viz panel until the first play, so the space
+     reads as a player, not as an empty gap */
+  .s-poster {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+  }
+  .s-poster-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.2rem;
+    height: 3.2rem;
+    border-radius: 50%;
+    padding-left: 0.25rem; /* optically center the triangle */
+    color: #d7dce5;
+    background: #1e2534;
+    border: 1px solid #2c3547;
+    font-size: 1.1rem;
+    transition: background 0.15s ease, transform 0.15s ease;
+  }
+  .s-poster:hover .s-poster-btn { background: #2a3348; transform: scale(1.06); }
+  .strudel.played .s-poster { display: none; }
+  .s-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid color-mix(in srgb, #fff 8%, transparent);
+  }
+  .s-toolbar button {
+    font: inherit;
+    font-size: 0.85rem;
+    color: #d7dce5;
+    background: #1e2534;
+    border: 1px solid #2c3547;
+    border-radius: 6px;
+    padding: 0.25rem 0.8rem;
+    cursor: pointer;
+  }
+  .s-toolbar button:hover { background: #2a3348; }
+  .strudel.playing .s-play { background: #e8556d; border-color: #e8556d; color: #fff; }
+  .s-hint { font-size: 0.75rem; color: #8a93a5; margin-left: auto; }
+  .strudel :global(strudel-editor:defined) { display: none; }
+  /* the site styles img { display:block; margin:1.5rem auto } — that hits
+     CodeMirror's invisible img.cm-widgetBuffer next to each slider() widget
+     and blows the line up to ~65px; restore CodeMirror's inline zero-size */
+  .strudel :global(.cm-content img.cm-widgetBuffer) {
+    display: inline;
+    margin: 0;
+    width: 0;
+    height: 1em;
+    border-radius: 0;
+  }
+  .strudel :global(.cm-editor) {
+    max-height: 420px;
+    font-size: 13px;
+  }
+  /* static code shown until the engine boots (.ready), sized to match the
+     CodeMirror editor closely so the swap doesn't shift the page */
+  .s-code {
+    margin: 0;
+    padding: 4px 6px 4px 34px;
+    max-height: 420px;
+    overflow: auto;
+    font-size: 13px;
+    line-height: 1.4;
+    color: #d7dce5;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+  }
+  .strudel.ready .s-code { display: none; }
+  /* hide CodeMirror until it replaces the pre, so both never show at once */
+  .strudel:not(.ready) :global(.cm-editor) { display: none; }
+  figcaption {
+    font-size: 0.85rem;
+    color: #8a93a5;
+    padding: 0.4rem 0.75rem;
+    border-top: 1px solid color-mix(in srgb, #fff 8%, transparent);
+  }
+</style>

@@ -1,0 +1,156 @@
+---
+title: "One track in Strudel"
+description: "A two-minute French-electro track that plays, draws and edits in your browser: breathing bass, a siren hook, warm pads, an acid arp, and knobs to twist."
+pubDate: 2026-07-09
+tags: ["strudel", "music", "live-coding", "webaudio"]
+---
+
+import StrudelPlayer from '../../../components/StrudelPlayer.astro';
+
+export const heroCode = `// a track in five voices, ~2 minutes
+// knobs: drive (bass), bright (siren), pads (pad level), grit (arp FM), acid (env depth)
+setcpm(128/4)
+const drive = slider(1, 0, 2)
+const bright = slider(2800, 800, 4800)
+const pads = slider(.65, 0, 1)
+const grit = slider(.8, 0, 1.1)
+const acid = slider(4, 0, 8)
+const kickMod = s("<[bd*4] [bd*4] [bd*4] [bd bd bd [bd bd]]>").bank("RolandTR909")
+  .gain("[.92 .72 .84 .72]").speed("<1 1 1 .9>")
+  .distort(sine.range(.2,.6).slow(8))
+const kickSoft = s("bd*4").bank("RolandTR909").gain(.6).lpf(4000)
+const kickArp = s("bd*4").bank("RolandTR909").gain(.55)
+const ohat = s("[~ oh]*4").bank("RolandTR909").gain(.25).lpf(6000)
+const bass = note("[a1 a2]*8")
+  .s("gm_synth_bass_2")
+  .distort(sine.range(1,2).slow(8).mul(drive))
+  .lpf(sine.range(400,1200).slow(8)).lpq(4)
+  .gain(saw.fast(4).range(.18,.42))
+const bassSub = note("[a1 a2]*8")
+  .s("gm_synth_bass_2").distort(1)
+  .lpf(sine.range(400,800).slow(8)).lpq(4)
+  .gain(saw.fast(4).range(.15,.32))
+const bassOut = note("[a1 a2]*8")
+  .s("gm_synth_bass_2").distort(1)
+  .lpf(saw.range(900,300).slow(12).late(52)).lpq(4)
+  .gain(saw.fast(4).range(.12,.3))
+const blend = sine.range(0,.5).slow(16).late(28)
+const bassArp = note("[a1 a2]*8")
+  .s("gm_synth_bass_2")
+  .distort(sine.range(1,2).slow(8))
+  .lpf(sine.range(400,1000).slow(8)).lpq(4)
+  .gain(saw.fast(4).range(.14,.32).mul(blend.mul(-1).add(1)))
+const sawline = n("<7 _ _ 6 5 _ <5 3> <6 4>>*2").scale("a:minor")
+  .o(2).detune(rand)
+  .s("supersaw").lpf(700).lpq(4).gain(blend.mul(.3))
+const arp = n("<0 4 0 9 7>*16".add("<7 _ _ 6 5 _ _ 6>*2")).scale("a:minor")
+  .o(3).s("sawtooth")
+  .lpf(400).lpenv(acid).lpd(.15).lpq(8)
+  .fm(sine.range(.1,1).slow(8).mul(grit)).fmwave('white')
+  .delay(.6).pan(rand).gain(.45)
+const siren = note("<[a4 ~ a4 ~ c5 ~ a4 g4] [a4 ~ a4 ~ e4 ~ g4 ~]>")
+  .s("gm_lead_1_square").lpf(bright).delay(.3).gain(.5)
+const sirenSoft = siren.lpf(2400).gain(.4)
+const pad = note("<[a3,c4,e4] [g3,b3,d4] [f3,a3,c4] [e3,gs3,b3]>")
+  .s("gm_pad_warm").attack(.3).release(.6).gain(.3).room(.4)
+const padBig = note("<[a3,c4,e4,a4] [g3,b3,d4,g4] [f3,a3,c4,f4] [e3,gs3,b3,e4]>")
+  .s("gm_pad_warm").attack(.2).release(.7).gain(pads).room(.5)
+const riser = s("white").gain(saw.slow(4).range(0,.2)).lpf(4000)
+$: arrange(
+  [8, stack(kickMod, bass)],                       // intro
+  [8, stack(kickMod, bass, siren)],                // the hook
+  [8, stack(kickSoft, bassSub, padBig)],           // pads take over
+  [4, stack(bass, siren, riser)],                  // breath: kick cut
+  [16, stack(kickArp, bassArp, sawline, arp)],     // the acid arp act
+  [8, stack(kickMod, bass, sirenSoft, pad, ohat)], // everything
+  [8, stack(kickMod, bassOut)],                    // outro: filter slides shut
+  [4, bassOut],                                    // machine winds down
+).pianoroll()`;
+
+export const engineCode = `// the engine: a 909 four-on-the-floor and one octave riff.
+// nothing changes but the slow sine: drive and filter breathe together over 8 bars.
+setcpm(128/4)
+const drive = slider(1, 0, 2)
+$: s("bd*4").bank("RolandTR909").gain(.9)
+$: note("[a1 a2]*8")
+  .s("gm_synth_bass_2")
+  .distort(sine.range(1,2).slow(8).mul(drive))
+  .lpf(sine.range(400,1200).slow(8)).lpq(4)
+  .gain(saw.fast(4).range(.18,.42))
+  .scope()`;
+
+export const hookCode = `// the hook: a square-wave siren, two bars, mostly one note.
+// the urgency lives in the a4-g4 turn at the end of the phrase.
+setcpm(128/4)
+const bright = slider(2800, 800, 4800)
+$: s("bd*4").bank("RolandTR909").gain(.9)
+$: note("[a1 a2]*8")
+  .s("gm_synth_bass_2")
+  .distort(sine.range(1,2).slow(8))
+  .lpf(sine.range(400,1200).slow(8)).lpq(4)
+  .gain(saw.fast(4).range(.18,.42))
+$: note("<[a4 ~ a4 ~ c5 ~ a4 g4] [a4 ~ a4 ~ e4 ~ g4 ~]>")
+  .s("gm_lead_1_square").lpf(bright).delay(.3).gain(.5)
+  .pianoroll()`;
+
+export const padCode = `// the pads: Am G F E, one chord per bar, octave-doubled voicings.
+// when they play, everything else steps back: soft dark kick, sub-only bass.
+setcpm(128/4)
+const level = slider(.65, 0, 1)
+$: s("bd*4").bank("RolandTR909").gain(.6).lpf(4000)
+$: note("[a1 a2]*8")
+  .s("gm_synth_bass_2").distort(1)
+  .lpf(sine.range(400,800).slow(8)).lpq(4)
+  .gain(saw.fast(4).range(.15,.32))
+$: note("<[a3,c4,e4,a4] [g3,b3,d4,g4] [f3,a3,c4,f4] [e3,gs3,b3,e4]>")
+  .s("gm_pad_warm").attack(.2).release(.7).gain(level).room(.5)
+  .pianoroll()`;
+
+export const arpCode = `// the acid arp: a 5-step arp at 16ths, shifted by a slower line.
+// 5 against 16 phases, so the melody evolves for bars before repeating.
+// blend trades the bass for a supersaw counter-line; grit is noise FM.
+setcpm(128/4)
+const blend = slider(.25, 0, 1)
+const grit = slider(.8, 0, 1.1)
+const acid = slider(4, 0, 8)
+$: s("bd*4").bank("RolandTR909").gain(.55)
+$: note("[a1 a2]*8")
+  .s("gm_synth_bass_2")
+  .distort(sine.range(1,2).slow(8))
+  .lpf(sine.range(400,1000).slow(8)).lpq(4)
+  .gain(saw.fast(4).range(.14,.32).mul(blend.mul(-1).add(1)))
+$: n("<7 _ _ 6 5 _ <5 3> <6 4>>*2").scale("a:minor")
+  .o(2).detune(rand)
+  .s("supersaw").lpf(700).lpq(4).gain(blend.mul(.3))
+$: n("<0 4 0 9 7>*16".add("<7 _ _ 6 5 _ _ 6>*2")).scale("a:minor")
+  .o(3).s("sawtooth")
+  .lpf(400).lpenv(acid).lpd(.15).lpq(8)
+  .fm(sine.range(.1,1).slow(8).mul(grit)).fmwave('white')
+  .delay(.6).pan(rand).gain(.45)
+  .pianoroll()`;
+
+This is a two-minute electro track that runs entirely on this page, written in [Strudel](https://strudel.cc). Press play, watch the pianoroll, and drag the sliders in the code while it runs. Mind your volume.
+
+<StrudelPlayer code={heroCode} viz={200} caption="The whole track. Sliders appear in the code after you press play." />
+
+## The layers
+
+Five voices, built and judged by ear, one decision at a time. The engine came first: a TR-909 kick and a single octave riff on A, where the only movement is a slow sine that opens the filter and the distortion together every eight bars.
+
+<StrudelPlayer code={engineCode} viz={120} caption="Kick and breathing bass, with the wave drawn live. The drive slider scales the distortion." />
+
+The hook is a square-wave siren that mostly repeats one note. Every phrase idea that added more notes lost to this one, so the melody stayed still and the percussion and filters do the talking.
+
+<StrudelPlayer code={hookCode} viz={140} caption="The siren over the engine. The slider opens its filter." />
+
+The pads walk the Andalusian descent, Am G F E, and they only work when everything else gets out of their way. In the full track their sections swap in a quieter, darker kick and drop the siren entirely.
+
+<StrudelPlayer code={padCode} viz={140} caption="The pad section mix: soft kick, sub bass, chords in front." />
+
+The acid arp is stolen with admiration from watching [Switch Angel live-code trance](https://www.youtube.com/watch?v=iu5rnQkfO6M). It is not a melody but melody arithmetic: a five-step arp in scale degrees runs at 16ths and gets `.add()`-ed to a slower eight-slot line, and because five against sixteen never lines up, the tune keeps evolving for bars before it repeats. White-noise FM makes it spit.
+
+<StrudelPlayer code={arpCode} viz={140} caption="The arp with its three knobs: blend morphs bass into supersaw, grit is the noise FM, acid is the filter envelope." />
+
+## How it was made
+
+Sample choice mattered more than pattern cleverness. The kit is the stock TR-909 bank, the bass and lead are General MIDI soundfonts, and everything above was picked by clicking through candidates in a small audition page and keeping what sounded right. The arrangement went through nineteen numbered versions, each one a short listening session and one change. The code above is the whole track, so the best way to explore it is to break it: change a note, drag a slider, make the filter sweep twice as slow.

@@ -1,0 +1,57 @@
+// v19 (2026-07-07) - Vitalic-direction track, built by ear in the audition lab
+// paste into https://strudel.cc or the lab editor
+// new in v19: a 16-bar acid arp act (Switch Angel-inspired pattern arithmetic):
+// a 5-step 16th arp .add()-ed to a slower line, noise-FM grit riding the master
+// sine, and an automated blend that trades the bass for a supersaw counter-line
+setcpm(128/4)
+const kickMod = s("<[bd*4] [bd*4] [bd*4] [bd bd bd [bd bd]]>").bank("RolandTR909")
+  .gain("[.92 .72 .84 .72]").speed("<1 1 1 .9>")
+  .distort(sine.range(.2,.6).slow(8))
+const kickSoft = s("bd*4").bank("RolandTR909").gain(.6).lpf(4000)
+const kickArp = s("bd*4").bank("RolandTR909").gain(.55)
+const ohat = s("[~ oh]*4").bank("RolandTR909").gain(.25).lpf(6000)
+const bass = note("[a1 a2]*8")
+  .s("gm_synth_bass_2")
+  .distort(sine.range(1,2).slow(8))
+  .lpf(sine.range(400,1200).slow(8)).lpq(4)
+  .gain(saw.fast(4).range(.18,.42))
+const bassSub = note("[a1 a2]*8")
+  .s("gm_synth_bass_2").distort(1)
+  .lpf(sine.range(400,800).slow(8)).lpq(4)
+  .gain(saw.fast(4).range(.15,.32))
+const bassOut = note("[a1 a2]*8")
+  .s("gm_synth_bass_2").distort(1)
+  .lpf(saw.range(900,300).slow(12).late(52)).lpq(4)
+  .gain(saw.fast(4).range(.12,.3))
+const blend = sine.range(0,.5).slow(16).late(28)
+const bassArp = note("[a1 a2]*8")
+  .s("gm_synth_bass_2")
+  .distort(sine.range(1,2).slow(8))
+  .lpf(sine.range(400,1000).slow(8)).lpq(4)
+  .gain(saw.fast(4).range(.14,.32).mul(blend.mul(-1).add(1)))
+const sawline = n("<7 _ _ 6 5 _ <5 3> <6 4>>*2").scale("a:minor")
+  .o(2).detune(rand)
+  .s("supersaw").lpf(700).lpq(4).gain(blend.mul(.3))
+const arp = n("<0 4 0 9 7>*16".add("<7 _ _ 6 5 _ _ 6>*2")).scale("a:minor")
+  .o(3).s("sawtooth")
+  .lpf(400).lpenv(4).lpd(.15).lpq(8)
+  .fm(sine.range(.1,1).slow(8).mul(.8)).fmwave('white')
+  .delay(.6).pan(rand).gain(.45)
+const siren = note("<[a4 ~ a4 ~ c5 ~ a4 g4] [a4 ~ a4 ~ e4 ~ g4 ~]>")
+  .s("gm_lead_1_square").lpf(2800).delay(.3).gain(.5)
+const sirenSoft = siren.lpf(2400).gain(.4)
+const pad = note("<[a3,c4,e4] [g3,b3,d4] [f3,a3,c4] [e3,gs3,b3]>")
+  .s("gm_pad_warm").attack(.3).release(.6).gain(.3).room(.4)
+const padBig = note("<[a3,c4,e4,a4] [g3,b3,d4,g4] [f3,a3,c4,f4] [e3,gs3,b3,e4]>")
+  .s("gm_pad_warm").attack(.2).release(.7).gain(.65).room(.5)
+const riser = s("white").gain(saw.slow(4).range(0,.2)).lpf(4000)
+$: arrange(
+  [8, stack(kickMod, bass)],                       // intro
+  [8, stack(kickMod, bass, siren)],                // A1: the hook
+  [8, stack(kickSoft, bassSub, padBig)],           // pads take over
+  [4, stack(bass, siren, riser)],                  // breath: kick cut
+  [16, stack(kickArp, bassArp, sawline, arp)],     // the acid arp act
+  [8, stack(kickMod, bass, sirenSoft, pad, ohat)], // everything
+  [8, stack(kickMod, bassOut)],                    // outro: filter slides shut
+  [4, bassOut],                                    // machine winds down
+)

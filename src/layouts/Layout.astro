@@ -494,6 +494,9 @@ const imageURL = new URL(image, Astro.site).href;
         // Skip <pre> used as diagram art (e.g. the type-walk mapping); it is an
         // illustration, not copyable code, and the button would overlap it.
         if (pre.closest('figure.diagram')) return;
+        // Strudel embeds manage their own <pre> (swapped for a live editor);
+        // a wrapper + floating copy button would linger after the swap.
+        if (pre.closest('figure.strudel')) return;
         if (pre.parentElement?.classList.contains('code-wrap')) return;
         if (pre.parentElement?.querySelector(':scope > .code-file-label .copy-btn')) return;
 

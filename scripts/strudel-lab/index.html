@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Strudel sample audition lab</title>
+<style>
+  :root {
+    --bg: #0d1017;
+    --panel: #151a24;
+    --text: #d7dce5;
+    --dim: #8a93a5;
+    --accent: #e8556d;
+    --accent2: #56b6c2;
+    --chip: #1e2534;
+    --chip-hover: #2a3348;
+    --chip-active: #3d2733;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.5 system-ui, sans-serif;
+    padding: 1.5rem;
+    max-width: 1100px;
+    margin-inline: auto;
+  }
+  h1 { font-size: 1.3rem; margin: 0 0 .25rem; }
+  h2 { font-size: .95rem; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); margin: 1.75rem 0 .5rem; }
+  p.hint { color: var(--dim); margin: 0 0 1rem; font-size: .9rem; }
+  .toolbar { display: flex; gap: .5rem; align-items: center; margin: 1rem 0; position: sticky; top: 0; background: var(--bg); padding: .5rem 0; z-index: 10; }
+  button {
+    background: var(--chip); color: var(--text); border: 1px solid #2c3547;
+    border-radius: 6px; padding: .45rem .9rem; cursor: pointer; font: inherit;
+  }
+  button:hover { background: var(--chip-hover); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  #status { color: var(--dim); font-size: .85rem; margin-left: .5rem; }
+  .chips { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .chip {
+    background: var(--chip); border: 1px solid #2c3547; border-radius: 999px;
+    padding: .3rem .8rem; font-size: .85rem;
+  }
+  .chip:hover { background: var(--chip-hover); }
+  .chip.playing { background: var(--chip-active); border-color: var(--accent); }
+  .group-note { color: var(--dim); font-size: .82rem; margin: .25rem 0 .5rem; }
+  .strudel { margin-top: 1rem; border: 1px solid #2c3547; border-radius: 8px; overflow: hidden; }
+  strudel-editor:defined { display: none; }
+  .strudel .cm-editor { max-height: 340px; font-size: 14px; }
+</style>
+</head>
+<body>
+<h1>Strudel sample audition lab</h1>
+<p class="hint">Click a chip to hear that sound in a short riff at 118 BPM. Tweak the code live, press
+<b>Update</b> (or Ctrl+Enter in the editor) to re-evaluate. Mind your volume.</p>
+
+<div class="toolbar">
+  <button class="primary" id="btn-play">Update / play</button>
+  <button id="btn-stop">Stop</button>
+  <span id="status">loading engine…</span>
+</div>
+
+<div class="strudel" id="editor-slot">
+<strudel-editor id="repl"><!--
+// current track: v19 (2026-07-07) - acid arp act; knobs: grit (FM) + acid (env depth)
+setcpm(128/4)
+const kickMod = s("<[bd*4] [bd*4] [bd*4] [bd bd bd [bd bd]]>").bank("RolandTR909")
+  .gain("[.92 .72 .84 .72]").speed("<1 1 1 .9>")
+  .distort(sine.range(.2,.6).slow(8))
+const kickSoft = s("bd*4").bank("RolandTR909").gain(.6).lpf(4000)
+const kickArp = s("bd*4").bank("RolandTR909").gain(.55)
+const ohat = s("[~ oh]*4").bank("RolandTR909").gain(.25).lpf(6000)
+const bass = note("[a1 a2]*8")
+  .s("gm_synth_bass_2")
+  .distort(sine.range(1,2).slow(8))
+  .lpf(sine.range(400,1200).slow(8)).lpq(4)
+  .gain(saw.fast(4).range(.18,.42))
+const bassSub = note("[a1 a2]*8")
+  .s("gm_synth_bass_2").distort(1)
+  .lpf(sine.range(400,800).slow(8)).lpq(4)
+  .gain(saw.fast(4).range(.15,.32))
+const bassOut = note("[a1 a2]*8")
+  .s("gm_synth_bass_2").distort(1)
+  .lpf(saw.range(900,300).slow(12).late(52)).lpq(4)
+  .gain(saw.fast(4).range(.12,.3))
+const grit = slider(.8, 0, 1.1)
+const acid = slider(4, 0, 8)
+const blend = sine.range(0,.5).slow(16).late(28)
+const bassArp = note("[a1 a2]*8")
+  .s("gm_synth_bass_2")
+  .distort(sine.range(1,2).slow(8))
+  .lpf(sine.range(400,1000).slow(8)).lpq(4)
+  .gain(saw.fast(4).range(.14,.32).mul(blend.mul(-1).add(1)))
+const sawline = n("<7 _ _ 6 5 _ <5 3> <6 4>>*2").scale("a:minor")
+  .o(2).detune(rand)
+  .s("supersaw").lpf(700).lpq(4).gain(blend.mul(.3))
+const arp = n("<0 4 0 9 7>*16".add("<7 _ _ 6 5 _ _ 6>*2")).scale("a:minor")
+  .o(3).s("sawtooth")
+  .lpf(400).lpenv(acid).lpd(.15).lpq(8)
+  .fm(sine.range(.1,1).slow(8).mul(grit)).fmwave('white')
+  .delay(.6).pan(rand).gain(.45)
+const siren = note("<[a4 ~ a4 ~ c5 ~ a4 g4] [a4 ~ a4 ~ e4 ~ g4 ~]>")
+  .s("gm_lead_1_square").lpf(2800).delay(.3).gain(.5)
+const sirenSoft = siren.lpf(2400).gain(.4)
+const pad = note("<[a3,c4,e4] [g3,b3,d4] [f3,a3,c4] [e3,gs3,b3]>")
+  .s("gm_pad_warm").attack(.3).release(.6).gain(.3).room(.4)
+const padBig = note("<[a3,c4,e4,a4] [g3,b3,d4,g4] [f3,a3,c4,f4] [e3,gs3,b3,e4]>")
+  .s("gm_pad_warm").attack(.2).release(.7).gain(.65).room(.5)
+const riser = s("white").gain(saw.slow(4).range(0,.2)).lpf(4000)
+$: arrange(
+  [8, stack(kickMod, bass)],                       // intro
+  [8, stack(kickMod, bass, siren)],                // A1: the hook
+  [8, stack(kickSoft, bassSub, padBig)],           // pads take over
+  [4, stack(bass, siren, riser)],                  // breath: kick cut
+  [16, stack(kickArp, bassArp, sawline, arp)],     // the acid arp act
+  [8, stack(kickMod, bass, sirenSoft, pad, ohat)], // everything
+  [8, stack(kickMod, bassOut)],                    // outro: filter slides shut
+  [4, bassOut],                                    // machine winds down
+)
+--></strudel-editor>
+</div>
+
+<div id="groups"></div>
+
+<script type="module">
+// module scope on purpose: Strudel's safeEval runs in global scope, so any
+// top-level const in a classic script (e.g. a variable named `s`) would
+// shadow Strudel's own globals inside evaluated patterns.
+// ---- sample candidates -----------------------------------------------------
+// each chip = { label, code }. Clicking setCode()s + evaluates.
+const GROUPS = [
+  {
+    title: "Drum machines (built-in dough banks)",
+    note: "Same groove, different machine. Listen for which kit has the right punch.",
+    chips: [
+      ["TR-909", `setcpm(118/4)\n$: s("bd*4, [~ sd]*2, hh*8").bank("RolandTR909").gain(.8)`],
+      ["TR-808", `setcpm(118/4)\n$: s("bd*4, [~ sd]*2, hh*8").bank("RolandTR808").gain(.8)`],
+      ["TR-707", `setcpm(118/4)\n$: s("bd*4, [~ sd]*2, hh*8").bank("RolandTR707").gain(.8)`],
+      ["LinnDrum", `setcpm(118/4)\n$: s("bd*4, [~ sd]*2, hh*8").bank("LinnDrum").gain(.8)`],
+      ["DMX", `setcpm(118/4)\n$: s("bd*4, [~ sd]*2, hh*8").bank("OberheimDMX").gain(.8)`],
+      ["CR-78", `setcpm(118/4)\n$: s("bd*4, [~ sd]*2, hh*8").bank("RolandCompurhythm78").gain(.8)`],
+    ],
+  },
+  {
+    title: "Breakbeats — switchangel/breaks",
+    note: "Recorded 2-bar breaks. Sofi Tukker direction: organic percussion under a simple hook.",
+    chips: [0, 1, 2, 3, 4].map(i => [
+      `breaks:${i}`,
+      `samples('github:switchangel/breaks')\nsetcpm(118/4)\n$: s("breaks:${i}").loopAt(2).gain(.9)`,
+    ]),
+  },
+  {
+    title: "Pads — switchangel/pad",
+    note: "Recorded pad takes, repitched over Am F G. The quality benchmark from last time.",
+    chips: [0, 1, 2, 3, 4].map(i => [
+      `swpad:${i}`,
+      `samples('github:switchangel/pad')\nsetcpm(118/4)\n$: note("<a3 a3 f3 g3>").s("swpad:${i}").gain(.8).room(.4)`,
+    ]),
+  },
+  {
+    title: "Bass candidates (main-layer contenders)",
+    note: "Vitalic / Index Code direction: one distorted riff carries the track.",
+    chips: [
+      ["gm_synth_bass_1", `setcpm(118/4)\n$: note("[a1 a2]*8").s("gm_synth_bass_1").lpf(1400).gain(.75)`],
+      ["gm_synth_bass_2", `setcpm(118/4)\n$: note("[a1 a2]*8").s("gm_synth_bass_2").lpf(1400).gain(.75)`],
+      ["gm_synth_bass_2 + drive", `setcpm(118/4)\n$: note("<[a1 a2]*8 [a1 a2]*8 [f1 f2]*8 [g1 g2]*8>")\n  .s("gm_synth_bass_2").distort(2).lpf(1200).lpq(4).gain(.6)`],
+      ["dirt: moog", `samples('github:tidalcycles/dirt-samples')\nsetcpm(118/4)\n$: note("[a1 a2]*4").s("moog").clip(1).lpf(1000).gain(.8)`],
+      ["dirt: jvbass", `samples('github:tidalcycles/dirt-samples')\nsetcpm(118/4)\n$: note("[a1 a2]*8").s("jvbass").gain(.85)`],
+      ["dirt: hoover", `samples('github:tidalcycles/dirt-samples')\nsetcpm(118/4)\n$: note("<a1 a1 f1 g1>").s("hoover").clip(1).lpf(1600).gain(.7)`],
+      ["raw sawtooth (last time's baseline)", `setcpm(118/4)\n$: note("[a1 a2]*8").s("sawtooth").lpf(900).lpq(6).distort(2).gain(.45)`],
+    ],
+  },
+  {
+    title: "Leads / stabs / chords",
+    note: "Second layer once the bass is picked. Alternate with the bass hook, never stack two leads.",
+    chips: [
+      ["gm_lead_2_sawtooth arp", `setcpm(118/4)\n$: n("0 4 7 12 7 4 12 16").scale("a3:minor").s("gm_lead_2_sawtooth")\n  .lpf(2400).delay(.4).gain(.55)`],
+      ["gm_lead_1_square arp", `setcpm(118/4)\n$: n("0 4 7 12 7 4 12 16").scale("a3:minor").s("gm_lead_1_square")\n  .lpf(2400).delay(.4).gain(.55)`],
+      ["dirt: juno chords", `samples('github:tidalcycles/dirt-samples')\nsetcpm(118/4)\n$: note("<[a3,c4,e4] [a3,c4,e4] [f3,a3,c4] [g3,b3,d4]>").s("juno").clip(1).gain(.7)`],
+      ["gm_brass_section stab", `setcpm(118/4)\n$: note("<[a2,a3] ~ [f2,f3] [g2,g3]>").s("gm_brass_section")\n  .attack(.002).decay(.25).sustain(0).gain(.7)`],
+      ["gm_orchestra_hit", `setcpm(118/4)\n$: note("a2 ~ ~ ~").s("gm_orchestra_hit").gain(.7)`],
+    ],
+  },
+  {
+    title: "Morph v18 — v17c ⇄ v17d on sliders",
+    note: "blend crossfades the breathing bass out and the supersaw counter-line in; grit is the noise-FM amount on the arp. blend 0 + grit .8 = v17c exactly, blend 1 + grit 0 = v17d exactly.",
+    chips: [
+      ["v18a manual morph (blend + grit sliders)", `setcpm(128/4)
+const blend = slider(.25, 0, 1)
+const grit = slider(.8, 0, 1.1)
+$: s("bd*4").bank("RolandTR909").gain(.55)
+$: note("[a1 a2]*8")
+  .s("gm_synth_bass_2")
+  .distort(sine.range(1,2).slow(8))
+  .lpf(sine.range(400,1000).slow(8)).lpq(4)
+  .gain(saw.fast(4).range(.14,.32).mul(blend.mul(-1).add(1)))
+$: n("<7 _ _ 6 5 _ <5 3> <6 4>>*2").scale("a:minor")
+  .o(2).detune(rand)
+  .s("supersaw")
+  .lpf(700).lpq(4).gain(blend.mul(.3))
+$: n("<0 4 0 9 7>*16".add("<7 _ _ 6 5 _ _ 6>*2")).scale("a:minor")
+  .o(3).s("sawtooth")
+  .lpf(400).lpenv(4).lpd(.15).lpq(8)
+  .fm(grit).fmwave('white')
+  .delay(.6).pan(rand).gain(.45)`],
+      ["v18b automated morph (8-bar wave), grit knob", `setcpm(128/4)
+const grit = slider(.8, 0, 1.1)
+const blend = sine.range(0,.5).slow(16)
+$: s("bd*4").bank("RolandTR909").gain(.55)
+$: note("[a1 a2]*8")
+  .s("gm_synth_bass_2")
+  .distort(sine.range(1,2).slow(8))
+  .lpf(sine.range(400,1000).slow(8)).lpq(4)
+  .gain(saw.fast(4).range(.14,.32).mul(blend.mul(-1).add(1)))
+$: n("<7 _ _ 6 5 _ <5 3> <6 4>>*2").scale("a:minor")
+  .o(2).detune(rand)
+  .s("supersaw")
+  .lpf(700).lpq(4).gain(blend.mul(.3))
+$: n("<0 4 0 9 7>*16".add("<7 _ _ 6 5 _ _ 6>*2")).scale("a:minor")
+  .o(3).s("sawtooth")
+  .lpf(400).lpenv(4).lpd(.15).lpq(8)
+  .fm(grit).fmwave('white')
+  .delay(.6).pan(rand).gain(.45)`],
+      ["v18c breathing grit (FM rides the master sine)", `setcpm(128/4)
+const blend = slider(.25, 0, 1)
+const grit = slider(.8, 0, 1.1)
+$: s("bd*4").bank("RolandTR909").gain(.55)
+$: note("[a1 a2]*8")
+  .s("gm_synth_bass_2")
+  .distort(sine.range(1,2).slow(8))
+  .lpf(sine.range(400,1000).slow(8)).lpq(4)
+  .gain(saw.fast(4).range(.14,.32).mul(blend.mul(-1).add(1)))
+$: n("<7 _ _ 6 5 _ <5 3> <6 4>>*2").scale("a:minor")
+  .o(2).detune(rand)
+  .s("supersaw")
+  .lpf(700).lpq(4).gain(blend.mul(.3))
+$: n("<0 4 0 9 7>*16".add("<7 _ _ 6 5 _ _ 6>*2")).scale("a:minor")
+  .o(3).s("sawtooth")
+  .lpf(400).lpenv(4).lpd(.15).lpq(8)
+  .fm(sine.range(.1,1).slow(8).mul(grit)).fmwave('white')
+  .delay(.6).pan(rand).gain(.45)`],
+    ],
+  },
+  {
+    title: "Pattern v17 — Switch Angel arithmetic (degrees + .add phasing)",
+    note: "Her trick: scale degrees, a 5-step 16th arp .add()-ed to a slower line so the melody evolves for bars before repeating, acid filter envelope, noise FM. acidenv() is her custom extension; approximated here with stock lpenv. All in A minor over our engine.",
+    chips: [
+      ["v17a the arithmetic arp over our engine", `setcpm(128/4)
+$: s("bd*4").bank("RolandTR909").gain(.9)
+$: note("[a1 a2]*8")
+  .s("gm_synth_bass_2")
+  .distort(sine.range(1,2).slow(8))
+  .lpf(sine.range(400,1200).slow(8)).lpq(4)
+  .gain(saw.fast(4).range(.18,.42))
+$: n("<0 4 0 9 7>*16".add("<7 _ _ 6 5 _ _ 6>*2")).scale("a:minor")
+  .o(3).s("sawtooth")
+  .lpf(400).lpenv(4).lpd(.15).lpq(8)
+  .delay(.6).pan(rand).gain(.35)`],
+      ["v17b + acid knob (envelope depth)", `setcpm(128/4)
+$: s("bd*4").bank("RolandTR909").gain(.9)
+$: note("[a1 a2]*8")
+  .s("gm_synth_bass_2")
+  .distort(sine.range(1,2).slow(8))
+  .lpf(sine.range(400,1200).slow(8)).lpq(4)
+  .gain(saw.fast(4).range(.18,.42))
+$: n("<0 4 0 9 7>*16".add("<7 _ _ 6 5 _ _ 6>*2")).scale("a:minor")
+  .o(3).s("sawtooth")
+  .lpf(400).lpenv(slider(4, 0, 8)).lpd(.15).lpq(8)
+  .delay(.6).pan(rand).gain(.35)`],
+      ["v17c + noise FM grit", `setcpm(128/4)
+$: s("bd*4").bank("RolandTR909").gain(.9)
+$: note("[a1 a2]*8")
+  .s("gm_synth_bass_2")
+  .distort(sine.range(1,2).slow(8))
+  .lpf(sine.range(400,1200).slow(8)).lpq(4)
+  .gain(saw.fast(4).range(.18,.42))
+$: n("<0 4 0 9 7>*16".add("<7 _ _ 6 5 _ _ 6>*2")).scale("a:minor")
+  .o(3).s("sawtooth")
+  .lpf(400).lpenv(4).lpd(.15).lpq(8)
+  .fm(.8).fmwave('white')
+  .delay(.6).pan(rand).gain(.35)`],
+      ["v17d supersaw counter-line (her 2nd pattern)", `setcpm(128/4)
+$: s("bd*4").bank("RolandTR909").gain(.9)
+$: n("<7 _ _ 6 5 _ <5 3> <6 4>>*2").scale("a:minor")
+  .o(2).detune(rand)
+  .s("supersaw")
+  .lpf(700).lpq(4).gain(.3)
+$: n("<0 4 0 9 7>*16".add("<7 _ _ 6 5 _ _ 6>*2")).scale("a:minor")
+  .o(3).s("sawtooth")
+  .lpf(400).lpenv(4).lpd(.15).lpq(8)
+  .delay(.6).pan(rand).gain(.35)`],
+      ["v17e arithmetic BASS (our riff, evolved)", `setcpm(128/4)
+$: s("bd*4").bank("RolandTR909").gain(.9)
+$: n("<0 7 0 7 0 7 <0 5> 7>*16".add("<0 _ _ 0 -2 _ _ 0>*2")).scale("a1:minor")
+  .s("gm_synth_bass_2")
+  .distort(sine.range(1,2).slow(8))
+  .lpf(sine.range(400,1200).slow(8)).lpq(4)
+  .gain(saw.fast(4).range(.18,.42))
+$: note("<[a4 ~ a4 ~ c5 ~ a4 g4] [a4 ~ a4 ~ e4 ~ g4 ~]>")
+  .s("gm_lead_1_square").lpf(2800).delay(.3).gain(.5)`],
+    ],
+  },
+  {
+    title: "Track v19 — the current cut",
+    note: "v16 + a 16-bar acid arp act: the blend wave (anchored to the section, starting at .25) trades the breathing bass for the supersaw line; knobs = grit (noise FM, max 1.1) and acid (filter-envelope depth, the v17b knob).",
+    chips: [
+      ["v19 the track", `setcpm(128/4)
+const kickMod = s("<[bd*4] [bd*4] [bd*4] [bd bd bd [bd bd]]>").bank("RolandTR909")
+  .gain("[.92 .72 .84 .72]").speed("<1 1 1 .9>")
+  .distort(sine.range(.2,.6).slow(8))
+const kickSoft = s("bd*4").bank("RolandTR909").gain(.6).lpf(4000)
+const kickArp = s("bd*4").bank("RolandTR909").gain(.55)
+const ohat = s("[~ oh]*4").bank("RolandTR909").gain(.25).lpf(6000)
+const bass = note("[a1 a2]*8")
+  .s("gm_synth_bass_2")
+  .distort(sine.range(1,2).slow(8))
+  .lpf(sine.range(400,1200).slow(8)).lpq(4)
+  .gain(saw.fast(4).range(.18,.42))
+const bassSub = note("[a1 a2]*8")
+  .s("gm_synth_bass_2").distort(1)
+  .lpf(sine.range(400,800).slow(8)).lpq(4)
+  .gain(saw.fast(4).range(.15,.32))
+const bassOut = note("[a1 a2]*8")
+  .s("gm_synth_bass_2").distort(1)
+  .lpf(saw.range(900,300).slow(12).late(52)).lpq(4)
+  .gain(saw.fast(4).range(.12,.3))
+const grit = slider(.8, 0, 1.1)
+const acid = slider(4, 0, 8)
+const blend = sine.range(0,.5).slow(16).late(28)
+const bassArp = note("[a1 a2]*8")
+  .s("gm_synth_bass_2")
+  .distort(sine.range(1,2).slow(8))
+  .lpf(sine.range(400,1000).slow(8)).lpq(4)
+  .gain(saw.fast(4).range(.14,.32).mul(blend.mul(-1).add(1)))
+const sawline = n("<7 _ _ 6 5 _ <5 3> <6 4>>*2").scale("a:minor")
+  .o(2).detune(rand)
+  .s("supersaw").lpf(700).lpq(4).gain(blend.mul(.3))
+const arp = n("<0 4 0 9 7>*16".add("<7 _ _ 6 5 _ _ 6>*2")).scale("a:minor")
+  .o(3).s("sawtooth")
+  .lpf(400).lpenv(acid).lpd(.15).lpq(8)
+  .fm(sine.range(.1,1).slow(8).mul(grit)).fmwave('white')
+  .delay(.6).pan(rand).gain(.45)
+const siren = note("<[a4 ~ a4 ~ c5 ~ a4 g4] [a4 ~ a4 ~ e4 ~ g4 ~]>")
+  .s("gm_lead_1_square").lpf(2800).delay(.3).gain(.5)
+const sirenSoft = siren.lpf(2400).gain(.4)
+const pad = note("<[a3,c4,e4] [g3,b3,d4] [f3,a3,c4] [e3,gs3,b3]>")
+  .s("gm_pad_warm").attack(.3).release(.6).gain(.3).room(.4)
+const padBig = note("<[a3,c4,e4,a4] [g3,b3,d4,g4] [f3,a3,c4,f4] [e3,gs3,b3,e4]>")
+  .s("gm_pad_warm").attack(.2).release(.7).gain(.65).room(.5)
+const riser = s("white").gain(saw.slow(4).range(0,.2)).lpf(4000)
+$: arrange(
+  [8, stack(kickMod, bass)],                       // intro
+  [8, stack(kickMod, bass, siren)],                // A1: the hook
+  [8, stack(kickSoft, bassSub, padBig)],           // pads take over
+  [4, stack(bass, siren, riser)],                  // breath: kick cut
+  [16, stack(kickArp, bassArp, sawline, arp)],     // the acid arp act
+  [8, stack(kickMod, bass, sirenSoft, pad, ohat)], // everything
+  [8, stack(kickMod, bassOut)],                    // outro: filter slides shut
+  [4, bassOut],                                    // machine winds down
+)`],
+    ],
+  },
+];
+
+// ---- wiring ----------------------------------------------------------------
+const status = document.getElementById("status");
+const groupsEl = document.getElementById("groups");
+let host, currentChip = null;
+
+for (const g of GROUPS) {
+  const h = document.createElement("h2");
+  h.textContent = g.title;
+  groupsEl.appendChild(h);
+  if (g.note) {
+    const n = document.createElement("p");
+    n.className = "group-note";
+    n.textContent = g.note;
+    groupsEl.appendChild(n);
+  }
+  const wrap = document.createElement("div");
+  wrap.className = "chips";
+  for (const [label, code] of g.chips) {
+    const b = document.createElement("button");
+    b.className = "chip";
+    b.textContent = label;
+    b.dataset.chip = label;
+    b.addEventListener("click", () => playCode(code, b));
+    wrap.appendChild(b);
+  }
+  groupsEl.appendChild(wrap);
+}
+
+function markPlaying(chip) {
+  if (currentChip) currentChip.classList.remove("playing");
+  currentChip = chip || null;
+  if (currentChip) currentChip.classList.add("playing");
+}
+
+function playCode(code, chip) {
+  if (!host?.editor) return;
+  host.editor.setCode(code);
+  host.editor.evaluate();
+  markPlaying(chip);
+}
+
+document.getElementById("btn-play").addEventListener("click", () => {
+  if (!host?.editor) return;
+  host.editor.evaluate();
+  markPlaying(null);
+});
+document.getElementById("btn-stop").addEventListener("click", () => {
+  if (!host?.editor) return;
+  host.editor.stop();
+  markPlaying(null);
+});
+
+// load the CLASSIC repl build (the +esm build double-defines the custom element)
+const engineScript = document.createElement("script");
+engineScript.src = "https://cdn.jsdelivr.net/npm/@strudel/repl@1.3.0/dist/index.js";
+engineScript.onload = async () => {
+  await customElements.whenDefined("strudel-editor");
+  host = document.getElementById("repl");
+  // host.editor is created asynchronously after definition
+  while (!host.editor) await new Promise(r => setTimeout(r, 50));
+  status.textContent = "ready";
+};
+engineScript.onerror = () => { status.textContent = "failed to load engine from jsdelivr"; };
+document.head.appendChild(engineScript);
+</script>
+</body>
+</html>
