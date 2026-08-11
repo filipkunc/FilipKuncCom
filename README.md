@@ -25,7 +25,9 @@ Every push to `main` deploys automatically: the GitHub Actions workflow
 (`.github/workflows/deploy.yml`) runs `./deploy.sh` on the runner — same build,
 same SSH transfer, same health check as a workstation deploy. It needs two
 repository secrets, `DEPLOY_SSH_KEY` (a dedicated key authorized for the deploy
-user on the box) and `DEPLOY_KNOWN_HOSTS` (`ssh-keyscan filipkunc.com`). A
+user on the box) and `DEPLOY_KNOWN_HOSTS` (`ssh-keyscan filipkunc.com`) — run
+`./scripts/setup-actions-deploy.sh` once from a machine with SSH access to the
+box to generate, authorize, and upload both. A
 manual `Rollback` workflow retags a previously-shipped image via
 `./rollback.sh`. Running `./deploy.sh` locally still works unchanged.
 
