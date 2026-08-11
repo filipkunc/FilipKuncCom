@@ -1,0 +1,57 @@
+# Deploy to the Hetzner box on every push to main (or manually via the
+# Actions tab). Runs the exact same ./deploy.sh used from a workstation:
+# build the image with podman on the runner, ship it over SSH, restart the
+# unit, verify /healthz. Podman is preinstalled on GitHub's Ubuntu runners.
+#
+# Required repository secrets:
+#   DEPLOY_SSH_KEY      Private key authorized for deploy@filipkunc.com.
+#                       Generate a dedicated one (ssh-keygen -t ed25519) and
+#                       append the .pub to the deploy user's authorized_keys
+#                       on the box; don't reuse your personal key.
+#   DEPLOY_KNOWN_HOSTS  Host key pinning, the output of:
+#                       ssh-keyscan filipkunc.com
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deploy at a time; queue instead of cancelling a deploy mid-flight.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          if [[ -z "$DEPLOY_SSH_KEY" || -z "$DEPLOY_KNOWN_HOSTS" ]]; then
+            echo "fatal: DEPLOY_SSH_KEY and DEPLOY_KNOWN_HOSTS repository secrets must be set" >&2
+            exit 1
+          fi
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<'EOF'
+          Host filipkunc.com
+            IdentityFile ~/.ssh/deploy_key
+            IdentitiesOnly yes
+          EOF
+
+      - name: Deploy
+        run: ./deploy.sh
