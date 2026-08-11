@@ -19,6 +19,16 @@ Other scripts:
 - `npm run verify` — run the posts' code snippets and capture their output
 - `./deploy.sh --build-only` — build the deploy image without shipping it
 
+## Deploying
+
+Every push to `main` deploys automatically: the GitHub Actions workflow
+(`.github/workflows/deploy.yml`) runs `./deploy.sh` on the runner — same build,
+same SSH transfer, same health check as a workstation deploy. It needs two
+repository secrets, `DEPLOY_SSH_KEY` (a dedicated key authorized for the deploy
+user on the box) and `DEPLOY_KNOWN_HOSTS` (`ssh-keyscan filipkunc.com`). A
+manual `Rollback` workflow retags a previously-shipped image via
+`./rollback.sh`. Running `./deploy.sh` locally still works unchanged.
+
 ## Layout
 
 - `src/content/posts/` — the posts, one folder per post (`index.mdx` plus its assets)

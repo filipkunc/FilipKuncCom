@@ -1,0 +1,54 @@
+# Manual rollback: retag a previously-shipped image on the box and restart.
+# No build runs — the image must already be on the box (any prior deploy).
+# Trigger from the Actions tab with the 12-char short SHA to roll back to.
+#
+# Uses the same DEPLOY_SSH_KEY / DEPLOY_KNOWN_HOSTS secrets as deploy.yml.
+
+name: Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Short git SHA of the image to roll back to (as shown by a past deploy)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          if [[ -z "$DEPLOY_SSH_KEY" || -z "$DEPLOY_KNOWN_HOSTS" ]]; then
+            echo "fatal: DEPLOY_SSH_KEY and DEPLOY_KNOWN_HOSTS repository secrets must be set" >&2
+            exit 1
+          fi
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<'EOF'
+          Host filipkunc.com
+            IdentityFile ~/.ssh/deploy_key
+            IdentitiesOnly yes
+          EOF
+
+      - name: Rollback
+        env:
+          ROLLBACK_SHA: ${{ inputs.sha }}
+        run: ./rollback.sh "$ROLLBACK_SHA"
