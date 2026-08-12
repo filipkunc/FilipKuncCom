@@ -3,6 +3,10 @@
 # build the image with podman on the runner, ship it over SSH, restart the
 # unit, verify /healthz. Podman is preinstalled on GitHub's Ubuntu runners.
 #
+# Nothing ships unless Checks passes first. That gate is the whole reason the
+# deploy job has a `needs:` — a push to main (including a merged Dependabot
+# pull request) reaches production untouched by human hands otherwise.
+#
 # Required repository secrets:
 #   DEPLOY_SSH_KEY      Private key authorized for deploy@filipkunc.com.
 #                       Generate a dedicated one (ssh-keygen -t ed25519) and
@@ -27,7 +31,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Types, unit tests, e2e. Same workflow that runs on pull requests.
+  checks:
+    uses: ./.github/workflows/checks.yml
+
   deploy:
+    needs: checks
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:

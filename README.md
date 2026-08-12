@@ -23,7 +23,10 @@ Other scripts:
 
 Every push to `main` deploys automatically: the GitHub Actions workflow
 (`.github/workflows/deploy.yml`) runs `./deploy.sh` on the runner — same build,
-same SSH transfer, same health check as a workstation deploy. It needs two
+same SSH transfer, same health check as a workstation deploy. The deploy job
+first waits on `Checks` (`.github/workflows/checks.yml`: `npm run check`, the
+wasm unit tests, and the Playwright e2e specs against SwiftShader), which also
+runs on every pull request, so a red tree never reaches the box. It needs two
 repository secrets, `DEPLOY_SSH_KEY` (a dedicated key authorized for the deploy
 user on the box) and `DEPLOY_KNOWN_HOSTS` (`ssh-keyscan filipkunc.com`) — run
 `./scripts/setup-actions-deploy.sh` once from a machine with SSH access to the

@@ -1,0 +1,59 @@
+# Types, unit tests and end-to-end tests. Runs on every pull request, and is
+# called by deploy.yml as the gate the deploy job depends on, so main can only
+# ship a tree that passed here.
+#
+# The e2e specs drive real WebGPU. Hosted runners have no GPU, so Chromium falls
+# back to SwiftShader's software Vulkan, which is what the flags in
+# playwright.config.ts already request. Needs no secrets, so it also runs on
+# Dependabot pull requests.
+
+name: Checks
+
+on:
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      # Match the node:24-alpine the image builds on.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci --no-audit --no-fund
+
+      - name: Types and content
+        run: npm run check
+
+      - name: Unit tests
+        run: |
+          npm run test:hb
+          npm run test:flowfield
+
+      # channel: 'chromium' in the config means the full browser, not
+      # headless_shell, which is the only build that has WebGPU.
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
