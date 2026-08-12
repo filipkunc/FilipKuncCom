@@ -2,11 +2,14 @@
 // KaTeX, and shiki dual-theme syntax highlighting (dark baked inline, light
 // swapped by Layout's .astro-code CSS). For component-rendered content like
 // captured model responses and trace attributes.
-import { createMarkdownProcessor, type MarkdownProcessor } from '@astrojs/markdown-remark';
+import { createMarkdownProcessor, type MarkdownRenderer } from '@astrojs/markdown-remark';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 
-let processor: Promise<MarkdownProcessor> | null = null;
+// markdown-remark 7 renamed what createMarkdownProcessor hands back:
+// MarkdownProcessor is now the factory, MarkdownRenderer the thing with
+// .render(). The call below is unchanged.
+let processor: Promise<MarkdownRenderer> | null = null;
 
 export function renderMd(src: string): Promise<string> {
   processor ??= createMarkdownProcessor({
