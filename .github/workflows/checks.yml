@@ -34,6 +34,17 @@ jobs:
       - name: Types and content
         run: npm run check
 
+      # The hb-editor tests shape with the full variable fonts, which
+      # build-wasm.sh fetches and .gitignore keeps out of the repo (only the web
+      # subsets are committed). Same URLs as scripts/hb-editor/build-wasm.sh.
+      - name: Fetch test fonts
+        run: |
+          mkdir -p scripts/hb-editor/fonts
+          curl -sSfL -o scripts/hb-editor/fonts/Inter.ttf \
+            'https://raw.githubusercontent.com/google/fonts/main/ofl/inter/Inter%5Bopsz%2Cwght%5D.ttf'
+          curl -sSfL -o scripts/hb-editor/fonts/EBGaramond.ttf \
+            'https://raw.githubusercontent.com/google/fonts/main/ofl/ebgaramond/EBGaramond%5Bwght%5D.ttf'
+
       - name: Unit tests
         run: |
           npm run test:hb

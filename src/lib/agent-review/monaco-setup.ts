@@ -44,6 +44,6 @@ export function themeName(dark: boolean): string {
 // This is a static excerpt, not a project to type-check. Turn the JS language
 // service's validation off so no red squiggles appear on the snippet.
 export function configureLanguages(monaco: typeof Monaco): void {
-  const ts = monaco.languages.typescript;
+  const ts = monaco.typescript;
   ts.javascriptDefaults.setDiagnosticsOptions({ noSemanticValidation: true, noSyntaxValidation: true });
 }

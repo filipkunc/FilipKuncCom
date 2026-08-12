@@ -1,7 +1,7 @@
 ---
 import 'katex/dist/katex.min.css';
 
-interface Props {
+interface LayoutProps {
   title: string;
   description?: string;
   /** Page type for Open Graph. Posts pass 'article'; everything else is a 'website'. */
@@ -10,6 +10,11 @@ interface Props {
   image?: string;
   /** ISO publish date, emitted as article:published_time for 'article' pages. */
   publishedDate?: Date;
+}
+
+interface Props extends LayoutProps {
+  /** Markdown/MDX pages that set `layout:` arrive with everything nested here. */
+  frontmatter?: LayoutProps;
 }
 
 // Markdown/MDX pages that set `layout:` pass their frontmatter under
