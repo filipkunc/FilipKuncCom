@@ -1,0 +1,34 @@
+---
+title: "LLM hallucinations"
+description: "What a frustrating debugging session taught me about Claude, independent reviews, and using multiple models for confidence."
+pubDate: 2026-08-20
+tags: ["claude", "llm", "hallucinations"]
+---
+
+Recently I had the most surreal experience with Claude hallucinating. I remember using Fable during my vacation in Croatia and feeling amazed that I could get very complex tasks done from a phone on my personal projects.
+After returning to work, where I only have access to Opus and models from GitHub Copilot, I started fixing a complex bug related to Async Local Storage and Promises in Node.js.
+
+Initially my understanding of the problem was good enough, and I felt that Claude was really helping me. But something was off, and
+I knew I needed a review from a more senior colleague who had either written the original code or worked on its more recent evolution.
+
+With every change in the review, it became clearer that I was completely off. Towards the end, I realized Opus 5 simply does not run the tests and hallucinates the test results.
+That prompted me to try a different approach. I remembered hearing colleagues talk about using mixed models when one of them is just off. I tried to get a review from GPT Sol 5.6 through GitHub Copilot via OpenCode.
+It immediately told me to keep just one of the changes, reduce it to a one-liner, and move the rest to a separate session for proper investigation.
+
+I was really amazed how much the models can differ from each other. I think this non-deterministic behavior is incredibly dangerous for long-term projects when not all team members fully understand the codebase.
+One thing I took as a lesson from this is using different models from different vendors to get better confidence in the tests.
+This also leads to savings. It is fascinating that something like Sonnet 4.6 with follow-up with GPT models can get much better results and save also money on tokens.
+I have been reading about this approach in the past, but never thought the effect can be so dramatic.
+
+I think we got collectively spoiled by the initial feeling of accomplishment and the constant encouragement from Anthropic models, but sometimes I really want proper engineering and proper tests.
+Trusting a single vendor is an insane risk, because the model really wants to finish the task to the point that it will inevitably cheat on the result.
+
+It is the same with human engineers. If you want proper quality, QA needs to be independent of developers; otherwise, the conflict of interest is inevitable.
+I actually feel better when I know someone else is reviewing the product I am working on and making sure I am not cutting corners to get it done on time.
+
+I was never a fan of OpenAI, but I have to admit that the coding output and the Codex CLI itself are really nice and pleasant to use.
+I hope the smaller models will get better and I will get better hardware to run them locally.
+I really like where the Unsloth and vLLM is going, but the hardware investments are still very high for me.
+
+I am sorry this turned more into a rant than a proper engineering post with cool stuff, but I really wanted to write it.
+Maybe just for me, to remind myself to try different things and not get too comfortable with one tool, vendor or approach to solving things.
