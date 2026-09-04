@@ -1,0 +1,38 @@
+{
+  "model": "unsloth/Qwen3.8-27B-GGUF",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You have a Python tool. Use it for numeric computation instead of computing by hand."
+    },
+    {
+      "role": "user",
+      "content": "Solve x^x = 10"
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "python",
+        "description": "Run a short Python 3.12 program in a disposable container with networking disabled. Print the values that should be returned to the model.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string",
+              "description": "Complete Python 3.12 source code."
+            }
+          },
+          "required": ["code"],
+          "additionalProperties": false
+        }
+      }
+    }
+  ],
+  "tool_choice": "auto",
+  "temperature": 0,
+  "seed": 42,
+  "max_tokens": 1200,
+  "stream": false
+}

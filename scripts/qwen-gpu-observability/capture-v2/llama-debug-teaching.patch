@@ -1,0 +1,187 @@
+diff --git a/common/debug.cpp b/common/debug.cpp
+--- a/common/debug.cpp
++++ b/common/debug.cpp
+@@ -3,6 +3,8 @@
+ #include "common.h"
+ #include "log.h"
+ 
++#include <algorithm>
++#include <cinttypes>
+ #include <cmath>
+ #include <regex>
+ #include <string>
+@@ -14,6 +16,22 @@ struct common_debug_cb_user_data::impl {
+     bool                    abort_on_nan{false};
+ };
+ 
++static bool common_debug_matches_filter(
++        const common_debug_cb_user_data::impl * pimpl,
++        const char *                            tensor_name) {
++    if (pimpl->tensor_filters.empty()) {
++        return true;
++    }
++
++    for (const auto & filter : pimpl->tensor_filters) {
++        if (std::regex_search(tensor_name, filter)) {
++            return true;
++        }
++    }
++
++    return false;
++}
++
+ common_debug_cb_user_data::common_debug_cb_user_data() : pimpl(std::make_unique<impl>()) {}
+ common_debug_cb_user_data::~common_debug_cb_user_data() = default;
+ 
+@@ -78,17 +96,30 @@ static float common_ggml_get_float_value(const uint8_t * data,
+ 
+ static void common_debug_print_tensor(uint8_t * data, ggml_type type, const int64_t * ne, const size_t * nb, int64_t n, bool abort_on_nan) {
+     GGML_ASSERT(n > 0);
+-    float sum = 0;
++    double sum = 0.0;
++    double sum_sq = 0.0;
++    float min_value = INFINITY;
++    float max_value = -INFINITY;
++    int64_t count = 0;
+     for (int64_t i3 = 0; i3 < ne[3]; i3++) {
+         for (int64_t i2 = 0; i2 < ne[2]; i2++) {
+             for (int64_t i1 = 0; i1 < ne[1]; i1++) {
+                 for (int64_t i0 = 0; i0 < ne[0]; i0++) {
+                     const float v = common_ggml_get_float_value(data, type, nb, i0, i1, i2, i3);
+                     sum += v;
++                    sum_sq += double(v) * double(v);
++                    min_value = std::min(min_value, v);
++                    max_value = std::max(max_value, v);
++                    ++count;
+                 }
+             }
+         }
+     }
++
++    const double mean = count == 0 ? 0.0 : sum / count;
++    const double rms  = count == 0 ? 0.0 : std::sqrt(sum_sq / count);
++    LOG(INDENT "summary count=%" PRId64 " mean=%.9g rms=%.9g min=%.9g max=%.9g\n",
++        count, mean, rms, min_value, max_value);
+     for (int64_t i3 = 0; i3 < ne[3]; i3++) {
+         LOG(INDENT "[\n");
+         for (int64_t i2 = 0; i2 < ne[2]; i2++) {
+@@ -119,7 +150,7 @@ static void common_debug_print_tensor(uint8_t * data, ggml_type type, const int6
+             LOG(INDENT INDENT "],\n");
+         }
+         LOG(INDENT "]\n");
+-        LOG(INDENT "sum = %f\n", sum);
++        LOG(INDENT "sum = %.9g\n", sum);
+     }
+ 
+     if (abort_on_nan) {
+@@ -147,19 +178,10 @@ bool common_debug_cb_eval(struct ggml_tensor * t, bool ask, void * user_data) {
+     const struct ggml_tensor * src0 = t->src[0];
+     const struct ggml_tensor * src1 = t->src[1];
+ 
+-    if (ask) {
+-        return true;  // Always retrieve data
+-    }
+-
+-    bool matches_filter = pimpl->tensor_filters.empty();
++    const bool matches_filter = common_debug_matches_filter(pimpl, t->name);
+ 
+-    if (!matches_filter) {
+-        for (const auto & filter : pimpl->tensor_filters) {
+-            if (std::regex_search(t->name, filter)) {
+-                matches_filter = true;
+-                break;
+-            }
+-        }
++    if (ask) {
++        return matches_filter;
+     }
+ 
+     char src1_str[128] = { 0 };
+diff --git a/examples/debug/debug.cpp b/examples/debug/debug.cpp
+--- a/examples/debug/debug.cpp
++++ b/examples/debug/debug.cpp
+@@ -9,6 +9,7 @@
+ #include <vector>
+ #include <filesystem>
+ #include <fstream>
++#include <numeric>
+ #include <optional>
+ #include <regex>
+ 
+@@ -56,7 +57,7 @@ struct output_data {
+         const llama_vocab * vocab = llama_model_get_vocab(model);
+         const bool add_bos = llama_vocab_get_add_bos(vocab);
+ 
+-        tokens = common_tokenize(ctx, params.prompt, add_bos);
++        tokens = common_tokenize(ctx, params.prompt, add_bos, true);
+         prompt = params.prompt;
+ 
+         if (params.embedding) {
+@@ -181,13 +182,38 @@ static void print_tokenized_prompt(llama_context * ctx, const std::vector<llama_
+     LOG("\n");
+ }
+ 
++static void print_top_logits(llama_context * ctx, int32_t output_index, size_t n_top) {
++    const llama_model * model = llama_get_model(ctx);
++    const llama_vocab * vocab = llama_model_get_vocab(model);
++    const float * logits = llama_get_logits_ith(ctx, output_index);
++    const int32_t n_vocab = llama_vocab_n_tokens(vocab);
++
++    std::vector<llama_token> ids(n_vocab);
++    std::iota(ids.begin(), ids.end(), 0);
++    std::partial_sort(ids.begin(), ids.begin() + std::min(n_top, ids.size()), ids.end(),
++        [logits](llama_token a, llama_token b) { return logits[a] > logits[b]; });
++
++    LOG("Top logits (%zu):\n", n_top);
++    for (size_t rank = 0; rank < std::min(n_top, ids.size()); ++rank) {
++        const llama_token id = ids[rank];
++        std::string piece(128, '\0');
++        int n = llama_token_to_piece(vocab, id, piece.data(), piece.size(), 0, true);
++        if (n < 0) {
++            piece = "<conversion failed>";
++        } else {
++            piece.resize(n);
++        }
++        LOG("%2zu  id=%6d  logit=%12.6f  piece=%s\n", rank + 1, id, logits[id], piece.c_str());
++    }
++}
++
+ static bool run(llama_context * ctx, const common_params & params) {
+     const llama_model * model = llama_get_model(ctx);
+     const llama_vocab * vocab = llama_model_get_vocab(model);
+ 
+     const bool add_bos = llama_vocab_get_add_bos(vocab);
+ 
+-    std::vector<llama_token> tokens = common_tokenize(ctx, params.prompt, add_bos);
++    std::vector<llama_token> tokens = common_tokenize(ctx, params.prompt, add_bos, true);
+ 
+     if (tokens.empty()) {
+         LOG_ERR("%s : there are not input tokens to process - (try to provide a prompt with '-p')\n", __func__);
+@@ -200,6 +226,7 @@ static bool run(llama_context * ctx, const common_params & params) {
+     }
+ 
+     print_tokenized_prompt(ctx, tokens, params.prompt);
++    print_top_logits(ctx, tokens.size() - 1, 10);
+ 
+     if (params.save_logits) {
+         try {
+@@ -224,6 +251,19 @@ int main(int argc, char ** argv) {
+         return 1;
+     }
+ 
++    // common_params_parse strips one trailing newline from -f prompts. That is
++    // convenient for interactive completion, but it changes a rendered chat
++    // template. Reload debug prompt files byte-for-byte so the diagnostic graph
++    // sees the same token sequence as llama-server.
++    if (!params.prompt_file.empty()) {
++        std::ifstream in(params.prompt_file, std::ios::binary);
++        if (!in) {
++            LOG_ERR("error: could not open prompt file '%s'\n", params.prompt_file.c_str());
++            return 1;
++        }
++        params.prompt.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
++    }
++
+     llama_backend_init();
+     llama_numa_init(params.numa);
+ 

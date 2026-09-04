@@ -1,0 +1,87 @@
+{
+  "capture": "Qwen3.8 teaching rerun",
+  "date": "2026-09-04",
+  "modelSha256": "7897d2c5a5cee46aef50895141b2c8a0803c1185f3d03c4fda4cd137a7ad77fe",
+  "artifacts": [
+    {
+      "name": "request-01.json",
+      "bytes": 953,
+      "sha256": "2de0e05f313cff76caaf82d2cb7ad71db236f6a1a9957ee3ce4c294df8124af0"
+    },
+    {
+      "name": "request-02.json",
+      "bytes": 3178,
+      "sha256": "9fb6a5afd34b6c8c92a9eca1e503f6f10237e36011d0150d64937d1fbd5ce7bc"
+    },
+    {
+      "name": "response-01.json",
+      "bytes": 2478,
+      "sha256": "d41dd8ea31048c0f0e167c0571247f89c633047a6f50c162e7c2cd472a67c8ad"
+    },
+    {
+      "name": "response-02.json",
+      "bytes": 3407,
+      "sha256": "560be0c63c99e0fa5dfe080a23f00f16ba916e0e4e08ff1550b0be0f66e9c31c"
+    },
+    {
+      "name": "template-01.json",
+      "bytes": 1767,
+      "sha256": "9c07675c822e61cf73c87a51e9eb376ef59d96603ec9ed92ade9fd811bc703e5"
+    },
+    {
+      "name": "template-02.json",
+      "bytes": 3693,
+      "sha256": "d229e09002a9700198e1ec7399997da44fa21e281c57970438f5b9782505a53c"
+    },
+    {
+      "name": "tokenize-request-01.json",
+      "bytes": 1846,
+      "sha256": "8bdf958a308ac6d7bc080e4c619d59386ef8815505d21660a3eaf1328dcc80e0"
+    },
+    {
+      "name": "tokenize-request-02.json",
+      "bytes": 3772,
+      "sha256": "bceaad7905f68686d891a82d5b766afb43c72353aa335f4060ba98ab8706d046"
+    },
+    {
+      "name": "tokens-01.json",
+      "bytes": 10151,
+      "sha256": "f7f29986244b1a86e526f50d347999cca7fe721149fac57da237709023210059"
+    },
+    {
+      "name": "tokens-02.json",
+      "bytes": 27348,
+      "sha256": "0d631c6e344844ddc148b234d3d7c80705acf8048069637aefd16a807bd0ceb0"
+    },
+    {
+      "name": "rendered-prompt-01.txt",
+      "bytes": 1677,
+      "sha256": "264bb43a830a7eb1ba12c0f11fb86a7185995d4f5afcf908f9b93c28235083a9"
+    },
+    {
+      "name": "tool-01.py",
+      "bytes": 250,
+      "sha256": "c710edfb8a6d5bcafe4567206a4076b6ed814f2176ccc464d02df6677184d4e5"
+    },
+    {
+      "name": "tool-output-01.txt",
+      "bytes": 57,
+      "sha256": "a42d9072a156897543cbbfeafc67127fd731119522884ee2495f973c4280d35a"
+    },
+    {
+      "name": "gguf-metadata.json",
+      "bytes": 17358,
+      "sha256": "0b204a1b64aeceb30bc4e6a4761908e0dbe86f888a896cb6325fbd0e5aa409ce"
+    },
+    {
+      "name": "layer-checkpoints.log",
+      "bytes": 47231,
+      "sha256": "c1f35dc41529bde59de64e0d9b1a1c5afd218fbedf7c12c1195e71df8f87ae9e"
+    },
+    {
+      "name": "llama-debug-teaching.patch",
+      "bytes": 6874,
+      "sha256": "40491ec59b864e5fd844a5e7ff5d25d00a77988b9219b3dbe52a561cafdf9a8d"
+    }
+  ]
+}
