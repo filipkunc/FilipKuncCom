@@ -1,0 +1,128 @@
+---
+interface Props {
+  contextLimit: number;
+  capturedTokens: number;
+  attentionLayers: number;
+  totalLayers: number;
+  kvHeads: number;
+  headSize: number;
+  bytesPerElement: number;
+}
+const { contextLimit, capturedTokens, attentionLayers, totalLayers, kvHeads, headSize, bytesPerElement } = Astro.props;
+const bytesPerToken = attentionLayers * kvHeads * headSize * bytesPerElement * 2;
+const allAttentionBytesPerToken = totalLayers * kvHeads * headSize * bytesPerElement * 2;
+const maxBytes = contextLimit * allAttentionBytesPerToken;
+const mib = (bytes: number) => bytes / 2 ** 20;
+---
+
+<figure class="diagram qwen-kv-explorer" data-limit={contextLimit} data-bpt={bytesPerToken} data-all-bpt={allAttentionBytesPerToken}>
+  <div class="qkv-status">calculated from captured GGUF metadata and llama.cpp's F16 default · not measured allocation</div>
+  <div class="qkv-control">
+    <label for="qkv-context">context position <output class="qkv-token-value">{capturedTokens.toLocaleString()} tokens</output></label>
+    <input id="qkv-context" class="qkv-slider" type="range" min="0" max={contextLimit} value={capturedTokens} step="1" list="qkv-stops" />
+    <datalist id="qkv-stops">
+      <option value="355"></option><option value="877"></option><option value="1092"></option>
+      <option value={capturedTokens}></option><option value={contextLimit}></option>
+    </datalist>
+    <div class="qkv-stops" aria-hidden="true">
+      <span style={`left:${capturedTokens / contextLimit * 100}%`}>captured end</span>
+      <span style="left:100%">full window</span>
+    </div>
+  </div>
+
+  <div class="qkv-bars" role="img" aria-label="Comparison of Qwen hybrid KV cache with a hypothetical model where all 64 layers use full attention">
+    <div class="qkv-row">
+      <div><b>model layout</b><span>{attentionLayers} attention + {totalLayers - attentionLayers} recurrent layers</span></div>
+      <div class="qkv-track"><i class="qkv-hybrid" style={`width:${capturedTokens * bytesPerToken / maxBytes * 100}%`}></i></div>
+      <output class="qkv-hybrid-value">{mib(capturedTokens * bytesPerToken).toFixed(1)} MiB</output>
+    </div>
+    <div class="qkv-row">
+      <div><b>counterfactual, not this model</b><span>{totalLayers} attention layers with the same KV dimensions</span></div>
+      <div class="qkv-track"><i class="qkv-all" style={`width:${capturedTokens * allAttentionBytesPerToken / maxBytes * 100}%`}></i></div>
+      <output class="qkv-all-value">{mib(capturedTokens * allAttentionBytesPerToken).toFixed(1)} MiB</output>
+    </div>
+    <div class="qkv-scale"><span>0</span><span>{(maxBytes / 2 ** 30).toFixed(2)} GiB shared scale</span></div>
+  </div>
+
+  <div class="qkv-equation">
+    <span>{attentionLayers} layers</span><i>×</i><span>{kvHeads} KV heads</span><i>×</i><span>{headSize} values</span><i>×</i><span>{bytesPerElement} bytes</span><i>×</i><span>K + V</span><b>= <output class="qkv-per-token">{bytesPerToken / 1024} KiB/token</output></b>
+  </div>
+
+  <div class="qkv-layer-strip" aria-label={`${totalLayers} layers, with every fourth layer using full attention`}>
+    {Array.from({ length: totalLayers }, (_, i) => <i class={(i + 1) % 4 === 0 ? 'attention' : 'recurrent'} title={`layer ${i}: ${(i + 1) % 4 === 0 ? 'full attention' : 'fixed recurrent state'}`}></i>)}
+  </div>
+  <div class="qkv-legend"><span><i class="recurrent"></i>fixed recurrent state</span><span><i class="attention"></i>growing K + V</span></div>
+
+  <figcaption><slot /></figcaption>
+</figure>
+
+<style>
+  figure.qwen-kv-explorer { --attn: #8d7bd8; --rec: #49a078; text-align: left; }
+  .qkv-status { margin-bottom: 0.85rem; color: var(--muted); font: 0.68rem ui-monospace, monospace; text-transform: uppercase; letter-spacing: 0.035em; }
+  :global(:root[data-theme='light']) figure.qwen-kv-explorer { --attn: #6956b8; --rec: #26774f; }
+  @media (prefers-color-scheme: light) {
+    :global(:root:not([data-theme])) figure.qwen-kv-explorer { --attn: #6956b8; --rec: #26774f; }
+  }
+  .qkv-control { margin-bottom: 1.3rem; }
+  .qkv-control label { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; color: var(--muted); font-size: 0.78rem; }
+  .qkv-control output { color: var(--fg); font: 600 0.85rem ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .qkv-slider { display: block; width: 100%; margin: 0.5rem 0 0; accent-color: var(--accent); }
+  .qkv-stops { position: relative; height: 1rem; margin: 0 0.45rem; color: var(--muted); font-size: 0.62rem; }
+  .qkv-stops span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+  .qkv-stops span:first-child { transform: none; }
+  .qkv-stops span:last-child { transform: translateX(-100%); }
+  .qkv-bars { display: grid; gap: 0.8rem; }
+  .qkv-row { display: grid; grid-template-columns: 13rem 1fr 5.6rem; gap: 0.7rem; align-items: center; }
+  .qkv-row > div:first-child b, .qkv-row > div:first-child span { display: block; }
+  .qkv-row > div:first-child b { color: var(--fg); font-size: 0.84rem; }
+  .qkv-row > div:first-child span { color: var(--muted); font-size: 0.68rem; }
+  .qkv-row output { color: var(--fg); text-align: right; font: 0.75rem ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .qkv-track { height: 18px; background: color-mix(in srgb, var(--rule) 65%, transparent); overflow: hidden; }
+  .qkv-track i { display: block; height: 100%; min-width: 1px; transition: width 80ms linear; }
+  .qkv-hybrid { background: var(--attn); }
+  .qkv-all { background: color-mix(in srgb, var(--attn) 48%, var(--fg)); }
+  .qkv-scale { margin-left: 13.7rem; display: flex; justify-content: space-between; color: var(--muted); font-size: 0.64rem; }
+  .qkv-equation {
+    display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 0.35rem;
+    margin: 1.1rem 0 0.8rem; padding: 0.65rem; border: 1px solid var(--rule);
+    font: 0.73rem ui-monospace, monospace; font-variant-numeric: tabular-nums;
+  }
+  .qkv-equation span { color: var(--muted); }
+  .qkv-equation i { color: var(--accent); font-style: normal; }
+  .qkv-equation b { margin-left: 0.25rem; color: var(--fg); }
+  .qkv-layer-strip { display: grid; grid-template-columns: repeat(64, 1fr); gap: 2px; height: 22px; }
+  .qkv-layer-strip i { background: var(--rec); opacity: 0.8; }
+  .qkv-layer-strip i.attention { background: var(--attn); opacity: 1; }
+  .qkv-legend { display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; margin-top: 0.35rem; color: var(--muted); font-size: 0.68rem; }
+  .qkv-legend i { display: inline-block; width: 0.7rem; height: 0.35rem; margin-right: 0.3rem; }
+  .qkv-legend i.recurrent { background: var(--rec); }
+  .qkv-legend i.attention { background: var(--attn); }
+  @media (max-width: 620px) {
+    .qkv-row { grid-template-columns: 1fr 5.2rem; }
+    .qkv-row > div:first-child { grid-column: 1 / -1; }
+    .qkv-scale { margin-left: 0; }
+    .qkv-layer-strip { grid-template-columns: repeat(32, 1fr); height: 36px; }
+  }
+</style>
+
+<script>
+  function setupKvExplorer(fig: HTMLElement) {
+    const slider = fig.querySelector<HTMLInputElement>('.qkv-slider')!;
+    const tokenValue = fig.querySelector<HTMLOutputElement>('.qkv-token-value')!;
+    const hybrid = fig.querySelector<HTMLElement>('.qkv-hybrid')!;
+    const all = fig.querySelector<HTMLElement>('.qkv-all')!;
+    const hybridValue = fig.querySelector<HTMLOutputElement>('.qkv-hybrid-value')!;
+    const allValue = fig.querySelector<HTMLOutputElement>('.qkv-all-value')!;
+    const limit = Number(fig.dataset.limit), bpt = Number(fig.dataset.bpt), allBpt = Number(fig.dataset.allBpt);
+    const maxBytes = limit * allBpt;
+    const format = (bytes: number) => bytes >= 2 ** 30 ? `${(bytes / 2 ** 30).toFixed(2)} GiB` : `${(bytes / 2 ** 20).toFixed(1)} MiB`;
+    function update() {
+      const tokens = Number(slider.value), hybridBytes = tokens * bpt, allBytes = tokens * allBpt;
+      tokenValue.textContent = `${tokens.toLocaleString()} tokens`;
+      hybrid.style.width = `${hybridBytes / maxBytes * 100}%`; all.style.width = `${allBytes / maxBytes * 100}%`;
+      hybridValue.textContent = format(hybridBytes); allValue.textContent = format(allBytes);
+    }
+    slider.addEventListener('input', update); update();
+  }
+  document.querySelectorAll<HTMLElement>('figure.qwen-kv-explorer').forEach(setupKvExplorer);
+</script>

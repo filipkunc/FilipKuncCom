@@ -1,0 +1,335 @@
+{
+  "filename": "Qwen3.8-27B-UD-IQ2_S.gguf",
+  "endian": "LITTLE",
+  "metadata": {
+    "GGUF.version": {
+      "index": 0,
+      "type": "UINT32",
+      "offset": 4,
+      "value": 3
+    },
+    "GGUF.tensor_count": {
+      "index": 1,
+      "type": "UINT64",
+      "offset": 8,
+      "value": 851
+    },
+    "GGUF.kv_count": {
+      "index": 2,
+      "type": "UINT64",
+      "offset": 16,
+      "value": 50
+    },
+    "general.architecture": {
+      "index": 3,
+      "type": "STRING",
+      "offset": 24,
+      "value": "qwen35"
+    },
+    "general.type": {
+      "index": 4,
+      "type": "STRING",
+      "offset": 70,
+      "value": "model"
+    },
+    "general.sampling.top_k": {
+      "index": 5,
+      "type": "INT32",
+      "offset": 107,
+      "value": 20
+    },
+    "general.sampling.top_p": {
+      "index": 6,
+      "type": "FLOAT32",
+      "offset": 145,
+      "value": 0.949999988079071
+    },
+    "general.sampling.temp": {
+      "index": 7,
+      "type": "FLOAT32",
+      "offset": 183,
+      "value": 1.0
+    },
+    "general.name": {
+      "index": 8,
+      "type": "STRING",
+      "offset": 220,
+      "value": "Qwen3.8-27B"
+    },
+    "general.basename": {
+      "index": 9,
+      "type": "STRING",
+      "offset": 263,
+      "value": "Qwen3.8-27B"
+    },
+    "general.description": {
+      "index": 10,
+      "type": "STRING",
+      "offset": 310,
+      "value": "Renewal of the beloved Qwen model, delivering unmatched intelligence density."
+    },
+    "general.quantized_by": {
+      "index": 11,
+      "type": "STRING",
+      "offset": 426,
+      "value": "Unsloth"
+    },
+    "general.size_label": {
+      "index": 12,
+      "type": "STRING",
+      "offset": 473,
+      "value": "27B"
+    },
+    "general.license": {
+      "index": 13,
+      "type": "STRING",
+      "offset": 514,
+      "value": "apache-2.0"
+    },
+    "general.repo_url": {
+      "index": 14,
+      "type": "STRING",
+      "offset": 559,
+      "value": "https://huggingface.co/unsloth"
+    },
+    "general.base_model.count": {
+      "index": 15,
+      "type": "UINT32",
+      "offset": 625,
+      "value": 1
+    },
+    "general.base_model.0.name": {
+      "index": 16,
+      "type": "STRING",
+      "offset": 665,
+      "value": "Qwen3.8 27B"
+    },
+    "general.base_model.0.organization": {
+      "index": 17,
+      "type": "STRING",
+      "offset": 721,
+      "value": "Qwen"
+    },
+    "general.base_model.0.repo_url": {
+      "index": 18,
+      "type": "STRING",
+      "offset": 778,
+      "value": "https://huggingface.co/Qwen/Qwen3.8-27B"
+    },
+    "general.tags": {
+      "index": 19,
+      "type": "ARRAY",
+      "offset": 866,
+      "array_types": [
+        "STRING"
+      ]
+    },
+    "qwen35.block_count": {
+      "index": 20,
+      "type": "UINT32",
+      "offset": 917,
+      "value": 64
+    },
+    "qwen35.context_length": {
+      "index": 21,
+      "type": "UINT32",
+      "offset": 951,
+      "value": 262144
+    },
+    "qwen35.embedding_length": {
+      "index": 22,
+      "type": "UINT32",
+      "offset": 988,
+      "value": 5120
+    },
+    "qwen35.feed_forward_length": {
+      "index": 23,
+      "type": "UINT32",
+      "offset": 1027,
+      "value": 17408
+    },
+    "qwen35.attention.head_count": {
+      "index": 24,
+      "type": "UINT32",
+      "offset": 1069,
+      "value": 24
+    },
+    "qwen35.attention.head_count_kv": {
+      "index": 25,
+      "type": "UINT32",
+      "offset": 1112,
+      "value": 4
+    },
+    "qwen35.rope.dimension_sections": {
+      "index": 26,
+      "type": "ARRAY",
+      "offset": 1158,
+      "array_types": [
+        "INT32"
+      ]
+    },
+    "qwen35.rope.freq_base": {
+      "index": 27,
+      "type": "FLOAT32",
+      "offset": 1228,
+      "value": 10000000.0
+    },
+    "qwen35.attention.layer_norm_rms_epsilon": {
+      "index": 28,
+      "type": "FLOAT32",
+      "offset": 1265,
+      "value": 9.999999974752427E-7
+    },
+    "qwen35.attention.key_length": {
+      "index": 29,
+      "type": "UINT32",
+      "offset": 1320,
+      "value": 256
+    },
+    "qwen35.attention.value_length": {
+      "index": 30,
+      "type": "UINT32",
+      "offset": 1363,
+      "value": 256
+    },
+    "qwen35.nextn_predict_layers": {
+      "index": 31,
+      "type": "UINT32",
+      "offset": 1408,
+      "value": 0
+    },
+    "qwen35.ssm.conv_kernel": {
+      "index": 32,
+      "type": "UINT32",
+      "offset": 1451,
+      "value": 4
+    },
+    "qwen35.ssm.state_size": {
+      "index": 33,
+      "type": "UINT32",
+      "offset": 1489,
+      "value": 128
+    },
+    "qwen35.ssm.group_count": {
+      "index": 34,
+      "type": "UINT32",
+      "offset": 1526,
+      "value": 16
+    },
+    "qwen35.ssm.time_step_rank": {
+      "index": 35,
+      "type": "UINT32",
+      "offset": 1564,
+      "value": 48
+    },
+    "qwen35.ssm.inner_size": {
+      "index": 36,
+      "type": "UINT32",
+      "offset": 1605,
+      "value": 6144
+    },
+    "qwen35.full_attention_interval": {
+      "index": 37,
+      "type": "UINT32",
+      "offset": 1642,
+      "value": 4
+    },
+    "qwen35.rope.dimension_count": {
+      "index": 38,
+      "type": "UINT32",
+      "offset": 1688,
+      "value": 64
+    },
+    "tokenizer.ggml.model": {
+      "index": 39,
+      "type": "STRING",
+      "offset": 1731,
+      "value": "gpt2"
+    },
+    "tokenizer.ggml.pre": {
+      "index": 40,
+      "type": "STRING",
+      "offset": 1775,
+      "value": "qwen35"
+    },
+    "tokenizer.ggml.tokens": {
+      "index": 41,
+      "type": "ARRAY",
+      "offset": 1819,
+      "array_types": [
+        "STRING"
+      ]
+    },
+    "tokenizer.ggml.token_type": {
+      "index": 42,
+      "type": "ARRAY",
+      "offset": 4855222,
+      "array_types": [
+        "INT32"
+      ]
+    },
+    "tokenizer.ggml.merges": {
+      "index": 43,
+      "type": "ARRAY",
+      "offset": 5848551,
+      "array_types": [
+        "STRING"
+      ]
+    },
+    "tokenizer.ggml.eos_token_id": {
+      "index": 44,
+      "type": "UINT32",
+      "offset": 10934964,
+      "value": 248046
+    },
+    "tokenizer.ggml.padding_token_id": {
+      "index": 45,
+      "type": "UINT32",
+      "offset": 10935007,
+      "value": 248055
+    },
+    "tokenizer.ggml.bos_token_id": {
+      "index": 46,
+      "type": "UINT32",
+      "offset": 10935054,
+      "value": 248044
+    },
+    "general.quantization_version": {
+      "index": 47,
+      "type": "UINT32",
+      "offset": 10935097,
+      "value": 2
+    },
+    "general.file_type": {
+      "index": 48,
+      "type": "UINT32",
+      "offset": 10935141,
+      "value": 28
+    },
+    "quantize.imatrix.file": {
+      "index": 49,
+      "type": "STRING",
+      "offset": 10935174,
+      "value": "Qwen3.8-27B-GGUF/imatrix_unsloth.gguf"
+    },
+    "quantize.imatrix.entries_count": {
+      "index": 50,
+      "type": "UINT32",
+      "offset": 10935252,
+      "value": 496
+    },
+    "quantize.imatrix.chunks_count": {
+      "index": 51,
+      "type": "UINT32",
+      "offset": 10935298,
+      "value": 1251
+    },
+    "tokenizer.chat_template": {
+      "index": 52,
+      "type": "STRING",
+      "offset": 10935343,
+      "value": "{%- set image_count = namespace(value=0) %}\n{%- set video_count = namespace(value=0) %}\n{%- macro render_content(content, do_vision_count, is_system_content=false) %}\n    {%- if content is string %}\n        {{- content }}\n    {%- elif content is iterable and content is not mapping %}\n        {%- for item in content %}\n            {%- if 'image' in item or 'image_url' in item or item.type == 'image' %}\n                {%- if is_system_content %}\n                    {{- raise_exception('System message cannot contain images.') }}\n                {%- endif %}\n                {%- if do_vision_count %}\n                    {%- set image_count.value = image_count.value + 1 %}\n                {%- endif %}\n                {%- if add_vision_id %}\n                    {{- 'Picture ' ~ image_count.value ~ ': ' }}\n                {%- endif %}\n                {{- '<|vision_start|><|image_pad|><|vision_end|>' }}\n            {%- elif 'video' in item or item.type == 'video' %}\n                {%- if is_system_content %}\n                    {{- raise_exception('System message cannot contain videos.') }}\n                {%- endif %}\n                {%- if do_vision_count %}\n                    {%- set video_count.value = video_count.value + 1 %}\n                {%- endif %}\n                {%- if add_vision_id %}\n                    {{- 'Video ' ~ video_count.value ~ ': ' }}\n                {%- endif %}\n                {{- '<|vision_start|><|video_pad|><|vision_end|>' }}\n            {%- elif 'text' in item %}\n                {{- item.text }}\n            {%- else %}\n                {{- raise_exception('Unexpected item type in content.') }}\n            {%- endif %}\n        {%- endfor %}\n    {%- elif content is none or content is undefined %}\n        {{- '' }}\n    {%- else %}\n        {{- raise_exception('Unexpected content type.') }}\n    {%- endif %}\n{%- endmacro %}\n{%- if not messages %}\n    {{- raise_exception('No messages provided.') }}\n{%- endif %}\n{%- set sysns = namespace(count=0, text='') %}\n{%- for message in messages %}\n    {%- if sysns.count == loop.index0 and (message.role == 'system' or message.role == 'developer') %}\n        {%- set sys_content = render_content(message.content, false, true)|trim %}\n        {%- if sys_content %}\n            {%- set sysns.text = sysns.text + ('\\n' if sysns.text else '') + sys_content %}\n        {%- endif %}\n        {%- set sysns.count = sysns.count + 1 %}\n    {%- endif %}\n{%- endfor %}\n{%- set num_sys = sysns.count %}\n{%- set merged_system = sysns.text %}\n{%- set reasoning_instructions = '' %}\n{%- if enable_thinking is undefined or enable_thinking is true %}\n    {%- set resolved_reasoning_effort = reasoning_effort|default('xhigh') %}\n    {%- if resolved_reasoning_effort == 'high' %}\n        {%- set resolved_reasoning_effort = 'xhigh' %}\n    {%- endif %}\n    {%- if resolved_reasoning_effort not in ('xhigh', 'medium', 'low') %}\n        {{- raise_exception('Unexpected reasoning effort ' ~ reasoning_effort ~ '. Supported types are xhigh (default), medium, and low.') }}\n    {%- endif %}\n    {%- if resolved_reasoning_effort == 'xhigh' %}\n        {%- set reasoning_instructions = 'Reasoning effort is set to xhigh. Please think carefully through the task, validate key assumptions, consider plausible alternatives, and prioritize correctness, consistency, and clarity in the final answer.' %}\n    {%- elif resolved_reasoning_effort == 'low' %}\n        {%- set reasoning_instructions = 'Reasoning effort is set to low. Keep your thinking brief and focused, moving directly to the conclusion without unnecessary elaboration.' %}\n    {%- endif %}\n{%- endif %}\n{%- if tools and tools is iterable and tools is not mapping %}\n    {{- '<|im_start|>system\\n' }}\n    {%- if reasoning_instructions %}\n        {{- reasoning_instructions + '\\n\\n' }}\n    {%- endif %}\n    {{- \"# Tools\\n\\nYou have access to the following functions:\\n\\n<tools>\" }}\n    {%- for tool in tools %}\n        {{- \"\\n\" }}\n        {{- tool | tojson }}\n    {%- endfor %}\n    {{- \"\\n</tools>\" }}\n    {{- '\\n\\nIf you choose to call a function ONLY reply in the following format with NO suffix:\\n\\n<tool_call>\\n<function=example_function_name>\\n<parameter=example_parameter_1>\\nvalue_1\\n</parameter>\\n<parameter=example_parameter_2>\\nThis is the value for the second parameter\\nthat can span\\nmultiple lines\\n</parameter>\\n</function>\\n</tool_call>\\n\\n<IMPORTANT>\\nReminder:\\n- Function calls MUST follow the specified format: an inner <function=...></function> block must be nested within <tool_call></tool_call> XML tags\\n- Required parameters MUST be specified\\n- You may provide optional reasoning for your function call in natural language BEFORE the function call, but NOT after\\n- If there is no function call available, answer the question like normal with your current knowledge and do not tell the user about function calls\\n</IMPORTANT>' }}\n    {%- if merged_system %}\n        {{- '\\n\\n' + merged_system }}\n    {%- endif %}\n    {{- '<|im_end|>\\n' }}\n{%- else %}\n    {%- if merged_system %}\n        {{- '<|im_start|>system\\n' + (reasoning_instructions + '\\n\\n' if reasoning_instructions else '')  + merged_system + '<|im_end|>\\n' }}\n    {%- elif reasoning_instructions %}\n        {{- '<|im_start|>system\\n' + reasoning_instructions + '<|im_end|>\\n' }}\n    {%- endif %}\n{%- endif %}\n{%- set ns = namespace(multi_step_tool=true, last_query_index=messages|length - 1) %}\n{%- for message in messages[::-1] %}\n    {%- set index = (messages|length - 1) - loop.index0 %}\n    {%- if ns.multi_step_tool and message.role == \"user\" %}\n        {%- set content = render_content(message.content, false)|trim %}\n        {%- if not(content.startswith('<tool_response>') and content.endswith('</tool_response>')) %}\n            {%- set ns.multi_step_tool = false %}\n            {%- set ns.last_query_index = index %}\n        {%- endif %}\n    {%- endif %}\n{%- endfor %}\n{%- for message in messages %}\n    {%- if loop.index0 >= num_sys %}\n    {%- set content = render_content(message.content, true)|trim %}\n    {%- if message.role == \"system\" or message.role == \"developer\" %}\n        {{- raise_exception('System message must be at the beginning.') }}\n    {%- elif message.role == \"user\" %}\n        {{- '<|im_start|>' + message.role + '\\n' + content + '<|im_end|>' + '\\n' }}\n    {%- elif message.role == \"assistant\" %}\n        {%- set reasoning_content = '' %}\n        {%- if message.reasoning_content is string %}\n            {%- set reasoning_content = message.reasoning_content %}\n        {%- endif %}\n        {%- set reasoning_content = reasoning_content|trim %}\n        {%- if preserve_thinking is undefined or preserve_thinking is true or loop.index0 > ns.last_query_index %}\n            {{- '<|im_start|>' + message.role + '\\n<think>\\n' + reasoning_content + '\\n</think>\\n\\n' + content }}\n        {%- else %}\n            {{- '<|im_start|>' + message.role + '\\n' + content }}\n        {%- endif %}\n        {%- if message.tool_calls and message.tool_calls is iterable and message.tool_calls is not mapping %}\n            {%- for tool_call in message.tool_calls %}\n                {%- if tool_call.function is defined %}\n                    {%- set tool_call = tool_call.function %}\n                {%- endif %}\n                {%- if tool_call.name is not defined or tool_call.name is none %}\n                    {{- raise_exception('Tool call is missing a function name.') }}\n                {%- endif %}\n                {%- if loop.first %}\n                    {%- if content|trim %}\n                        {{- '\\n\\n<tool_call>\\n<function=' + tool_call.name + '>\\n' }}\n                    {%- else %}\n                        {{- '<tool_call>\\n<function=' + tool_call.name + '>\\n' }}\n                    {%- endif %}\n                {%- else %}\n                    {{- '\\n<tool_call>\\n<function=' + tool_call.name + '>\\n' }}\n                {%- endif %}\n                {%- if tool_call.arguments is mapping %}\n                    {%- for args_name, args_value in tool_call.arguments|items %}\n                        {{- '<parameter=' + args_name + '>\\n' }}\n                        {%- set args_value = args_value | string if args_value is string else args_value | tojson | safe %}\n                        {{- args_value }}\n                        {{- '\\n</parameter>\\n' }}\n                    {%- endfor %}\n                {%- elif tool_call.arguments is string %}\n                    {%- if tool_call.arguments|trim %}\n                        {{- raise_exception('Tool call arguments for function \"' + (tool_call.name | string) + '\" were passed as a JSON string. Parse them into an object before calling apply_chat_template.') }}\n                    {%- endif %}\n                {%- elif tool_call.arguments is defined and tool_call.arguments is not none %}\n                    {{- raise_exception('Tool call arguments for function \"' + (tool_call.name | string) + '\" must be an object/mapping or a JSON string.') }}\n                {%- endif %}\n                {{- '</function>\\n</tool_call>' }}\n            {%- endfor %}\n        {%- endif %}\n        {{- '<|im_end|>\\n' }}\n    {%- elif message.role == \"tool\" %}\n        {%- if loop.previtem and loop.previtem.role != \"tool\" %}\n            {{- '<|im_start|>user' }}\n        {%- endif %}\n        {{- '\\n<tool_response>\\n' }}\n        {{- content }}\n        {{- '\\n</tool_response>' }}\n        {%- if not loop.last and loop.nextitem.role != \"tool\" %}\n            {{- '<|im_end|>\\n' }}\n        {%- elif loop.last %}\n            {{- '<|im_end|>\\n' }}\n        {%- endif %}\n    {%- else %}\n        {{- raise_exception('Unexpected message role.') }}\n    {%- endif %}\n    {%- endif %}\n{%- endfor %}\n{%- if add_generation_prompt %}\n    {{- '<|im_start|>assistant\\n' }}\n    {%- if enable_thinking is defined and enable_thinking is false %}\n        {{- '<think>\\n\\n</think>\\n\\n' }}\n    {%- else %}\n        {{- '<think>\\n' }}\n    {%- endif %}\n{%- endif %}\n{#- Unsloth fixes - developer role, merged system messages, tool calling #}"
+    }
+  },
+  "tensors": {}
+}

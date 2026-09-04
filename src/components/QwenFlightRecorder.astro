@@ -1,0 +1,681 @@
+---
+interface ModelPhase {
+  id: string;
+  kind: 'model';
+  label: string;
+  start: number;
+  end: number;
+  promptSeconds: number;
+  promptTokens: number;
+  cachedTokens: number;
+  outputTokens: number;
+  finalContext: number;
+  decodeTokensPerSecond: number;
+  kernelCount: number;
+  setRowsKernels: number;
+  recurrentKernels: number;
+  gpuAverage: number;
+  powerAverage: number;
+  energyWh: number;
+  detail: string;
+  kernelMs: Record<string, number>;
+}
+interface ToolPhase {
+  id: string;
+  kind: 'tool';
+  label: string;
+  start: number;
+  end: number;
+  finalContext: number;
+  detail: string;
+  runtime?: string;
+  toolCode?: string;
+  toolOutput?: string;
+  missingEvidence?: string;
+}
+interface Capture {
+  duration: number;
+  contextLimit: number;
+  architecture: { layers: number; recurrentLayers: number; attentionLayers: number; hiddenSize: number; intermediateSize: number; vocabSize: number; kvBytesPerToken: number };
+  phases: (ModelPhase | ToolPhase)[];
+  telemetry: number[][];
+}
+interface Props {
+  data: Capture;
+  captureHref?: string;
+  analysisHref?: string;
+  manifestHref?: string;
+  readmeHref?: string;
+}
+const { data, captureHref, analysisHref, manifestHref, readmeHref } = Astro.props;
+
+const W = 680, LEFT = 48, RIGHT = 8, PW = W - LEFT - RIGHT;
+const PHASE_Y = 19, PHASE_H = 25;
+const UTIL_Y = 72, PANEL_H = 58, POWER_Y = 164;
+const H = 236;
+const x = (t: number) => LEFT + (t / data.duration) * PW;
+const utilY = (v: number) => UTIL_Y + PANEL_H - (v / 100) * PANEL_H;
+const powerY = (v: number) => POWER_Y + PANEL_H - (v / 320) * PANEL_H;
+const points = data.telemetry.filter((d) => d[0] >= 0 && d[0] <= data.duration);
+const utilPoints = points.map((d) => `${x(d[0]).toFixed(1)},${utilY(d[1]).toFixed(1)}`).join(' ');
+const powerPoints = points.map((d) => `${x(d[0]).toFixed(1)},${powerY(d[4]).toFixed(1)}`).join(' ');
+const xTicks = [0, 15, 30, 45, 60, data.duration];
+const firstModel = data.phases.find((p): p is ModelPhase => p.kind === 'model')!;
+const groups = (p: ModelPhase) => ({
+  weights: p.kernelMs['matrix multiply'],
+  quantization: p.kernelMs['quantize / dequantize'],
+  attention: p.kernelMs['Flash Attention'] + p.kernelMs['set_rows'] + p.kernelMs['rotary embedding'],
+  recurrence: p.kernelMs['Gated DeltaNet'] + p.kernelMs['SSM convolution'],
+  glue: p.kernelMs['other'] + p.kernelMs['normalization'] + p.kernelMs['activations'],
+});
+const firstGroups = groups(firstModel);
+const firstTotal = Object.values(firstGroups).reduce((a, b) => a + b, 0);
+const colors: Record<string, string> = {
+  weights: 'var(--accent)', quantization: 'var(--link)', attention: '#8d7bd8', recurrence: '#49a078', glue: 'var(--muted)',
+};
+---
+
+<figure class="diagram qwen-flight-recorder">
+  <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Replay of the measured Qwen conversation. GPU utilization and power rise for three model turns and fall during two Python tool gaps. Drag across the charts to inspect time, token, layer and cache state.">
+    <text class="qfr-label" x={LEFT} y="11">one local conversation · 73.1 seconds wall time</text>
+    {data.phases.map((p) => (
+      <g class={`qfr-phase ${p.kind}`} data-phase={p.id} role="button" tabindex="0" aria-label={`${p.label}, ${(p.end - p.start).toFixed(1)} seconds`}>
+        <rect x={x(p.start)} y={PHASE_Y} width={Math.max(2, x(p.end) - x(p.start))} height={PHASE_H} />
+        {(x(p.end) - x(p.start)) > 56 && <text x={(x(p.start) + x(p.end)) / 2} y={PHASE_Y + 16} text-anchor="middle">{p.label}</text>}
+      </g>
+    ))}
+
+    <text class="qfr-panel-title" x={LEFT} y={UTIL_Y - 10}>GPU busy · measured by NVML</text>
+    <text class="qfr-limit" x={LEFT - 6} y={UTIL_Y + 4} text-anchor="end">100%</text>
+    <text class="qfr-limit" x={LEFT - 6} y={UTIL_Y + PANEL_H} text-anchor="end">0</text>
+    <rect class="qfr-frame" x={LEFT} y={UTIL_Y} width={PW} height={PANEL_H} />
+    <line class="qfr-grid" x1={LEFT} y1={utilY(50)} x2={W - RIGHT} y2={utilY(50)} />
+    <polyline class="qfr-line util" points={utilPoints} />
+
+    <text class="qfr-panel-title" x={LEFT} y={POWER_Y - 10}>GPU power · measured by NVML</text>
+    <text class="qfr-limit" x={LEFT - 6} y={POWER_Y + 4} text-anchor="end">320W</text>
+    <text class="qfr-limit" x={LEFT - 6} y={POWER_Y + PANEL_H} text-anchor="end">0</text>
+    <rect class="qfr-frame" x={LEFT} y={POWER_Y} width={PW} height={PANEL_H} />
+    <line class="qfr-grid" x1={LEFT} y1={powerY(160)} x2={W - RIGHT} y2={powerY(160)} />
+    <polyline class="qfr-line power" points={powerPoints} />
+
+    {xTicks.map((t) => (
+      <>
+        <line class="qfr-time-grid" x1={x(t)} y1={UTIL_Y} x2={x(t)} y2={POWER_Y + PANEL_H} />
+        <text class="qfr-tick" x={x(t)} y={H - 2} text-anchor={t === 0 ? 'start' : t === data.duration ? 'end' : 'middle'}>{Math.round(t)}s</text>
+      </>
+    ))}
+    <line class="qfr-cursor" x1={x(0)} y1={PHASE_Y - 3} x2={x(0)} y2={POWER_Y + PANEL_H} />
+    <circle class="qfr-dot util" cx={x(0)} cy={utilY(points[0][1])} r="4" />
+    <circle class="qfr-dot power" cx={x(0)} cy={powerY(points[0][4])} r="4" />
+    <rect class="qfr-hit" x={LEFT} y={UTIL_Y} width={PW} height={POWER_Y + PANEL_H - UTIL_Y} />
+  </svg>
+
+  <div class="qfr-controls">
+    <button type="button" class="qfr-play" aria-pressed="false">▶ replay</button>
+    <span class="qfr-hint">click a phase or drag either plot · replay compresses 73s into 12s</span>
+  </div>
+
+  <div class="qfr-trace" aria-label="Trace-like view of the captured conversation">
+    <div class="qfr-trace-head">
+      <b>session trace</b>
+      <span>solid timing is captured · hatched work is reconstructed</span>
+    </div>
+    <div class="qfr-trace-row root">
+      <span class="qfr-trace-name"><small>agent</small>conversation</span>
+      <span class="qfr-trace-lane"><i class="qfr-trace-bar conversation" style="left:0%;width:100%" /></span>
+      <span class="qfr-trace-duration">{data.duration.toFixed(1)}s</span>
+    </div>
+    {data.phases.map((phase) => {
+      const left = phase.start / data.duration * 100;
+      const width = (phase.end - phase.start) / data.duration * 100;
+      const prefill = phase.kind === 'model' ? phase.promptSeconds / (phase.end - phase.start) * 100 : 0;
+      return (
+        <button type="button" class={`qfr-trace-row phase ${phase.kind}`} data-trace-phase={phase.id} aria-label={`${phase.label}, ${(phase.end - phase.start).toFixed(1)} seconds`}>
+          <span class="qfr-trace-name"><small>{phase.kind === 'model' ? 'llama.cpp' : 'sandbox + operator'}</small>{phase.label}</span>
+          <span class="qfr-trace-lane">
+            <i class={`qfr-trace-bar ${phase.kind}`} style={`left:${left}%;width:${width}%`}>
+              {phase.kind === 'model' && <span class="qfr-trace-prefill" style={`width:${prefill}%`} />}
+              {phase.kind === 'model' && <span class="qfr-trace-reconstruction" />}
+            </i>
+          </span>
+          <span class="qfr-trace-duration">{(phase.end - phase.start).toFixed(1)}s</span>
+        </button>
+      );
+    })}
+    <div class="qfr-trace-axis" aria-hidden="true">
+      {[0, 15, 30, 45, 60, data.duration].map((tick) => <span style={`left:${tick / data.duration * 100}%`}>{Math.round(tick)}s</span>)}
+    </div>
+    <div class="qfr-trace-key">
+      <span><i class="model" /> model request</span>
+      <span><i class="prefill" /> prefill inside request</span>
+      <span><i class="tool" /> tool + capture gap</span>
+      <span><i class="reconstructed" /> 64-block passes, illustrative timing</span>
+    </div>
+  </div>
+
+  <output class="qfr-readout" aria-live="off">
+    <span><b class="qfr-time">0.0s</b></span>
+    <span><small>phase</small><b class="qfr-current-phase">{firstModel.label}</b></span>
+    <span><small>GPU</small><b class="qfr-gpu">{Math.round(points[0][1])}%</b></span>
+    <span><small>power</small><b class="qfr-power">{Math.round(points[0][4])}W</b></span>
+    <span><small>VRAM</small><b class="qfr-vram">{Math.round(points[0][3]).toLocaleString()} MiB</b></span>
+    <span><small>illustration</small><b class="qfr-position">prefill · layer 0</b></span>
+  </output>
+
+  <div class="qfr-tabs" role="tablist" aria-label="Trace details">
+    <button type="button" role="tab" aria-selected="true" aria-controls="qfr-overview" data-qfr-tab="overview">overview</button>
+    <button type="button" role="tab" aria-selected="false" aria-controls="qfr-execution" data-qfr-tab="execution" tabindex="-1">execution</button>
+    <button type="button" role="tab" aria-selected="false" aria-controls="qfr-cuda" data-qfr-tab="cuda" tabindex="-1">CUDA</button>
+    <button type="button" role="tab" aria-selected="false" aria-controls="qfr-reproduce" data-qfr-tab="reproduce" tabindex="-1">reproduce</button>
+  </div>
+
+  <div class="qfr-tab-panel active" id="qfr-overview" role="tabpanel" data-qfr-panel="overview">
+  <div class="qfr-span-panels">
+    {data.phases.map((phase, index) => (
+      <section class={`qfr-span-panel ${index === 0 ? 'active' : ''}`} data-span-panel={phase.id} aria-hidden={index === 0 ? 'false' : 'true'}>
+        <div class="qfr-span-title">
+          <b>{phase.label}</b>
+          <span>{phase.kind === 'model' ? 'API timings + Nsight/NVML' : 'outer gap measured; inner tool timing not isolated'}</span>
+        </div>
+        <p>{phase.detail}</p>
+        {phase.kind === 'model' ? (
+          <dl class="qfr-span-facts">
+            <div><dt>prompt eval</dt><dd>{phase.promptSeconds.toFixed(3)}s</dd></div>
+            <div><dt>prompt tokens</dt><dd>{phase.promptTokens.toLocaleString()}</dd></div>
+            <div><dt>cache reused</dt><dd>{phase.cachedTokens.toLocaleString()}</dd></div>
+            <div><dt>output tokens</dt><dd>{phase.outputTokens.toLocaleString()}</dd></div>
+            <div><dt>decode rate</dt><dd>{phase.decodeTokensPerSecond.toFixed(2)} tok/s</dd></div>
+          </dl>
+        ) : (
+          <>
+            {phase.runtime && <p class="qfr-runtime"><small>runtime</small>{phase.runtime}</p>}
+            {phase.toolCode && <details class="qfr-tool-details"><summary>exact generated Python and stdout</summary><pre class="qfr-tool-code"><code>{phase.toolCode}</code></pre>{phase.toolOutput && <p class="qfr-tool-output"><small>stdout</small><code>{phase.toolOutput}</code></p>}</details>}
+            {phase.missingEvidence && <p class="qfr-missing"><small>reproducibility limit</small>{phase.missingEvidence}</p>}
+          </>
+        )}
+      </section>
+    ))}
+  </div>
+  </div>
+
+  <div class="qfr-tab-panel" id="qfr-execution" role="tabpanel" data-qfr-panel="execution" hidden>
+  <div class="qfr-flow-head">
+    <b>how Qwen makes one more token</b>
+    <span class="qfr-pass">prefill · prompt batch</span>
+  </div>
+  <div class="qfr-flow" role="img" aria-label={`Beginner view of one Qwen forward pass. Text is split into token IDs. Every ID selects ${data.architecture.hiddenSize.toLocaleString()} learned numbers. Each of ${data.architecture.layers} blocks updates those numbers using earlier context and a neural network. The final numbers become ${data.architecture.vocabSize.toLocaleString()} scores, and the sampler chooses the next token.`}>
+    <div class="qfr-stage" data-flow-stage="input">
+      <span class="qfr-step"><small>1</small>text becomes numbered pieces</span>
+      <div class="qfr-stage-body">
+        <b>“Solve x^x = 10”</b>
+        <p>The tokenizer splits all messages and the tool description into small pieces. The six pieces below are simplified; the exact split was not saved.</p>
+        <span class="qfr-token-pieces"><i>Solve</i><i>x</i><i>^</i><i>x</i><i>=</i><i>10</i></span>
+      </div>
+    </div>
+    <div class="qfr-edge"><span>↓</span> each token ID looks up one learned row</div>
+
+    <div class="qfr-stage" data-flow-stage="embed">
+      <span class="qfr-step"><small>2</small>a token becomes numbers</span>
+      <div class="qfr-stage-body">
+        <b>one token → {data.architecture.hiddenSize.toLocaleString()} numbers</b>
+        <p>These numbers are the model's working representation of that token. They do not have fixed labels such as “math” or “variable”; their meaning comes from how the network uses them together.</p>
+        <span class="qfr-vector" aria-hidden="true">{Array.from({ length: 20 }, () => <i />)}</span>
+      </div>
+    </div>
+    <div class="qfr-edge"><span>↓</span> the same-sized representation enters block 0</div>
+
+    <div class="qfr-stage blocks" data-flow-stage="blocks">
+      <span class="qfr-step"><small>3</small>64 blocks revise the representation</span>
+      <div class="qfr-stage-body">
+        <b class="qfr-block-state">block 0 · recurrent memory</b>
+        <p>Every block receives {data.architecture.hiddenSize.toLocaleString()} numbers and returns the same amount. It mixes in information from earlier tokens, changes useful features with another learned network, then adds the update to what it received.</p>
+        <div class="qfr-block-recipe" aria-label="What one block does">
+          <span>{data.architecture.hiddenSize.toLocaleString()} numbers in</span><i>→</i><span>mix with the past</span><i>→</i><span>feature network {data.architecture.hiddenSize.toLocaleString()} → {data.architecture.intermediateSize.toLocaleString()} → {data.architecture.hiddenSize.toLocaleString()}</span><i>→</i><span>add the old values</span><i>→</i><span>{data.architecture.hiddenSize.toLocaleString()} out</span>
+        </div>
+        <div class="qfr-memory-kinds">
+          <span><i class="recurrent"></i><b>48 recurrent blocks</b><small>carry a compressed running memory forward</small></span>
+          <span><i class="attention"></i><b>16 attention blocks</b><small>compare the current token with all earlier tokens</small></span>
+        </div>
+        <div class="qfr-layer-head">
+          <b>the same representation visits every block</b>
+          <span><i class="recurrent"></i> running memory <i class="attention"></i> look back at tokens</span>
+        </div>
+        <div class="qfr-layers" aria-label="64 model blocks; every fourth block uses full attention">
+          {Array.from({ length: data.architecture.layers }, (_, i) => (
+            <span class={(i + 1) % 4 === 0 ? 'attention' : 'recurrent'} data-layer={i}>{i}</span>
+          ))}
+        </div>
+      </div>
+    </div>
+    <div class="qfr-edge"><span>↓</span> block 63 returns the final {data.architecture.hiddenSize.toLocaleString()} numbers</div>
+
+    <div class="qfr-stage compact" data-flow-stage="norm">
+      <span class="qfr-step"><small>4</small>put the numbers on a stable scale</span>
+      <div class="qfr-stage-body"><b>output normalization</b><p>This keeps very large or very small values from dominating the last calculation.</p></div>
+    </div>
+    <div class="qfr-edge"><span>↓</span> compare the final representation with every possible token</div>
+
+    <div class="qfr-stage compact" data-flow-stage="logits">
+      <span class="qfr-step"><small>5</small>score every possible next token</span>
+      <div class="qfr-stage-body"><b>{data.architecture.hiddenSize.toLocaleString()} numbers → {data.architecture.vocabSize.toLocaleString()} scores</b><p>A larger score means that token is a better continuation according to the model.</p></div>
+    </div>
+    <div class="qfr-edge"><span>↓</span> turn scores into probabilities and choose</div>
+
+    <div class="qfr-stage compact" data-flow-stage="sample">
+      <span class="qfr-step"><small>6</small>choose one token and repeat</span>
+      <div class="qfr-stage-body"><b>next token joins the context ↺</b><p>Decode runs this whole path again for every generated token.</p></div>
+    </div>
+  </div>
+  <div class="qfr-reconstruction">The structure and dimensions come from the model configuration. The moving highlight is only a slowed-down teaching aid; Nsight did not record which block was active at each instant.</div>
+  </div>
+
+  <div class="qfr-tab-panel" id="qfr-cuda" role="tabpanel" data-qfr-panel="cuda" hidden>
+  <div class="qfr-kernel-head">
+    <b>CUDA time grouped by kernel-name rules</b>
+    <span class="qfr-kernel-count">{firstModel.kernelCount.toLocaleString()} launches</span>
+  </div>
+  <div class="qfr-kernel-bar">
+    {Object.entries(firstGroups).map(([name, value]) => (
+      <span data-kernel-segment={name} style={`width:${value / firstTotal * 100}%;background:${colors[name]}`} />
+    ))}
+  </div>
+  <div class="qfr-kernel-legend">
+    {Object.entries(firstGroups).map(([name, value]) => (
+      <span data-kernel-label={name}><i style={`background:${colors[name]}`} />{name} <b>{(value / firstTotal * 100).toFixed(1)}%</b></span>
+    ))}
+  </div>
+  <div class="qfr-counts">
+    <span><small>Gated DeltaNet-name matches</small><b class="qfr-recurrent-count">{firstModel.recurrentKernels.toLocaleString()}</b></span>
+    <span><small>set_rows-name matches</small><b class="qfr-kv-count">{firstModel.setRowsKernels.toLocaleString()}</b></span>
+    <span><small>calculated K + V size</small><b class="qfr-cache">0 MiB</b></span>
+  </div>
+  </div>
+
+  <div class="qfr-tab-panel" id="qfr-reproduce" role="tabpanel" data-qfr-panel="reproduce" hidden>
+    <div class="qfr-repro">
+      <b>reproduction map</b>
+      <span><small>1 · setup</small><a href={readmeHref}>exact build, launch flags and prompt</a></span>
+      <span><small>2 · evidence</small><a href={captureHref}>committed telemetry and turn aggregates</a></span>
+      <span><small>3 · transform</small><a href={analysisHref}>executable kernel classifier</a></span>
+      <span><small>4 · raw inputs</small><a href={manifestHref}>not committed; sizes and SHA-256 only</a></span>
+    </div>
+  </div>
+
+  <figcaption><slot /></figcaption>
+  <script type="application/json" class="qfr-data" set:html={JSON.stringify(data)} />
+</figure>
+
+<style>
+  figure.qwen-flight-recorder { --attn: #8d7bd8; --rec: #49a078; }
+  :global(:root[data-theme='light']) figure.qwen-flight-recorder { --attn: #6956b8; --rec: #26774f; }
+  @media (prefers-color-scheme: light) {
+    :global(:root:not([data-theme])) figure.qwen-flight-recorder { --attn: #6956b8; --rec: #26774f; }
+  }
+  .qfr-label, .qfr-limit, .qfr-tick { fill: var(--muted); font: 10px ui-sans-serif, system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+  .qfr-panel-title { fill: var(--fg); font: 600 12px ui-sans-serif, system-ui, sans-serif; }
+  .qfr-frame { fill: none; stroke: var(--rule); }
+  .qfr-grid, .qfr-time-grid { stroke: var(--rule); stroke-width: 1; opacity: 0.55; stroke-dasharray: 2 4; }
+  .qfr-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .qfr-line.util { stroke: var(--link); }
+  .qfr-line.power { stroke: var(--accent); }
+  .qfr-dot.util { stroke: var(--link); fill: var(--link); }
+  .qfr-dot.power { stroke: var(--accent); fill: var(--accent); }
+  .qfr-phase { cursor: pointer; outline: none; }
+  .qfr-phase rect { stroke: var(--bg); stroke-width: 2; }
+  .qfr-phase.model rect { fill: color-mix(in srgb, var(--link) 32%, var(--bg)); }
+  .qfr-phase.tool rect { fill: color-mix(in srgb, var(--muted) 22%, var(--bg)); }
+  .qfr-phase.selected rect, .qfr-phase:hover rect, .qfr-phase:focus-visible rect { stroke: var(--fg); }
+  .qfr-phase text { fill: var(--fg); font: 10px ui-sans-serif, system-ui, sans-serif; pointer-events: none; }
+  .qfr-cursor { stroke: var(--fg); stroke-width: 1; opacity: 0.7; pointer-events: none; }
+  .qfr-dot { pointer-events: none; }
+  .qfr-hit { fill: transparent; cursor: crosshair; touch-action: pan-y; }
+  .qfr-controls { display: flex; align-items: center; justify-content: center; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.45rem; }
+  .qfr-play {
+    color: var(--fg); background: transparent; border: 1px solid var(--rule); border-radius: 999px;
+    padding: 0.2rem 0.7rem; font: inherit; font-size: 0.8rem; cursor: pointer;
+  }
+  .qfr-play[aria-pressed='true'] { border-color: var(--accent); color: var(--accent); }
+  .qfr-hint, .qfr-reconstruction { color: var(--muted); font-size: 0.75rem; }
+  .qfr-trace { margin-top: 0.8rem; padding-top: 0.65rem; border-top: 1px solid var(--rule); }
+  .qfr-trace-head, .qfr-flow-head, .qfr-layer-head, .qfr-kernel-head {
+    display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; margin: 0 0 0.35rem; text-align: left;
+  }
+  .qfr-trace-head > span, .qfr-flow-head > span, .qfr-layer-head > span, .qfr-kernel-head > span { color: var(--muted); font-size: 0.72rem; }
+  .qfr-trace-row {
+    display: grid; grid-template-columns: 9.8rem minmax(0, 1fr) 3.2rem; width: 100%; min-height: 2rem;
+    padding: 0; border: 0; color: inherit; background: transparent; font: inherit; text-align: left;
+  }
+  button.qfr-trace-row { cursor: pointer; }
+  button.qfr-trace-row:hover, button.qfr-trace-row:focus-visible, button.qfr-trace-row.selected {
+    background: color-mix(in srgb, var(--accent) 9%, transparent); outline: none;
+  }
+  .qfr-trace-name { min-width: 0; padding: 0.2rem 0.45rem 0.2rem 0.15rem; font: 600 0.7rem ui-monospace, monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .qfr-trace-row.phase .qfr-trace-name { padding-left: 0.85rem; }
+  .qfr-trace-name small { display: block; color: var(--muted); font: 0.56rem ui-sans-serif, system-ui, sans-serif; text-transform: uppercase; letter-spacing: 0.06em; }
+  .qfr-trace-lane { position: relative; min-width: 0; border-left: 1px solid var(--rule); background-image: repeating-linear-gradient(90deg, transparent 0, transparent calc(20% - 1px), color-mix(in srgb, var(--rule) 55%, transparent) calc(20% - 1px), color-mix(in srgb, var(--rule) 55%, transparent) 20%); }
+  .qfr-trace-bar { position: absolute; top: 0.42rem; bottom: 0.42rem; min-width: 2px; overflow: visible; background: color-mix(in srgb, var(--link) 45%, var(--bg)); }
+  .qfr-trace-bar.conversation { background: color-mix(in srgb, var(--link) 20%, var(--bg)); border: 1px solid color-mix(in srgb, var(--link) 45%, var(--rule)); }
+  .qfr-trace-bar.model { background: color-mix(in srgb, var(--link) 50%, var(--bg)); }
+  .qfr-trace-bar.tool { background: color-mix(in srgb, var(--muted) 34%, var(--bg)); }
+  .qfr-trace-duration { display: grid; align-items: center; padding-right: 0.15rem; color: var(--muted); font: 0.62rem ui-monospace, monospace; text-align: right; font-variant-numeric: tabular-nums; }
+  .qfr-trace-row.root .qfr-trace-duration { color: var(--fg); }
+  .qfr-trace-prefill { position: absolute; inset: 0 auto 0 0; min-width: 2px; background: color-mix(in srgb, var(--link) 22%, var(--bg)); }
+  .qfr-trace-reconstruction { position: absolute; inset: 0; opacity: 0.45; background: repeating-linear-gradient(135deg, transparent 0 4px, color-mix(in srgb, var(--fg) 28%, transparent) 4px 5px); }
+  .qfr-trace-axis { position: relative; height: 1.2rem; margin: 0 3.2rem 0 9.8rem; border-top: 1px solid var(--rule); }
+  .qfr-trace-axis span { position: absolute; top: 0.15rem; color: var(--muted); font: 0.58rem ui-monospace, monospace; transform: translateX(-50%); }
+  .qfr-trace-axis span:first-child { transform: none; }
+  .qfr-trace-axis span:last-child { transform: translateX(-100%); }
+  .qfr-trace-key { display: flex; flex-wrap: wrap; gap: 0.2rem 0.9rem; margin-top: 0.25rem; color: var(--muted); font-size: 0.66rem; text-align: left; }
+  .qfr-trace-key i { display: inline-block; width: 0.8rem; height: 0.38rem; margin-right: 0.22rem; vertical-align: middle; }
+  .qfr-trace-key i.model { background: color-mix(in srgb, var(--link) 50%, var(--bg)); }
+  .qfr-trace-key i.prefill { background: color-mix(in srgb, var(--link) 22%, var(--bg)); }
+  .qfr-trace-key i.tool { background: color-mix(in srgb, var(--muted) 34%, var(--bg)); }
+  .qfr-trace-key i.reconstructed { background: repeating-linear-gradient(135deg, transparent 0 3px, var(--muted) 3px 4px); border: 1px solid var(--rule); }
+  .qfr-repro { display: grid; grid-template-columns: 7.5rem repeat(4, minmax(0, 1fr)); gap: 1px; margin-top: 0.65rem; border: 1px solid var(--rule); background: var(--rule); text-align: left; }
+  .qfr-repro > b, .qfr-repro > span { min-width: 0; padding: 0.42rem 0.5rem; background: var(--bg); }
+  .qfr-repro > b { display: grid; align-items: center; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .qfr-repro small { display: block; color: var(--muted); font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .qfr-repro a { display: block; overflow-wrap: anywhere; font-size: 0.67rem; line-height: 1.25; }
+  .qfr-readout {
+    display: grid; grid-template-columns: 0.55fr 1.35fr 0.8fr 0.8fr 1fr 1.35fr; gap: 1px;
+    margin-top: 0.65rem; background: var(--rule); border: 1px solid var(--rule); text-align: left;
+  }
+  .qfr-readout > span, .qfr-counts > span { min-width: 0; padding: 0.42rem 0.5rem; background: var(--bg); }
+  .qfr-readout small, .qfr-counts small { display: block; color: var(--muted); font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .qfr-readout b, .qfr-counts b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 0.76rem ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .qfr-position { font-size: 0.7rem !important; }
+  .qfr-tabs { display: flex; margin-top: 0.7rem; border-bottom: 1px solid var(--rule); }
+  .qfr-tabs button { min-width: 0; padding: 0.38rem 0.8rem; border: 0; border-bottom: 2px solid transparent; color: var(--muted); background: transparent; font: 600 0.7rem ui-monospace, monospace; text-transform: uppercase; letter-spacing: 0.04em; cursor: pointer; }
+  .qfr-tabs button:hover, .qfr-tabs button:focus-visible { color: var(--fg); outline: none; background: color-mix(in srgb, var(--fg) 5%, transparent); }
+  .qfr-tabs button[aria-selected='true'] { color: var(--fg); border-bottom-color: var(--accent); }
+  .qfr-tab-panel { padding-top: 0.65rem; }
+  .qfr-tab-panel[hidden] { display: none; }
+  .qfr-span-panels { text-align: left; }
+  .qfr-span-panel { display: none; box-sizing: border-box; min-width: 0; height: 9.4rem; padding: 0.62rem 0.72rem; overflow: auto; border: 1px solid var(--rule); border-radius: 6px; }
+  .qfr-span-panel.active { display: block; }
+  .qfr-span-title { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; }
+  .qfr-span-title b { font: 600 0.78rem ui-monospace, monospace; }
+  .qfr-span-title span { color: var(--muted); font-size: 0.64rem; text-align: right; }
+  .qfr-span-panel p { margin: 0.35rem 0 0; font-size: 0.78rem; line-height: 1.4; }
+  .qfr-span-facts { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; margin: 0.55rem 0 0; border: 1px solid var(--rule); background: var(--rule); }
+  .qfr-span-facts > div { min-width: 0; padding: 0.35rem 0.4rem; background: var(--bg); }
+  .qfr-span-facts dt, .qfr-runtime small, .qfr-tool-output small, .qfr-missing small { display: block; color: var(--muted); font-size: 0.57rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .qfr-span-facts dd { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 0.68rem ui-monospace, monospace; }
+  .qfr-tool-code { max-height: 12.5rem; margin: 0.55rem 0 0; padding: 0.55rem 0.65rem; overflow: auto; border: 1px solid var(--rule); border-radius: 4px; background: color-mix(in srgb, var(--fg) 3%, var(--bg)); font-size: 0.68rem; line-height: 1.35; text-align: left; }
+  .qfr-tool-details { margin-top: 0.5rem; font-size: 0.72rem; }
+  .qfr-tool-details summary { color: var(--link); cursor: pointer; }
+  .qfr-tool-output code { color: var(--fg); font-size: 0.74rem; }
+  .qfr-missing { padding-left: 0.55rem; border-left: 2px solid var(--accent); color: var(--muted); }
+  .qfr-flow-head { margin-top: 0; }
+  .qfr-pass { min-width: 15.5rem; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .qfr-flow { text-align: left; }
+  .qfr-stage { display: grid; grid-template-columns: 11rem minmax(0, 1fr); gap: 1rem; min-width: 0; padding: 0.7rem 0.75rem; border: 1px solid var(--rule); border-left: 3px solid var(--rule); background: color-mix(in srgb, var(--fg) 2%, var(--bg)); text-align: left; }
+  .qfr-step { display: flex; gap: 0.55rem; align-items: center; align-self: start; color: var(--muted); font-size: 0.68rem; font-weight: 600; line-height: 1.3; text-transform: uppercase; letter-spacing: 0.04em; }
+  .qfr-step small { display: grid; flex: 0 0 1.45rem; width: 1.45rem; height: 1.45rem; place-items: center; border: 1px solid var(--rule); border-radius: 50%; color: var(--fg); font: 600 0.66rem ui-monospace, monospace; }
+  .qfr-stage-body { min-width: 0; }
+  .qfr-stage-body > b { display: block; font: 600 0.75rem ui-monospace, monospace; }
+  .qfr-stage-body > p { margin: 0.25rem 0 0; color: var(--muted); font-size: 0.72rem; line-height: 1.4; }
+  .qfr-stage.active { border-left-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--bg)); }
+  .qfr-stage.blocks.active.attention { border-left-color: var(--attn); background: color-mix(in srgb, var(--attn) 13%, var(--bg)); }
+  .qfr-stage.blocks.active.recurrent { border-left-color: var(--rec); background: color-mix(in srgb, var(--rec) 13%, var(--bg)); }
+  .qfr-edge { min-height: 1.55rem; padding: 0.22rem 0 0.22rem 12.25rem; border-left: 1px dashed var(--rule); color: var(--muted); font-size: 0.66rem; }
+  .qfr-edge span { margin-right: 0.35rem; color: var(--fg); }
+  .qfr-token-pieces { display: flex; flex-wrap: wrap; gap: 0.22rem; margin-top: 0.45rem; }
+  .qfr-token-pieces i { padding: 0.14rem 0.32rem; border: 1px solid var(--rule); color: var(--fg); font: normal 0.66rem ui-monospace, monospace; }
+  .qfr-vector { display: grid; grid-template-columns: repeat(20, 1fr); gap: 2px; height: 1.1rem; margin-top: 0.5rem; align-items: end; }
+  .qfr-vector i { height: 55%; background: var(--link); opacity: 0.45; }
+  .qfr-vector i:nth-child(3n) { height: 100%; opacity: 0.8; }
+  .qfr-vector i:nth-child(4n) { height: 30%; opacity: 0.3; }
+  .qfr-block-recipe { display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap; margin-top: 0.55rem; color: var(--muted); font-size: 0.64rem; }
+  .qfr-block-recipe span { padding: 0.25rem 0.36rem; border: 1px solid var(--rule); color: var(--fg); }
+  .qfr-block-recipe i { font-style: normal; }
+  .qfr-memory-kinds { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.4rem; margin-top: 0.55rem; }
+  .qfr-memory-kinds > span { position: relative; padding: 0.4rem 0.45rem 0.4rem 0.7rem; border: 1px solid var(--rule); }
+  .qfr-memory-kinds i { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
+  .qfr-memory-kinds i.recurrent { background: var(--rec); }
+  .qfr-memory-kinds i.attention { background: var(--attn); }
+  .qfr-memory-kinds b, .qfr-memory-kinds small { display: block; }
+  .qfr-memory-kinds b { font-size: 0.68rem; }
+  .qfr-memory-kinds small { margin-top: 0.12rem; color: var(--muted); font-size: 0.65rem; }
+  .qfr-layer-head { margin-top: 0.65rem; }
+  .qfr-layer-head i, .qfr-kernel-legend i { display: inline-block; width: 0.65rem; height: 0.35rem; margin: 0 0.25rem 0 0.55rem; vertical-align: middle; }
+  .qfr-layer-head i:first-child { margin-left: 0; }
+  .qfr-layer-head i.recurrent { background: var(--rec); }
+  .qfr-layer-head i.attention { background: var(--attn); }
+  .qfr-layers { display: grid; grid-template-columns: repeat(16, 1fr); gap: 3px; }
+  .qfr-layers span {
+    height: 23px; display: grid; place-items: center; border: 1px solid var(--rule);
+    color: var(--muted); font: 9px ui-monospace, monospace; transition: background 50ms linear, outline-color 50ms linear;
+  }
+  .qfr-layers span.recurrent { border-bottom: 3px solid var(--rec); }
+  .qfr-layers span.attention { border-bottom: 3px solid var(--attn); }
+  .qfr-layers span.active { background: color-mix(in srgb, var(--accent) 24%, var(--bg)); outline: 1px solid var(--accent); outline-offset: -1px; color: var(--fg); }
+  .qfr-reconstruction { margin-top: 0.3rem; text-align: left; }
+  .qfr-kernel-bar { display: flex; height: 13px; overflow: hidden; background: var(--rule); }
+  .qfr-kernel-bar span { height: 100%; transition: width 160ms ease; }
+  .qfr-kernel-legend { display: flex; flex-wrap: wrap; gap: 0.15rem 0.85rem; margin-top: 0.35rem; color: var(--muted); font-size: 0.68rem; text-align: left; }
+  .qfr-kernel-legend i { margin-left: 0; }
+  .qfr-kernel-legend b { color: var(--fg); font-variant-numeric: tabular-nums; }
+  .qfr-counts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin-top: 0.55rem; background: var(--rule); border: 1px solid var(--rule); text-align: left; }
+  @media (max-width: 620px) {
+    .qfr-readout { grid-template-columns: repeat(2, 1fr); }
+    .qfr-trace-head, .qfr-flow-head { display: block; }
+    .qfr-trace-head > span, .qfr-pass { display: block; min-width: 0; margin-top: 0.15rem; text-align: left; }
+    .qfr-trace-row { grid-template-columns: 7.2rem minmax(0, 1fr) 2.8rem; }
+    .qfr-trace-axis { margin: 0 2.8rem 0 7.2rem; }
+    .qfr-repro { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .qfr-repro > b { grid-column: 1 / -1; }
+    .qfr-span-title { display: block; }
+    .qfr-span-title span { display: block; margin-top: 0.15rem; text-align: left; }
+    .qfr-span-facts { grid-template-columns: repeat(2, 1fr); }
+    .qfr-span-panel { height: 13.5rem; }
+    .qfr-tabs button { flex: 1; padding-inline: 0.25rem; font-size: 0.61rem; }
+    .qfr-stage { grid-template-columns: 1fr; gap: 0.45rem; }
+    .qfr-edge { padding-left: 0.75rem; }
+    .qfr-memory-kinds { grid-template-columns: 1fr; }
+    .qfr-layers { grid-template-columns: repeat(8, 1fr); }
+    .qfr-counts { grid-template-columns: 1fr; }
+    .qfr-layer-head { display: block; }
+    .qfr-layer-head > span { display: block; margin-top: 0.2rem; }
+  }
+</style>
+
+<script>
+  type ModelPhase = {
+    id: string; kind: 'model'; label: string; start: number; end: number; promptSeconds: number;
+    promptTokens: number; cachedTokens: number; outputTokens: number; finalContext: number;
+    kernelCount: number; setRowsKernels: number; recurrentKernels: number; detail: string;
+    kernelMs: Record<string, number>;
+  };
+  type ToolPhase = { id: string; kind: 'tool'; label: string; start: number; end: number; finalContext: number; detail: string; runtime?: string; toolCode?: string; toolOutput?: string; missingEvidence?: string };
+  type Capture = { duration: number; contextLimit: number; architecture: { hiddenSize: number; vocabSize: number; kvBytesPerToken: number }; phases: (ModelPhase | ToolPhase)[]; telemetry: number[][] };
+
+  function setupQwenFlight(fig: HTMLElement) {
+    const data = JSON.parse(fig.querySelector('.qfr-data')!.textContent!) as Capture;
+    const svg = fig.querySelector<SVGSVGElement>('svg')!;
+    const hit = fig.querySelector<SVGRectElement>('.qfr-hit')!;
+    const cursor = fig.querySelector<SVGLineElement>('.qfr-cursor')!;
+    const utilDot = fig.querySelector<SVGCircleElement>('.qfr-dot.util')!;
+    const powerDot = fig.querySelector<SVGCircleElement>('.qfr-dot.power')!;
+    const play = fig.querySelector<HTMLButtonElement>('.qfr-play')!;
+    const layerEls = [...fig.querySelectorAll<HTMLElement>('[data-layer]')];
+    const phaseEls = [...fig.querySelectorAll<SVGGElement>('[data-phase]')];
+    const traceEls = [...fig.querySelectorAll<HTMLButtonElement>('[data-trace-phase]')];
+    const flowEls = [...fig.querySelectorAll<HTMLElement>('[data-flow-stage]')];
+    const passEl = fig.querySelector<HTMLElement>('.qfr-pass')!;
+    const blockStateEl = fig.querySelector<HTMLElement>('.qfr-block-state')!;
+    const timeEl = fig.querySelector<HTMLElement>('.qfr-time')!;
+    const phaseEl = fig.querySelector<HTMLElement>('.qfr-current-phase')!;
+    const gpuEl = fig.querySelector<HTMLElement>('.qfr-gpu')!;
+    const powerEl = fig.querySelector<HTMLElement>('.qfr-power')!;
+    const vramEl = fig.querySelector<HTMLElement>('.qfr-vram')!;
+    const positionEl = fig.querySelector<HTMLElement>('.qfr-position')!;
+    const spanPanels = [...fig.querySelectorAll<HTMLElement>('[data-span-panel]')];
+    const tabEls = [...fig.querySelectorAll<HTMLButtonElement>('[data-qfr-tab]')];
+    const tabPanels = [...fig.querySelectorAll<HTMLElement>('[data-qfr-panel]')];
+    const kernelCountEl = fig.querySelector<HTMLElement>('.qfr-kernel-count')!;
+    const recurrentEl = fig.querySelector<HTMLElement>('.qfr-recurrent-count')!;
+    const kvEl = fig.querySelector<HTMLElement>('.qfr-kv-count')!;
+    const cacheEl = fig.querySelector<HTMLElement>('.qfr-cache')!;
+    const segments = [...fig.querySelectorAll<HTMLElement>('[data-kernel-segment]')];
+    const labels = [...fig.querySelectorAll<HTMLElement>('[data-kernel-label]')];
+    const LEFT = 48, PW = 624, UTIL_Y = 72, PANEL_H = 58, POWER_Y = 164;
+    let current = 0, raf = 0;
+
+    const x = (t: number) => LEFT + (t / data.duration) * PW;
+    const utilY = (v: number) => UTIL_Y + PANEL_H - (v / 100) * PANEL_H;
+    const powerY = (v: number) => POWER_Y + PANEL_H - (v / 320) * PANEL_H;
+    const phaseAt = (t: number) => data.phases.find((p) => t >= p.start && t <= p.end) ?? data.phases.at(-1)!;
+    const lastModelAt = (t: number) => [...data.phases].reverse().find((p): p is ModelPhase => p.kind === 'model' && p.start <= t)
+      ?? data.phases.find((p): p is ModelPhase => p.kind === 'model')!;
+    const sampleAt = (t: number) => {
+      const pts = data.telemetry;
+      if (t <= pts[0][0]) return pts[0];
+      if (t >= pts.at(-1)![0]) return pts.at(-1)!;
+      let i = 1; while (i < pts.length && pts[i][0] < t) i++;
+      const a = pts[i - 1], b = pts[i], f = (t - a[0]) / (b[0] - a[0]);
+      return [t, ...a.slice(1).map((v, j) => v + (b[j + 1] - v) * f)];
+    };
+    const grouped = (p: ModelPhase) => ({
+      weights: p.kernelMs['matrix multiply'],
+      quantization: p.kernelMs['quantize / dequantize'],
+      attention: p.kernelMs['Flash Attention'] + p.kernelMs['set_rows'] + p.kernelMs['rotary embedding'],
+      recurrence: p.kernelMs['Gated DeltaNet'] + p.kernelMs['SSM convolution'],
+      glue: p.kernelMs['other'] + p.kernelMs['normalization'] + p.kernelMs['activations'],
+    });
+    function stop() {
+      cancelAnimationFrame(raf); raf = 0; play.setAttribute('aria-pressed', 'false'); play.textContent = '▶ replay';
+    }
+    function activateTab(name: string, focus = false) {
+      tabEls.forEach((tab) => {
+        const active = tab.dataset.qfrTab === name;
+        tab.setAttribute('aria-selected', String(active));
+        tab.tabIndex = active ? 0 : -1;
+        if (active && focus) tab.focus();
+      });
+      tabPanels.forEach((panel) => {
+        const active = panel.dataset.qfrPanel === name;
+        panel.hidden = !active;
+        panel.classList.toggle('active', active);
+      });
+    }
+    function show(t: number) {
+      current = Math.max(0, Math.min(data.duration, t));
+      const phase = phaseAt(current), model = phase.kind === 'model' ? phase : lastModelAt(current), sample = sampleAt(current);
+      const cx = x(current);
+      cursor.setAttribute('x1', String(cx)); cursor.setAttribute('x2', String(cx));
+      utilDot.setAttribute('cx', String(cx)); utilDot.setAttribute('cy', String(utilY(sample[1])));
+      powerDot.setAttribute('cx', String(cx)); powerDot.setAttribute('cy', String(powerY(sample[4])));
+      timeEl.textContent = `${current.toFixed(1)}s`; phaseEl.textContent = phase.label;
+      gpuEl.textContent = `${Math.round(sample[1])}%`; powerEl.textContent = `${Math.round(sample[4])}W`;
+      vramEl.textContent = `${Math.round(sample[3]).toLocaleString()} MiB`;
+      phaseEls.forEach((el) => el.classList.toggle('selected', el.dataset.phase === phase.id));
+      traceEls.forEach((el) => el.classList.toggle('selected', el.dataset.tracePhase === phase.id));
+      spanPanels.forEach((panel) => {
+        const active = panel.dataset.spanPanel === phase.id;
+        panel.classList.toggle('active', active);
+        panel.setAttribute('aria-hidden', String(!active));
+      });
+
+      let layer = -1, context = phase.finalContext, position = 'model paused', activeStage = '';
+      let passLabel = `${phase.label} · model paused`;
+      if (phase.kind === 'model') {
+        const local = current - phase.start;
+        let cycle = 0;
+        if (local < phase.promptSeconds) {
+          const f = Math.max(0, local / phase.promptSeconds);
+          cycle = f;
+          context = Math.round(phase.cachedTokens + (phase.promptTokens - phase.cachedTokens) * f);
+          passLabel = `prefill · ${phase.promptTokens - phase.cachedTokens} new + ${phase.cachedTokens} cached tokens`;
+        } else {
+          const decode = phase.end - phase.start - phase.promptSeconds;
+          const f = Math.min(1, (local - phase.promptSeconds) / decode);
+          const tokenFloat = Math.min(phase.outputTokens - 0.000001, f * phase.outputTokens);
+          const token = Math.floor(tokenFloat) + 1;
+          cycle = tokenFloat % 1;
+          context = Math.min(phase.finalContext, phase.promptTokens + token - 1);
+          passLabel = `decode · token ${token}/${phase.outputTokens}`;
+        }
+
+        if (cycle < 0.06) {
+          activeStage = 'input'; position = 'tokenize text';
+        } else if (cycle < 0.12) {
+          activeStage = 'embed'; position = `make ${data.architecture.hiddenSize.toLocaleString()} numbers`;
+        } else if (cycle < 0.88) {
+          activeStage = 'blocks';
+          layer = Math.min(63, Math.floor(((cycle - 0.12) / 0.76) * 64));
+          const layerKind = (layer + 1) % 4 === 0 ? 'look back' : 'memory';
+          position = `block ${layer}/63 · ${layerKind}`;
+        } else if (cycle < 0.92) {
+          activeStage = 'norm'; position = 'stabilize numbers';
+        } else if (cycle < 0.98) {
+          activeStage = 'logits'; position = 'score vocabulary';
+        } else {
+          activeStage = 'sample'; position = 'sample next token';
+        }
+      }
+      positionEl.textContent = position;
+      passEl.textContent = passLabel;
+      blockStateEl.textContent = layer >= 0
+        ? `block ${layer} · ${(layer + 1) % 4 === 0 ? 'look back at earlier tokens' : 'update running memory'}`
+        : '64 blocks: running memory + look-back attention';
+      flowEls.forEach((el) => {
+        const active = el.dataset.flowStage === activeStage;
+        el.classList.toggle('active', active);
+        el.classList.toggle('attention', active && layer >= 0 && (layer + 1) % 4 === 0);
+        el.classList.toggle('recurrent', active && layer >= 0 && (layer + 1) % 4 !== 0);
+      });
+      layerEls.forEach((el, i) => el.classList.toggle('active', i === layer));
+      cacheEl.textContent = `${(context * data.architecture.kvBytesPerToken / 1048576).toFixed(1)} MiB`;
+
+      kernelCountEl.textContent = `${model.kernelCount.toLocaleString()} launches`;
+      recurrentEl.textContent = model.recurrentKernels.toLocaleString(); kvEl.textContent = model.setRowsKernels.toLocaleString();
+      const values = grouped(model), total = Object.values(values).reduce((a, b) => a + b, 0);
+      segments.forEach((el) => { const key = el.dataset.kernelSegment!; el.style.width = `${values[key as keyof typeof values] / total * 100}%`; });
+      labels.forEach((el) => { const key = el.dataset.kernelLabel!; const b = el.querySelector('b')!; b.textContent = `${(values[key as keyof typeof values] / total * 100).toFixed(1)}%`; });
+    }
+    function scrub(ev: PointerEvent) {
+      const pt = new DOMPoint(ev.clientX, ev.clientY).matrixTransform(svg.getScreenCTM()!.inverse());
+      show(((pt.x - LEFT) / PW) * data.duration);
+    }
+    hit.addEventListener('pointerdown', (ev) => { stop(); hit.setPointerCapture(ev.pointerId); scrub(ev); });
+    hit.addEventListener('pointermove', (ev) => { if (ev.buttons) scrub(ev); });
+    phaseEls.forEach((el) => {
+      const jump = () => { stop(); const p = data.phases.find((q) => q.id === el.dataset.phase)!; show(p.start + Math.min(0.5, (p.end - p.start) / 2)); };
+      el.addEventListener('click', jump);
+      el.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); jump(); } });
+    });
+    traceEls.forEach((el) => {
+      el.addEventListener('click', () => {
+        stop();
+        const p = data.phases.find((q) => q.id === el.dataset.tracePhase)!;
+        show(p.start + Math.min(0.5, (p.end - p.start) / 2));
+        activateTab('overview');
+      });
+    });
+    tabEls.forEach((tab, index) => {
+      tab.addEventListener('click', () => activateTab(tab.dataset.qfrTab!));
+      tab.addEventListener('keydown', (ev) => {
+        if (ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight') return;
+        ev.preventDefault();
+        const step = ev.key === 'ArrowRight' ? 1 : -1;
+        const next = (index + step + tabEls.length) % tabEls.length;
+        activateTab(tabEls[next].dataset.qfrTab!, true);
+      });
+    });
+    play.addEventListener('click', () => {
+      if (raf) { stop(); return; }
+      play.setAttribute('aria-pressed', 'true'); play.textContent = '❚❚ pause';
+      const begin = performance.now(), from = current >= data.duration ? 0 : current;
+      const frame = (now: number) => {
+        const f = (now - begin) / 12000;
+        show(from + f * (data.duration - from));
+        if (f < 1) raf = requestAnimationFrame(frame); else stop();
+      };
+      raf = requestAnimationFrame(frame);
+    });
+    show(0);
+  }
+  document.querySelectorAll<HTMLElement>('figure.qwen-flight-recorder').forEach(setupQwenFlight);
+</script>

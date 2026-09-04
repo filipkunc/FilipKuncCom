@@ -1,0 +1,185 @@
+---
+title: "Watching one Qwen3.8 run on my GPU"
+description: "One Qwen3.8-27B conversation on my RTX 5070 Ti, replayed from GPU telemetry and a CUDA trace."
+pubDate: 2026-09-03
+tags: ["llm", "qwen", "llama.cpp", "cuda", "observability"]
+draft: false
+---
+
+import QwenFlightRecorder from '../../../components/QwenFlightRecorder.astro';
+import QwenKvExplorer from '../../../components/QwenKvExplorer.astro';
+import QwenModelExplainer from '../../../components/QwenModelExplainer.astro';
+import { sourceUrl } from '../../../lib/snippets';
+import capture from './capture.json';
+import teachingCapture from './teaching-capture.json';
+
+export const captureHref = sourceUrl('src/content/posts/qwen-gpu-under-the-hood/capture.json');
+export const analysisHref = sourceUrl('scripts/qwen-gpu-observability/summarize.py');
+export const manifestHref = sourceUrl('scripts/qwen-gpu-observability/capture-manifest.json');
+export const readmeHref = sourceUrl('scripts/qwen-gpu-observability/README.md');
+export const teachingHref = sourceUrl('scripts/qwen-gpu-observability/capture-v2/README.md');
+
+I had Qwen3.8-27B running in Unsloth Studio on my RTX 5070 Ti. It worked surprisingly well, but while it was generating I could only see a chat spinner. I wanted to know what my GPU was actually doing.
+
+I used a small problem, *Solve $x^x = 10$*, and recorded the whole conversation. Codex helped me set up the capture, analyze it and build the diagrams. I chose and ran everything locally and reviewed the result.
+
+My first diagram was still too magical. Then I replaced the magic with names such as *residual stream*, *RMS norm* and *Gated DeltaNet*. That was not much better. If you do not already know the architecture, jargon inside boxes is still a black box.
+
+I like the aim of [Brendan Bycroft's LLM visualizer](https://bbycroft.net/llm): follow the numbers and show the operations. I find its 3D presentation difficult to navigate, so I stayed in two dimensions and went down to arithmetic instead.
+
+The examples below use rows with two numbers so I can work them out on screen. Next to them I show the real Qwen sizes. The CUDA tab connects the same calculations to measured kernel time and small code fragments. It is the bridge I was missing between a source file, a profiler and the boxes in a model diagram.
+
+I also ran the model again with a small patch to llama.cpp. That run saved the exact token IDs, tensor shapes and numerical summaries at a few checkpoints. I keep it separate from the performance trace because copying tensors to the CPU changes timing.
+
+<QwenModelExplainer data={teachingCapture} profile={capture} evidenceHref={teachingHref} />
+
+The first six tabs follow one piece of text through the arithmetic. The seventh starts from the opposite end: it takes the CUDA work Nsight measured and shows the calculation behind each group.
+
+Now the profiler view has a narrower job: show when the GPU worked and what kind of CUDA work it did.
+
+<QwenFlightRecorder
+  data={capture}
+  captureHref={captureHref}
+  analysisHref={analysisHref}
+  manifestHref={manifestHref}
+  readmeHref={readmeHref}
+>
+  NVML was sampled every 100 ms and the CUDA kernels came from Nsight Systems.
+  The moving 64-layer strip is my reconstruction, not profiler output.
+</QwenFlightRecorder>
+
+The blue spans are Qwen running. The gray spans are Python plus my slow manual capture steps around it. The GPU graphs and kernel counts are measured. I grouped the kernels with a small <a href={analysisHref}>string-matching script</a>.
+
+The Execution tab is a synchronized summary of one pass. Nsight did not give me per-layer timing, so the moving layer highlight remains a teaching reconstruction.
+
+## I ran it again
+
+I kept the September 3 performance capture unchanged and made a second capture on September 4. It uses the same 8.37 GB `Qwen3.8-27B-UD-IQ2_S.gguf` and the same Unsloth llama.cpp commit. Its SHA-256 starts with `7897d2c5a5ce`; the complete digest is in the capture manifest.
+
+The new capture is much less mysterious. Before inference I asked llama.cpp to render the complete chat template, then sent that exact string back through its tokenizer with special-token parsing enabled. The first request was 373 tokens:
+
+| part of the prompt | tokens |
+| --- | ---: |
+| reasoning instructions, Python schema and tool-call rules | 354 |
+| user turn, including chat markers | 14 |
+| opening of the assistant turn | 5 |
+
+The words `Solve x^x = 10` are nine tokens inside the 14-token user turn. The other five are role markers and newlines. This is why token counts are part of the input, not a cosmetic detail.
+
+The rerun made one Python call and then answered. Its first model turn used 373 prompt tokens and generated 622 tokens at 63.72 tok/s. The second prompt grew to 1,066 tokens; llama.cpp reused 994 and generated 1,059 at 63.43 tok/s. These are API timings from the rerun, not replacements for the Nsight timings below.
+
+For the teaching pass I disabled CUDA graphs, selected named tensors and copied only those tensors to the CPU. I captured the embedding, several internals of recurrent block 0, Q/K/V and attention output from block 3, the output of block 63, final normalization and all 248,320 logits. That run is useful for shapes and values. It is useless as a speed measurement.
+
+## The first conversation
+
+The initial request contained this message and a JSON schema for a function called `python`:
+
+```text
+system: You have a Python tool.
+        Use it for numeric computation instead of computing by hand.
+user:   Solve x^x = 10
+```
+
+Qwen did not answer immediately. It took logarithms, mentioned Lambert W and asked to run this Python code:
+
+```python
+import math
+
+x = 2.0
+for _ in range(20):
+    fx = x*math.log(x) - math.log(10)
+    dfx = math.log(x) + 1
+    x -= fx/dfx
+print(x, x**x)
+```
+
+Codex ran it in a disposable Python 3.12 container without network access. It printed:
+
+```text
+2.5061841455887692 10.0
+```
+
+Qwen then requested a 50-digit Decimal calculation and finally returned
+
+$$
+\begin{aligned}
+x &= e^{W(\ln 10)} = \frac{\ln 10}{W(\ln 10)} \\
+x &\approx 2.50618414559.
+\end{aligned}
+$$
+
+The three Qwen turns used 523, 177 and 821 output tokens. Under the profiler they ran at 62.87, 62.54 and 62.52 tokens per second. The numbers are remarkably close, but three turns from one conversation are not a benchmark.
+
+## What I found in the CUDA trace
+
+The GGUF says the model has 64 main blocks, 24 query heads, four KV heads and 256 values per KV head. The blocks repeat a simple pattern: three recurrent Gated DeltaNet blocks and one full-attention block. That gives 48 recurrent and 16 attention blocks. The same values are in [Qwen's model configuration](https://huggingface.co/Qwen/Qwen3.8-27B/blob/main/config.json) and the [loader from the exact llama.cpp commit I used](https://github.com/unslothai/llama.cpp/blob/92cedc8679d145902ead3f006258e8672eac11e6/src/models/qwen35.cpp).
+
+The CUDA trace contains names such as `gated_delta_net_cuda`, `ssm_conv_f32`, `k_set_rows` and `flash_attn_ext`. During the longer decode turns I found roughly 48 Gated DeltaNet matches and 32 `set_rows` matches per output token. Those are suspiciously neat numbers. There are 48 recurrent blocks, and 32 is 16 attention blocks times K and V.
+
+But neat numbers can be a trap. Prefill is mixed into the request window, CUDA graphs make launch counts harder to read, and a kernel name does not say which model layer launched it. llama.cpp does use [`ggml_set_rows` when writing K and V](https://github.com/unslothai/llama.cpp/blob/92cedc8679d145902ead3f006258e8672eac11e6/src/llama-kv-cache.cpp), but it also uses the same operation elsewhere. This is why the diagram says `set_rows` matches instead of calling every one of them a proven KV-cache write. To prove that I would need to add better annotations to llama.cpp itself.
+
+My simple grouping puts matrix-multiply kernels at roughly 77–79% of CUDA kernel time in every turn. That is what happened in this capture. I would not use it to claim that every short Qwen request has the same mix of work.
+
+## How much memory the KV cache needs
+
+The next diagram is only arithmetic. Drag the context length and it calculates conventional K and V storage from the dimensions in the GGUF.
+
+<QwenKvExplorer
+  contextLimit={capture.contextLimit}
+  capturedTokens={1979}
+  attentionLayers={capture.architecture.attentionLayers}
+  totalLayers={capture.architecture.layers}
+  kvHeads={capture.architecture.kvHeads}
+  headSize={capture.architecture.headSize}
+  bytesPerElement={capture.architecture.kvBytesPerElement}
+>
+  This is calculated, not sampled. It leaves out recurrent state. The all-attention
+  bar is a hypothetical comparison using the same KV dimensions.
+</QwenKvExplorer>
+
+The launch command did not override llama.cpp's F16 cache default. Using that default—two bytes per value—with 16 attention blocks, four KV heads, 256 values per head, and both K and V, the arithmetic is:
+
+$$
+\begin{aligned}
+16 \times 4 \times 256 \times 2 \times 2
+  &= 65{,}536\ \text{bytes/token} \\
+  &= 64\ \text{KiB/token}.
+\end{aligned}
+$$
+
+At 1,979 tokens the result is 123.7 MiB. At my configured 29,440-token window it is 1.80 GiB. If all 64 blocks used full attention, the same calculation would give 7.19 GiB. That is only a comparison; it is not another configuration of this model. Both numbers also leave out recurrent state and allocator overhead, so they do not predict total VRAM.
+
+The measured VRAM stayed between roughly 13,408 and 13,696 MiB during the conversation. My guess is that llama.cpp allocated most working memory before generation and then reused it. The NVML graph alone cannot prove that.
+
+## Getting a clean capture
+
+I started in Unsloth Studio at `127.0.0.1:8888`. Its log showed that this session was running through the bundled `llama-server`. These were the important arguments:
+
+```sh
+llama-server \
+  -m Qwen3.8-27B-UD-IQ2_S.gguf \
+  --parallel 4 \
+  --flash-attn on \
+  -c 29440 \
+  -ngl -1 \
+  --fit off \
+  --metrics \
+  --kv-unified \
+  --jinja
+```
+
+For the final capture I stopped Studio and ran the same bundled binary directly under [Nsight Systems](https://docs.nvidia.com/nsight-systems/UserGuide/). Its version output says llama.cpp build 10715, commit `92cedc867`, compiled by the Unsloth team. Nsight recorded 2,857,912 CUDA kernel launches across the three Qwen turns. NVML produced the GPU graphs above.
+
+The profiler changed the result a little. Decode was about 64.5 tok/s during a lighter observation and about 62.5 tok/s under Nsight. It also used enough memory to reduce the automatically fitted context from 29,952 to 29,440 tokens.
+
+I also tried to collect occupancy, DRAM traffic and L2 hit rate with Nsight Compute, but NVIDIA returned [`ERR_NVGPUCTRPERM`](https://developer.nvidia.com/nvidia-development-tools-solutions-err-nvgpuctrperm-nvvp). I do not have those numbers.
+
+## Reproducing it
+
+Everything small enough to keep is in the repository. The chart reads the <a href={captureHref}>capture JSON</a>. The <a href={analysisHref}>classifier</a> shows how I grouped kernel names, the <a href={manifestHref}>manifest</a> records tool versions and SHA-256 hashes, and the <a href={readmeHref}>capture notes</a> contain the commands and limitations.
+
+The raw Nsight report is 87 MB and its SQLite export is 301 MB, so I did not commit them. This is an important limitation: you can inspect my transformation and the published aggregates, but you cannot regenerate them from this repository alone. The hashes will verify the files if I share them separately, but a hash is not the same as publishing the data.
+
+I still cannot claim that I saw inside Qwen. I saw when the GPU worked, which CUDA kernels llama.cpp launched, what the server reported and how the model says it is built. The layer-by-layer animation between those facts is still a reconstruction.
+
+That is less magical than the view I imagined when I started, but it is much more useful than a spinner.
