@@ -24,7 +24,10 @@ export default defineConfig({
     channel: 'chromium',
     launchOptions: { args: WEBGPU_ARGS },
   },
-  projects: [{ name: 'chromium-webgpu', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'chromium-webgpu', use: { ...devices['Desktop Chrome'] } },
+    { name: 'nelinka', testDir: './games/nelinka/e2e', use: { ...devices['Desktop Chrome'] } },
+  ],
   webServer: {
     command: 'npm run dev -- --port 4321',
     url: 'http://localhost:4321',

@@ -39,6 +39,7 @@ manual `Rollback` workflow retags a previously-shipped image via
 - `src/content/posts/` — the posts, one folder per post (`index.mdx` plus its assets)
 - `src/components/` — the interactive demos (Monaco editors, the type/JSON validator, diagrams)
 - `src/server/` — the static file server that ships in the image
+- `games/nelinka/` — Nelinka's Czech forest platformer, assets and tests; served at `/nelinka` through the `public/nelinka` symlink
 - `ansible/` — one-time provisioning for the box
 - `deploy.sh`, `rollback.sh` — build the image locally and ship it over SSH. `./deploy.sh --build-only` stops after the local build, reproducing the container's `.dockerignore` context so it catches issues that `npm run build` (which builds the working tree directly) cannot
 
