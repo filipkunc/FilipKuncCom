@@ -49,6 +49,7 @@ jobs:
         run: |
           npm run test:hb
           npm run test:flowfield
+          npm run test:nelinka
 
       # channel: 'chromium' in the config means the full browser, not
       # headless_shell, which is the only build that has WebGPU.

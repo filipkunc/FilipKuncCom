@@ -19,6 +19,8 @@
     "og": "node scripts/gen-og.mjs",
     "check": "astro check && tsc -p src/server/tsconfig.json --noEmit",
     "test:e2e": "playwright test",
+    "test:nelinka": "node games/nelinka/test/run.mjs",
+    "test:nelinka:e2e": "playwright test --project nelinka",
     "test:hb": "node --test scripts/hb-editor/test/*.test.mjs",
     "test:flowfield": "node --test scripts/flowfield/test/*.test.mjs",
     "bench": "node scripts/bench-normals.mjs",

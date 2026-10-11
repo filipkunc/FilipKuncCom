@@ -24,6 +24,9 @@ test-results/
 playwright-report/
 .playwright/
 
+# Local metadata from the game's original hosting preview.
+games/nelinka/.openai/
+
 # Benchmark build artifacts (sources + results JSON are committed)
 .tools/
 bench/normals/mesh.bin

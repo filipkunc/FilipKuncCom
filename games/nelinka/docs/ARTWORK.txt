@@ -1,0 +1,14 @@
+Tlapkovy klub artwork
+
+Created with the built-in image generation tool on 2026-10-11.
+Original generated PNGs are included in assets/; transparency is preserved.
+No third-party asset packs, fonts, or runtime services are required.
+
+park.png prompt:
+Use case: illustration-story. Asset type: background for a 2D browser animal rescue game for a six-year-old. Create a beautiful wide landscape 3:2 storybook park viewed from an elevated three-quarter camera, soft gouache textures, rounded trees, warm creamy sunshine, mint green grass, peach flowers, friendly cheerful atmosphere. Playable open lawn covers most of image, scattered flowers only around edges. A small oval turquoise pond is on the right centered around 78 percent across and 52 percent down. A winding pale sandy path leads from lower left toward pond. Round bushes and trees frame left, upper and lower edges, distant hills along very top. No characters, no animals, no text, no UI, no letters. Keep middle lawn uncluttered for placing movable game sprites. Lovely cohesive hand-painted picture book art with soft shadows.
+
+puppy.png prompt:
+A single friendly golden puppy, full body on four paws, facing right in three-quarter view, floppy caramel ears, cream muzzle, teal bandana. Hand-painted gouache storybook illustration for a simple animal game. Isolated character with all paws and tail visible, centered and filling the canvas. Transparent background. No text or scenery.
+
+duckling.png prompt:
+Single adorable small yellow duckling with orange beak and orange feet, full body in three-quarter side view facing right, warm soft gouache children's storybook illustration, round soft fluffy body and friendly dark eye, simple readable shape. Isolated on a transparent background, centered and filling most of canvas with all feet and tail visible, no scenery, no text, no ground shadow. Game character sprite.

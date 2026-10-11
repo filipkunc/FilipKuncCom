@@ -1,0 +1,12 @@
+Separated character artwork, built-in image generation, 2026-10-11.
+Original transparent PNGs are preserved in assets/; crop and joint coordinates
+are in rig.mjs. Grounded movement uses a continuous cutout rig so the head and
+torso no longer change between generated walking frames.
+
+storybook-rig.png — final prompt:
+Use case: precise-object-edit.
+Asset type: separated animation parts atlas for a browser game, 1536x1024, transparent.
+Input references: first is our golden puppy identity and Czech cel-art style; second is our hedgehog identity. Rebuild these SAME two original characters as a clean SIX-piece cutout puppet kit. Bold crisp dark-brown ink contours, flat clean colors, minimal texture, no blur or glow.
+EXACT layout: three columns and two rows of equal 512x512 cells, generous empty transparent gutters. Row 1 column 1: puppy complete HEAD + NECK + TORSO + TAIL as ONE body piece, facing strictly right, NO LEGS OR PAWS attached, rounded clean golden belly, cream muzzle, caramel floppy ears, teal neckerchief, smiling. Fit entire body/tail/head inside cell. Row 1 column 2: ONE detached puppy front leg, full shoulder to cream paw, upright hanging downward, toes pointing right, golden upper leg with rounded top for rotation pivot. Row 1 column 3: ONE detached puppy hind leg, full rounded hip/thigh through hock to cream paw, hanging down, toes right, slightly bent hock.
+Row 2 column 1: hedgehog complete round spiny BODY + FACE as ONE piece, strictly right-facing, no legs or paws at all, brown spines, cream face and belly, large friendly eye. Row 2 column 2: ONE detached short hedgehog front leg, cream, hanging downward, rounded upper pivot and little paw pointing right. Row 2 column 3: ONE detached short hedgehog hind leg, cream, hanging downward, paw right.
+All parts isolated, not assembled, no extra parts. These legs will be duplicated and animated separately in code. NO body stumps or paws on the body pieces. Each part centered in its own cell. No grid, labels, text, floor, shadows, opaque background, halo, soft airbrush, motion blur. GENUINE empty transparent background. Retain original friendly character identities.

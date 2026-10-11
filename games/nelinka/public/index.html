@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#fcf7ec" />
+    <meta
+      name="description"
+      content="Lesní výprava s jezevčicí Nelinkou. Skákej, prozkoumávej les a zachraň tři káčátka."
+    />
+    <title>Tlapkový klub · Lesní výprava</title>
+    <link rel="icon" href="/nelinka/assets/puppy.png" />
+    <link rel="stylesheet" href="/nelinka/style.css" />
+    <script type="module" src="/nelinka/game.js"></script>
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <a class="brand" href="/nelinka"
+          ><span class="paw">🐾</span
+          ><span
+            >Tlapkový klub<small>MALÉ TLAPKY. VELKÁ DOBRODRUŽSTVÍ.</small></span
+          ></a
+        >
+        <nav aria-label="Nastavení">
+          <button
+            class="round"
+            id="sound"
+            aria-label="Vypnout zvuk"
+            aria-pressed="true"
+          >
+            ♫</button
+          ><button
+            class="round"
+            id="pause"
+            aria-label="Pozastavit hru"
+            disabled
+          >
+            Ⅱ</button
+          ><button class="round" id="help" aria-label="Nápověda">?</button>
+        </nav>
+      </header>
+      <main>
+        <div class="heading">
+          <div>
+            <span class="eyebrow" id="chapter"
+              >ÚROVEŇ 1 / 5 · ZA ŠUMĚNÍM LISTÍ</span
+            >
+            <h1 id="level-title">Slunečná paseka</h1>
+          </div>
+        </div>
+        <ol
+          id="level-progress"
+          class="level-progress"
+          aria-label="Pět lesních výprav"
+        ></ol>
+        <section class="board" id="board" aria-label="Lesní plošinová hra">
+          <canvas
+            id="game"
+            width="960"
+            height="600"
+            tabindex="0"
+            aria-label="Nelinky výprava. Šipky vlevo a vpravo: pohyb. Mezerník: skok. E: štěknutí. Escape: pauza."
+            >Pro hru potřebuješ prohlížeč s podporou Canvas.</canvas
+          >
+          <div class="hud" id="hud" hidden>
+            <span class="hud-pill"
+              ><canvas
+                id="duck-icon"
+                width="60"
+                height="64"
+                role="img"
+                aria-label="Zachráněná káčátka"
+              ></canvas
+              ><strong id="rescued">0 / 3</strong></span
+            ><span class="hud-pill treats"
+              ><span aria-hidden="true">✦</span><strong id="treats">0</strong
+              ><span id="treat-total"></span></span
+            ><span
+              class="hud-pill key"
+              id="key-status"
+              aria-label="Klíč zatím nenalezen"
+              >⚿</span
+            ><span
+              class="hud-pill badge"
+              id="badge-status"
+              aria-label="Tajná hvězda zatím nenalezena"
+              >★</span
+            ><span class="area" id="area">Slunečná paseka</span>
+          </div>
+          <div id="intro" class="overlay intro">
+            <div class="intro-copy">
+              <span class="pill">SKÁKEJ · OBJEVUJ · POMÁHEJ</span>
+              <h2>Dobrodružství<br />za každým stromem.</h2>
+              <p>
+                Pět výprav s Nelinkou, patnáct kamarádů.<br />V každé úrovni
+                zachraň tři káčátka a přiveď je domů!
+              </p>
+              <div class="intro-controls">
+                <span><kbd>←</kbd><kbd>→</kbd> běh</span
+                ><span><kbd>SPACE</kbd> skok</span
+                ><span><kbd>E</kbd> štěknutí</span>
+              </div>
+              <button id="start" class="primary" disabled>
+                Načítám obrázky…</button
+              ><button id="resume" class="secondary" hidden disabled>
+                Pokračovat ve výpravě →</button
+              ><span id="load-status" class="note"
+                >Paseka, háj, říční ostrůvky, houby a lesní slavnost.</span
+              >
+            </div>
+            <canvas
+              class="hero"
+              id="hero-character"
+              width="400"
+              height="450"
+              role="img"
+              aria-label="Jezevčice Nelinka s růžovým postrojem"
+            ></canvas
+            ><span class="hero-tag">Nelinka je připravená! ♥</span>
+          </div>
+          <div id="paused" class="overlay centered" hidden>
+            <div class="card">
+              <span class="eyebrow">MALÁ PŘESTÁVKA</span>
+              <h2>Nelinka počká.</h2>
+              <p>Až budeš připravená, vyrazíme dál.</p>
+              <button id="continue" class="primary">Pokračovat →</button
+              ><button id="checkpoint" class="secondary">
+                Zpátky k praporku
+              </button>
+            </div>
+          </div>
+          <div id="win" class="overlay centered" hidden>
+            <div class="card">
+              <div class="medal">★</div>
+              <span class="eyebrow" id="win-eyebrow">ÚROVEŇ SPLNĚNA</span>
+              <h2 id="win-title">Les má novou hrdinku!</h2>
+              <p id="win-description">Všechna tři káčátka jsou v bezpečí.</p>
+              <div class="results" id="results"></div>
+              <button id="next-level" class="primary">Další výprava →</button>
+              <button id="again" class="secondary">
+                <span>Zopakovat úroveň</span
+                ><svg
+                  aria-hidden="true"
+                  width="21"
+                  height="21"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M20 7v5h-5M20 12a8 8 0 1 0-2 5" />
+                </svg>
+              </button>
+              <button id="new-adventure" class="secondary" hidden>
+                Nové dobrodružství od začátku
+              </button>
+              <p class="note" id="win-note"></p>
+            </div>
+          </div>
+        </section>
+        <div class="touch-controls" aria-label="Dotykové ovládání">
+          <div>
+            <button data-control="left" aria-label="Jít vlevo">←</button
+            ><button data-control="right" aria-label="Jít vpravo">→</button>
+          </div>
+          <div>
+            <button data-control="bark" aria-label="Štěknout">HAF</button
+            ><button data-control="jump" aria-label="Skočit">↑</button>
+          </div>
+        </div>
+        <div class="mission-bar">
+          <span class="mission-symbol" aria-hidden="true">⚑</span>
+          <div>
+            <strong id="instruction" aria-live="polite"
+              >Najdi tři káčátka a dojdi k lesnímu domečku.</strong
+            ><span id="subinstruction"
+              >Na větvích se skrývají kamarádi. A možná i něco navíc.</span
+            >
+          </div>
+          <span class="checkpoint-status" id="checkpoint-status">START</span>
+        </div>
+        <footer>
+          <span
+            ><kbd>←</kbd><kbd>→</kbd> běh <i>·</i> <kbd>SPACE</kbd> skok
+            <i>·</i> <kbd>E</kbd> štěknutí <i>·</i> <kbd>ESC</kbd> pauza</span
+          ><a href="/nelinka/calm.html">Klidná hra u rybníka ↗</a>
+        </footer>
+      </main>
+    </div>
+    <dialog id="help-dialog">
+      <button class="round close" id="close-help" aria-label="Zavřít nápovědu">
+        ×</button
+      ><span class="eyebrow">MALÝ PRŮVODCE VÝPRAVOU</span>
+      <h2>Do lesa s Nelinkou</h2>
+      <p><kbd>←</kbd> <kbd>→</kbd> Běhej doleva a doprava.</p>
+      <p><kbd>SPACE</kbd> Skákej na větve. Podrž mezerník pro vyšší skok.</p>
+      <p>
+        <kbd>E</kbd> Štěkni! Ježek, žába i včela si zdřímnou. Velký květ otevře
+        most.
+      </p>
+      <p>
+        🐸 Žába se před skokem přikrčí. 🐝 Včela hlídá vzduch nad větvemi.
+        Přeskoč je, počkej, nebo zblízka štěkni. Včela se probudí nejrychleji!
+      </p>
+      <p>
+        🍄 Houba tě vystřelí výš. Zlatý klíč otevře branku. Klády tě převezou
+        přes potok.
+      </p>
+      <p>
+        🌸 U květu štěkni a počkej, až se most rozvine. Velký zelený list tě
+        vyveze nahoru.
+      </p>
+      <p>
+        🪨 Popraskané kameny po došlápnutí klesají. Skoč na další! Za chvilku se
+        zase vynoří.
+      </p>
+      <p>
+        ⚑ U praporku se cesta uloží. Po pádu se vrátíš sem a nalezení kamarádi
+        ti zůstanou.
+      </p>
+      <p>
+        ★ Hledej tři káčátka, pamlsky a jednu tajnou hvězdu. Pak najdi domeček
+        na konci lesa.
+      </p>
+      <button id="help-ok" class="primary">Jdeme na to →</button>
+    </dialog>
+  </body>
+</html>

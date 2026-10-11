@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#fcf7ec" />
+    <meta
+      name="description"
+      content="Pomoz pejskovi najít tři káčátka a dovést je domů. Malé laskavé dobrodružství pro děti."
+    />
+    <title>Tlapkový klub · Káčátka domů</title>
+    <link rel="icon" href="/nelinka/assets/puppy.png" />
+    <link rel="stylesheet" href="/nelinka/calm.css" />
+    <script src="/nelinka/calm.js" type="module"></script>
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <a
+          class="brand"
+          href="/nelinka"
+          aria-label="Tlapkový klub, začátek"
+          ><span class="paw" aria-hidden="true">🐾</span
+          ><span>Tlapkový klub<small>MALÉ TLAPKY. VELKÁ POMOC.</small></span></a
+        >
+        <nav aria-label="Nastavení hry">
+          <button
+            id="sound"
+            class="round"
+            aria-label="Vypnout zvuk"
+            aria-pressed="true"
+          >
+            ♫
+          </button>
+          <button id="help" class="round" aria-label="Nápověda">?</button>
+        </nav>
+      </header>
+      <main>
+        <div class="mission-heading">
+          <div>
+            <span class="eyebrow">DOBRODRUŽSTVÍ U RYBNÍKA</span>
+            <h1>Káčátka domů</h1>
+          </div>
+          <div class="collection" title="Získané samolepky">
+            <span aria-hidden="true">★</span> <span id="stickers">0</span
+            ><span class="collection-label">samolepky</span>
+          </div>
+        </div>
+        <section
+          id="board"
+          class="board"
+          aria-label="Park s pejskem a třemi káčátky"
+        >
+          <div
+            id="world"
+            class="world"
+            tabindex="0"
+            role="group"
+            aria-label="Herní plocha. Pohybuj se šipkami nebo klikni na káčátko."
+          >
+            <div id="marker" class="marker" hidden aria-hidden="true"></div>
+            <button
+              id="pond"
+              class="pond"
+              aria-label="Dovést káčátka k rybníku"
+            >
+              <span class="pond-label"
+                >DOMŮ <span aria-hidden="true">♥</span></span
+              >
+            </button>
+            <div id="puppy" class="puppy sprite" aria-label="Pejsek Bertík">
+              <img
+                src="/nelinka/assets/puppy.png"
+                alt=""
+                draggable="false"
+              /><span class="name-tag">Bertík</span>
+            </div>
+            <button
+              class="duck sprite"
+              id="duck-0"
+              aria-label="Najít první káčátko"
+            >
+              <img
+                src="/nelinka/assets/duckling.png"
+                alt=""
+                draggable="false"
+              /><span class="callout" aria-hidden="true">♪</span>
+            </button>
+            <button
+              class="duck sprite"
+              id="duck-1"
+              aria-label="Najít druhé káčátko"
+            >
+              <img
+                src="/nelinka/assets/duckling.png"
+                alt=""
+                draggable="false"
+              /><span class="callout" aria-hidden="true">♪</span>
+            </button>
+            <button
+              class="duck sprite"
+              id="duck-2"
+              aria-label="Najít třetí káčátko"
+            >
+              <img
+                src="/nelinka/assets/duckling.png"
+                alt=""
+                draggable="false"
+              /><span class="callout" aria-hidden="true">♪</span>
+            </button>
+            <div id="sparkles" aria-hidden="true"></div>
+          </div>
+          <div id="intro" class="overlay intro">
+            <div class="intro-card">
+              <span class="pill">TVOJE PRVNÍ MISE</span>
+              <h2>Malá káčátka.<br />Velké dobrodružství.</h2>
+              <p>
+                Ahoj! Já jsem Bertík.<br />Pomůžeš mi dovést tři káčátka domů?
+              </p>
+              <button id="start" class="primary">
+                Jdeme na to! <span aria-hidden="true">→</span></button
+              ><span class="little-note"
+                >Stačí klikat nebo používat šipky.</span
+              >
+            </div>
+            <img
+              class="hero-puppy"
+              src="/nelinka/assets/puppy.png"
+              alt="Bertík, zlatý pejsek s tyrkysovým šátkem"
+            />
+            <span class="hero-name"
+              >Tvůj kamarád Bertík <span aria-hidden="true">♥</span></span
+            >
+          </div>
+          <div id="win" class="overlay win" hidden>
+            <div class="win-card">
+              <span class="reward" aria-hidden="true"
+                ><img src="/nelinka/assets/duckling.png" alt="" />★</span
+              ><span class="eyebrow">NOVÁ SAMOLEPKA</span>
+              <h2>Hurá! Jsme doma!</h2>
+              <p>Všechna káčátka jsou u rybníka.<br />Děkujeme za pomoc!</p>
+              <button id="again" class="primary">
+                Hrát znovu <span aria-hidden="true">↻</span>
+              </button>
+            </div>
+          </div>
+        </section>
+        <div class="mission-bar">
+          <div class="mission-icon" aria-hidden="true">
+            <img src="/nelinka/assets/duckling.png" alt="" />
+          </div>
+          <div class="instruction">
+            <strong id="instruction" aria-live="polite"
+              >Najdi tři káčátka a doveď je domů.</strong
+            ><span id="subinstruction">Každá malá pomoc se počítá.</span>
+          </div>
+          <div
+            id="progress"
+            class="progress"
+            aria-label="Nalezená káčátka: 0 ze 3"
+          >
+            <span>1</span><span>2</span><span>3</span>
+          </div>
+        </div>
+        <footer>
+          <span
+            ><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> nebo kliknutí
+            myší</span
+          ><span>V klidu. Svým tempem. <span aria-hidden="true">♡</span></span>
+        </footer>
+      </main>
+    </div>
+    <dialog id="help-dialog">
+      <button id="close-help" class="round close" aria-label="Zavřít nápovědu">
+        ×</button
+      ><span class="eyebrow">JAK NA TO?</span>
+      <h2>Pomoz Bertíkovi!</h2>
+      <p>🐤 Klikni na káčátko. Bertík k němu dojde a káčátko půjde za ním.</p>
+      <p>🐾 Můžeš také chodit pomocí šipek. Stačí přijít blízko.</p>
+      <p>💧 Až najdeš všechna tři, klikni na srdíčko u rybníka.</p>
+      <p class="voice-note" id="voice-note"></p>
+      <button id="help-ok" class="primary">
+        Rozumím <span aria-hidden="true">✓</span>
+      </button>
+    </dialog>
+  </body>
+</html>
