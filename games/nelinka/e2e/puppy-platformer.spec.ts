@@ -421,13 +421,20 @@ test.describe("sharp rendering and mushroom impact", () => {
     // by assertion polling or screenshot capture latency.
     const motion = page.evaluate(
       () =>
-        new Promise<number[]>((resolve) => {
+        new Promise<number[]>((resolve, reject) => {
           const c = document.querySelector("#game") as HTMLCanvasElement;
           const samples: number[] = [];
           const start = performance.now();
+          let impacted = false;
           function observe() {
-            samples.push(Number(c.dataset.springScale));
-            if (performance.now() - start > 1900) resolve(samples);
+            const scale = Number(c.dataset.springScale);
+            samples.push(scale);
+            if (scale < 0.9) impacted = true;
+            // Software-rendered CI can take longer to reach the mushroom.
+            // Finish on the actual simulation cycle, not a wall-clock guess.
+            if (impacted && c.dataset.springPhase === "rest") resolve(samples);
+            else if (performance.now() - start > 15000)
+              reject(new Error("Mushroom impact did not complete"));
             else requestAnimationFrame(observe);
           }
           requestAnimationFrame(observe);
