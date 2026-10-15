@@ -7,7 +7,8 @@ miniquad_add_plugin({
     const player = window.nelinkaCampaign;
     imports.env.nelinka_player_mode = () => player ? 1 : 0;
     imports.env.nelinka_player_action = () => player?.actions.shift() || 0;
-    imports.env.nelinka_player_input = () => player?.bits || 0;
+    imports.env.nelinka_player_input = () => (player?.bits || 0) | (player?.latched || 0);
+    imports.env.nelinka_player_consumed = () => { if (player) player.latched = 0; };
     imports.env.nelinka_player_load = (pointer, capacity) => {
       try {
         const bytes = encoder.encode(localStorage.getItem('nelinka-campaign-v1') || '');
