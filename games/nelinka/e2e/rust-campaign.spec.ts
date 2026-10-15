@@ -87,8 +87,16 @@ test('recorded bark plays once per press and the sound preference persists', asy
   await ready(page);
   await page.locator('[data-level="0"]').click();
   await expect(page.locator('#overlay')).toBeHidden();
-  await page.keyboard.press('e',{delay:80});
+  // Deliver key-down and key-up in one task: no rendered frame can occur
+  // between them. The player must retain the tap until a simulation tick.
+  const queued = await page.evaluate(() => {
+    window.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyE'}));
+    window.dispatchEvent(new KeyboardEvent('keyup',{code:'KeyE'}));
+    return {held:(window as any).nelinkaCampaign.bits,latched:(window as any).nelinkaCampaign.latched};
+  });
+  expect(queued).toEqual({held:0,latched:8});
   await expect.poll(()=>page.evaluate(()=>(window as any).barks)).toBe(1);
+  await expect.poll(()=>page.evaluate(()=>(window as any).nelinkaCampaign.latched)).toBe(0);
   await page.locator('#sound').click();
   await expect(page.locator('#sound')).toHaveAttribute('aria-pressed','true');
   await page.waitForTimeout(650);
