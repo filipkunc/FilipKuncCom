@@ -56,3 +56,6 @@ README.md
 *.md
 .dockerignore
 Dockerfile
+
+# Preserve the exact pinned game artifact, including its provenance documents.
+!games/nelinka/releases/**

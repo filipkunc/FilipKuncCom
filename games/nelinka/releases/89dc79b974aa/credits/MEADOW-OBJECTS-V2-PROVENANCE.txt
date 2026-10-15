@@ -1,0 +1,18 @@
+Generated with the built-in image_gen tool on 2026-10-15.
+Output copied unchanged, preserving the RGBA alpha channel, to meadow-objects-v2.png.
+Source output: exec-051a0c40-2ca6-450e-bf14-b0585089706a.png
+Reference files: storybook-objects.png, meadow-plants.png, meadow-terrain.png.
+The original hedgehog and puppy artwork remain unchanged in their original files.
+meadow-objects-v2.json records sprite UV crop bounds without modifying the PNG.
+
+Complete prompt:
+Use case: style-transfer.
+Asset type: production transparent sprite atlas for a painted 2D woodland platformer.
+Edit target: image 1 storybook-objects.png. Supporting style reference: image 2 meadow-plants.png, image 3 meadow-terrain.png.
+Replace the atlas layout with a clean FOUR COLUMN by FOUR ROW atlas containing exactly SIXTEEN isolated sprites. Draw new objects with the rich illustrated detail, warm organic brown contour accents and appealing personality of the HEDGEHOG in image 1, but with the soft gouache brush texture, muted woodland pigments and natural materials of references 2 and 3. The previous bright flat duck and mushroom look too much like vector clip art. All objects need hand-painted detail and believable rounded volume, not geometric primitives. Cute children's storybook, not photorealistic. Transparent background with genuine alpha; no background haze, no cast shadows beyond object silhouette, no labels, no cell borders, no UI, no scenery.
+Strict equal-sized 4x4 cells, generous empty transparent gutters, complete silhouettes never crossing cells. Atlas approximately 2048x2048. Sprite positions:
+Row 1 left to right: (1) moss-green friendly frog resting facing RIGHT, rounded haunches and delicate ochre spots, two expressive eyes; (2) SAME frog leaping right with hind legs extended; (3) fluffy ochre-and-brown bumblebee facing RIGHT, two pearly translucent wings raised; (4) SAME bee same body pose and size but wings lowered.
+Row 2: (1) small fluffy pale golden duckling facing RIGHT, warm orange beak and feet, appealing natural down; (2) wide low terracotta-red bounce mushroom, mottled ivory cap spots, pale short stalk, side view; (3) long horizontal driftwood log platform with aged warm brown bark, a cut end, tiny moss patches, nearly horizontal upper walking edge; (4) squat wide grey-green stepping stone with weathered texture and moss on its nearly level upper walking edge.
+Row 3: (1) wide horizontal gently cupped green leaf platform viewed from the SIDE, beautiful veins, nearly level upper walking rim, no long stalk; (2) wide horizontal gently cupped dusty rose flower petal platform viewed from SIDE, nearly level upper walking rim, natural delicate veins, no stalk; (3) large open pink wildflower head with golden center, frontal side-scroller view, short green stem and a pair of small leaves; (4) closed pink flower bud on short green stem.
+Row 4: (1) small old brass key horizontal; (2) little golden five-point star charm with textured warm edges; (3) teal cloth checkpoint pennant on a rustic wooden pole planted at its base; (4) wide blank light honey wood signboard on a short rustic post, clear empty face for text rendered by the game.
+No hedgehog in this new sheet: the existing hedgehog file is retained separately unchanged. Give the new frog and bee the same care as that hedgehog. Keep the platform silhouettes distinctly wider than tall and suitable for exact game collision rims. Lighting softly from upper left. Ensure all sixteen items are present exactly once except the explicitly paired frog and bee poses.

@@ -4,7 +4,7 @@
   "private": true,
   "license": "MIT",
   "type": "module",
-  "description": "filipkunc.com — Astro + MDX content site, served by a tiny Node static server.",
+  "description": "filipkunc.com \u2014 Astro + MDX content site, served by a tiny Node static server.",
   "engines": {
     "node": ">=24"
   },
@@ -19,7 +19,7 @@
     "og": "node scripts/gen-og.mjs",
     "check": "astro check && tsc -p src/server/tsconfig.json --noEmit",
     "test:e2e": "playwright test",
-    "test:nelinka": "node games/nelinka/test/run.mjs",
+    "test:nelinka": "node games/nelinka/test/run.mjs && node games/nelinka/test/release.mjs",
     "test:nelinka:e2e": "playwright test --project nelinka",
     "test:hb": "node --test scripts/hb-editor/test/*.test.mjs",
     "test:flowfield": "node --test scripts/flowfield/test/*.test.mjs",

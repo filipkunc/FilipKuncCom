@@ -10,7 +10,7 @@ async function resumeLevel(page: Page, level: number, checkpoint: number) {
     },
     { level, checkpoint },
   );
-  await page.goto("/nelinka");
+  await page.goto("/nelinka-classic");
   await page.getByRole("button", { name: "Pokračovat ve výpravě" }).click();
 }
 
@@ -39,7 +39,7 @@ test("E plays the recorded bark, resumes suspended audio and respects mute", asy
       start.apply(this, args);
     };
   });
-  await page.goto("/nelinka");
+  await page.goto("/nelinka-classic");
   await page.getByRole("button", { name: "Vyrazit do lesa" }).click();
   await page.keyboard.press("e");
   await expect

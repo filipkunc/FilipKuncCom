@@ -23,7 +23,7 @@ test("all five completion screens advance, save and reset the next level; the fi
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.setViewportSize({ width: 1366, height: 900 });
-  await page.goto("/nelinka");
+  await page.goto("/nelinka-classic");
   for (let level = 0; level < 5; level++) {
     // Completed-level fixtures isolate UI transitions; deterministic gameplay
     // tests traverse every route with actual jumps, logs, gates and rescues.
@@ -92,7 +92,7 @@ test("river scenery, outlined pickups and new levels render at native resolution
   page,
 }, info) => {
   await page.setViewportSize({ width: 1366, height: 900 });
-  await page.goto("/nelinka");
+  await page.goto("/nelinka-classic");
   const requests: string[] = [];
   page.on("requestfailed", (request) => {
     // Repeated fixture reloads can cancel the previous page's favicon fetch.
@@ -131,10 +131,10 @@ test("river scenery, outlined pickups and new levels render at native resolution
   await page.getByRole("button", { name: "Pozastavit hru" }).click();
   await page.evaluate(async () => {
     const { drawPickupStar, drawPickupKey } = await import(
-      /* @vite-ignore */ "/nelinka/scenery.mjs"
+      /* @vite-ignore */ "/nelinka-classic/scenery.mjs"
     );
     const forest = new Image();
-    forest.src = "/nelinka/assets/storybook-forest.png";
+    forest.src = "/nelinka-classic/assets/storybook-forest.png";
     await forest.decode();
     const c = document.createElement("canvas");
     c.id = "pickup-review";

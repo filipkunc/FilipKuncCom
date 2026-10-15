@@ -6,7 +6,7 @@ test("Czech rescue can be completed and replayed; sticker survives a reload", as
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setViewportSize({ width: 1366, height: 768 });
-  await page.goto("/nelinka/calm.html");
+  await page.goto("/nelinka-classic/calm.html");
   await expect(page).toHaveTitle(/Tlapkový klub/);
   await expect(page.locator("html")).toHaveAttribute("lang", "cs");
   await expect(page.locator("#progress")).toBeInViewport();
@@ -46,7 +46,7 @@ test("Czech rescue can be completed and replayed; sticker survives a reload", as
 test("keyboard movement pauses for help and early pond arrival does not win", async ({
   page,
 }) => {
-  await page.goto("/nelinka/calm.html");
+  await page.goto("/nelinka-classic/calm.html");
   await page.getByRole("button", { name: "Jdeme na to!" }).click();
   const puppy = page.locator("#puppy");
   const start = await puppy.boundingBox();
@@ -78,7 +78,7 @@ test("small touch screen has no horizontal overflow and can start and collect", 
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/nelinka/calm.html");
+  await page.goto("/nelinka-classic/calm.html");
   await expect(
     page.getByRole("button", { name: "Jdeme na to!" }),
   ).toBeInViewport();

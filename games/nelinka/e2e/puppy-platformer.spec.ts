@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 test("Nelinka uses the complete running cycle and matching action poses", async ({
   page,
 }, info) => {
-  await page.goto("/nelinka");
+  await page.goto("/nelinka-classic");
   await expect(page.locator(".hero-tag")).toHaveText(
     "Nelinka je připravená! ♥",
   );
@@ -41,12 +41,12 @@ test("Nelinka uses the complete running cycle and matching action poses", async 
   ).toBeVisible();
   await page.evaluate(async () => {
     const { drawNelinka } = await import(
-      /* @vite-ignore */ "/nelinka/nelinka.mjs"
+      /* @vite-ignore */ "/nelinka-classic/nelinka.mjs"
     );
     const walk = new Image(),
       actions = new Image();
-    walk.src = "/nelinka/assets/nelinka-walk.png";
-    actions.src = "/nelinka/assets/nelinka-actions.png";
+    walk.src = "/nelinka-classic/assets/nelinka-walk.png";
+    actions.src = "/nelinka-classic/assets/nelinka-actions.png";
     await Promise.all([walk.decode(), actions.decode()]);
     const c = document.createElement("canvas");
     c.width = 1200;
@@ -82,7 +82,7 @@ test("Nelinka uses the complete running cycle and matching action poses", async 
 test("hedgehog gait keeps its body stable and moves front and rear paws", async ({
   page,
 }, info) => {
-  await page.goto("/nelinka");
+  await page.goto("/nelinka-classic");
   await expect(
     page.getByRole("button", { name: "Vyrazit do lesa" }),
   ).toBeEnabled();
@@ -90,7 +90,7 @@ test("hedgehog gait keeps its body stable and moves front and rear paws", async 
     // Exercise the same renderer used in the game, at a fixed position so
     // differences in paw pixels cannot be explained by whole-body movement.
     const { drawQuadruped } = await import(
-      /* @vite-ignore */ "/nelinka/rig.mjs"
+      /* @vite-ignore */ "/nelinka-classic/rig.mjs"
     );
     const gallery = document.createElement("canvas");
     gallery.width = 1200;
@@ -102,7 +102,7 @@ test("hedgehog gait keeps its body stable and moves front and rear paws", async 
     let row = 0;
     const style = "storybook";
     const sheet = new Image();
-    sheet.src = `/nelinka/assets/${style}-rig.png`;
+    sheet.src = `/nelinka-classic/assets/${style}-rig.png`;
     await sheet.decode();
     for (const kind of ["hedgehog"]) {
       const front = [],
@@ -170,7 +170,7 @@ test("platformer loads, animates running, jumping and barking, pauses and resume
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setViewportSize({ width: 1366, height: 768 });
-  await page.goto("/nelinka");
+  await page.goto("/nelinka-classic");
   const canvas = page.locator("#game");
   await expect(
     page.getByRole("button", { name: "Vyrazit do lesa" }),
@@ -215,7 +215,7 @@ test("platformer loads, animates running, jumping and barking, pauses and resume
 test("rescues the first duck through keyboard platforming and saves it across reload", async ({
   page,
 }) => {
-  await page.goto("/nelinka");
+  await page.goto("/nelinka-classic");
   await page.getByRole("button", { name: "Vyrazit do lesa" }).click();
   const canvas = page.locator("#game");
   await page.keyboard.down("ArrowRight");
@@ -253,7 +253,7 @@ test("small-screen layout exposes touch controls without horizontal overflow", a
   page,
 }, info) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/nelinka");
+  await page.goto("/nelinka-classic");
   await expect(
     page.getByRole("button", { name: "Vyrazit do lesa" }),
   ).toBeEnabled();
@@ -297,7 +297,7 @@ test("storybook replaces a saved painted preference and completion button stays 
     );
   });
   await page.setViewportSize({ width: 1366, height: 768 });
-  await page.goto("/nelinka");
+  await page.goto("/nelinka-classic");
   await expect(
     page.getByRole("button", { name: "Vyrazit do lesa" }),
   ).toBeEnabled();
@@ -342,7 +342,7 @@ test("storybook renders the mushroom and hedgehog at the checkpoint", async ({
     ),
   );
   await page.setViewportSize({ width: 1366, height: 768 });
-  await page.goto("/nelinka");
+  await page.goto("/nelinka-classic");
   await expect(
     page.getByRole("button", { name: "Vyrazit do lesa" }),
   ).toBeEnabled();
@@ -361,7 +361,7 @@ test.describe("sharp rendering and mushroom impact", () => {
     page,
   }, info) => {
     await page.setViewportSize({ width: 1366, height: 768 });
-    await page.goto("/nelinka");
+    await page.goto("/nelinka-classic");
     await expect(
       page.getByRole("button", { name: "Vyrazit do lesa" }),
     ).toBeEnabled();
@@ -412,7 +412,7 @@ test.describe("sharp rendering and mushroom impact", () => {
       ),
     );
     await page.setViewportSize({ width: 1366, height: 768 });
-    await page.goto("/nelinka");
+    await page.goto("/nelinka-classic");
     await expect(
       page.getByRole("button", { name: "Vyrazit do lesa" }),
     ).toBeEnabled();

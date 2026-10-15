@@ -166,7 +166,7 @@ async function loadAssets() {
         rig: "storybook-rig",
       }).map(async ([name, file]) => {
         const image = new Image();
-        image.src = `/nelinka/assets/${file}.png`;
+        image.src = `/nelinka-classic/assets/${file}.png`;
         await image.decode();
         images[name] = image;
       }),

@@ -1,7 +1,19 @@
-# Nelinka — Tlapkový klub
+# Nelinka — Rust campaign and classic game
 
-This is the single source folder for the Czech browser game. It lives inside
-FilipKuncCom so the website and its Docker build can ship it together.
+The current game at `/nelinka/` is a pinned WASM release from the independent
+[Nelinka repository](https://github.com/filipkunc/Nelinka). The website does not
+compile Rust and has no build/runtime dependency on a sibling checkout.
+
+- `releases/89dc79b974aa/`: immutable player, workshop, WASM, audio and credits.
+- `release.json` inside that release identifies the source commit and SHA-256
+  of each packaged file. `test/release.mjs` verifies the pin and every hash.
+- `public/nelinka` (at the website root) is a repository-relative symlink to the
+  pinned release. Updates copy a newly built, committed Nelinka release here
+  and change that pin. Never link to a developer's sibling checkout.
+- The former JavaScript game remains at `/nelinka-classic/`, including its old
+  saved progress and the calm rescue mode. New campaign saves are separate.
+
+The remaining source below belongs to that preserved classic game.
 
 - `public/`: game code, HTML, CSS, images and audio. `index.html` is the
   platformer; `calm.html` preserves the earlier click-to-rescue game.
@@ -11,7 +23,7 @@ FilipKuncCom so the website and its Docker build can ship it together.
 - `.openai/`: preserved metadata from the original hosting placeholder; the
   current local workflow uses the website server.
 
-`../../public/nelinka` is a relative symlink to this folder's `public/`.
+`../../public/nelinka-classic` is a relative symlink to this folder's `public/`.
 It contains no duplicate source. The Docker build includes `games/` before
 building the website; only the game’s public files are shipped.
 
@@ -24,8 +36,9 @@ npm run test:nelinka:e2e
 npm run build
 ```
 
-Play at http://localhost:4321/nelinka. Changes here appear immediately.
-The build places the playable files in `dist/nelinka/` as generated output.
+Play the current campaign at http://localhost:4321/nelinka.
+Classic source changes appear at http://localhost:4321/nelinka-classic/.
+The build copies both pinned release and classic files into `dist/`.
 No separate game server, install or backend is needed.
 
 ## Levels and objects

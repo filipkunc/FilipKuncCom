@@ -7,7 +7,7 @@ export function createBarkSound() {
   const active = new Set();
   let loading;
   function load() {
-    return (loading ??= fetch("/nelinka/assets/nelinka-bark.wav")
+    return (loading ??= fetch("/nelinka-classic/assets/nelinka-bark.wav")
       .then((r) => {
         if (!r.ok) throw new Error("Bark unavailable");
         return r.arrayBuffer();

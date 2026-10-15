@@ -11,7 +11,7 @@ test("later levels run mixed enemy patrols; frogs telegraph and hop", async ({
   );
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto("/nelinka");
+  await page.goto("/nelinka-classic");
   await page.getByRole("button", { name: "Pokračovat ve výpravě" }).click();
   const canvas = page.locator("#game");
   expect((await canvas.getAttribute("data-enemies"))!.split(",")).toHaveLength(
@@ -40,13 +40,13 @@ test("later levels run mixed enemy patrols; frogs telegraph and hop", async ({
 test("frog and bee animation poses stay crisp and visually distinct", async ({
   page,
 }, info) => {
-  await page.goto("/nelinka");
+  await page.goto("/nelinka-classic");
   await expect(
     page.getByRole("button", { name: "Vyrazit do lesa" }),
   ).toBeEnabled();
   const variation = await page.evaluate(async () => {
     const { createEnemy, drawForestEnemy } = await import(
-      /* @vite-ignore */ "/nelinka/enemies.mjs"
+      /* @vite-ignore */ "/nelinka-classic/enemies.mjs"
     );
     const c = document.createElement("canvas");
     c.id = "enemy-review";

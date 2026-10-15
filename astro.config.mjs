@@ -15,9 +15,14 @@ const publicDirIndex = {
   name: 'public-dir-index',
   apply: 'serve',
   configureServer(server) {
-    server.middlewares.use((req, _res, next) => {
+    server.middlewares.use((req, res, next) => {
       const url = req.url ?? '/';
       const [pathOnly, query] = url.split('?', 2);
+      if (pathOnly === '/nelinka') {
+        res.writeHead(302, { Location: '/nelinka/index.html' + (query ? '?' + query : '') });
+        res.end();
+        return;
+      }
       if (pathOnly !== '/' && !path.extname(pathOnly) && !pathOnly.endsWith('/')) {
         const candidate = path.join(process.cwd(), 'public', pathOnly, 'index.html');
         if (fs.existsSync(candidate)) {

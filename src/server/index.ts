@@ -157,6 +157,14 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // The pinned game uses portable relative URLs; canonicalize its directory
+  // entry point before the browser resolves scripts, audio and workshop links.
+  if (url.pathname === '/nelinka') {
+    res.writeHead(302, { Location: '/nelinka/index.html' + url.search });
+    res.end();
+    return;
+  }
+
   const file = await resolveFile(url.pathname);
   if (!file) {
     const fallback = path.join(DIST, '404.html');
