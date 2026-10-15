@@ -4,7 +4,7 @@ The current game at `/nelinka/` is a pinned WASM release from the independent
 [Nelinka repository](https://github.com/filipkunc/Nelinka). The website does not
 compile Rust and has no build/runtime dependency on a sibling checkout.
 
-- `releases/89dc79b974aa/`: immutable player, workshop, WASM, audio and credits.
+- `releases/a93d992e3b5d/`: immutable player, workshop, WASM, audio and credits.
 - `release.json` inside that release identifies the source commit and SHA-256
   of each packaged file. `test/release.mjs` verifies the pin and every hash.
 - `public/nelinka` (at the website root) is a repository-relative symlink to the

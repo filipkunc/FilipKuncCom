@@ -19,3 +19,7 @@ assert.match(await readFile(join(root,'index.html'),'utf8'),/player\.js/);
 assert.match(await readFile(join(root,'workshop.html'),'utf8'),/level editor/);
 assert.equal(await readlink('public/nelinka-classic'),'../games/nelinka/public');
 console.log(`Pinned Nelinka ${manifest.commit.slice(0,12)}: ${files.length} release files verified`);
+
+for(const page of ['index.html','workshop.html']) {
+  assert.ok((await readFile(join(root,page),'utf8')).includes('nelinka.wasm?v='+manifest.commit.slice(0,12)), page+' must request the pinned WASM revision');
+}

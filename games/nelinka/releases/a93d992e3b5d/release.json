@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/filipkunc/Nelinka",
-  "commit": "89dc79b974aab9c299dbbf9843d40cb652956410",
+  "commit": "a93d992e3b5d51e65904fffc0388db41fc6bb65b",
   "chapters": [
     {
       "id": "paseka",
@@ -47,13 +47,13 @@
     "credits/OBJECTS-PROVENANCE.txt": "098b760fc747d21998118cc6ad31c9d62d0749b410ddfb9789308ea5c934f497",
     "credits/PROVENANCE.txt": "5b5942b87ee3d48d3fe0efe559f8190cb454c7bd5126b2d0a27cd587b9dcf337",
     "credits/WALK-V3-PROVENANCE.txt": "07c76a4665a0c362f506d3111460ef12a8e781ce21f7cde0322f846664d515c1",
-    "index.html": "ed943c294118d7e08dbd4ec07c4c579427b2b40cf7d05ea7345370046331ea97",
+    "index.html": "c8613d2aeab19b13fb7c17d0f7203c5d6193dd038f95e8629a221a107c70ed9e",
     "mq_js_bundle.js": "6e1bee703061f6fd1f7c580fa04e6041f5269c094d7894de557ee0ca7fd6fa63",
     "nelinka-bark.wav": "5a0eeb57e1905b4f7acdaec5a2d50c90ac34f85a42e911bca1b327bd7a3dd0ad",
-    "nelinka.wasm": "4cf04c6221bd2b6877a3a0f109b5fdc4eef175956cfc0378be5ac89dad4cc387",
+    "nelinka.wasm": "22f923a29bcf414448d06b9ffee093214837e6510bfa286c358e18de3d4b7202",
     "player.css": "6309bb11ffe304226eb3468201d7457d51d2329cbe07a30130fa6a47aab25ce9",
     "player.js": "556c61b2df14570fb5d98815acdc3eddae85d038193ea78897313e8fd6c269c5",
     "storage.js": "12672ddaed15e1c637e6a226c53976e4c4931b5d0122a20ab0b8cc6a0829b2b4",
-    "workshop.html": "e622fa86d7b654f6966e2b2084fc1353e11d4b1f5604913d46852a614e05efff"
+    "workshop.html": "97fbbeca874b246b98c30e9bc087b891540d67613e8650ff546fd602313633a4"
   }
 }
