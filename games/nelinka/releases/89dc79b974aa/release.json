@@ -1,0 +1,59 @@
+{
+  "repository": "https://github.com/filipkunc/Nelinka",
+  "commit": "89dc79b974aab9c299dbbf9843d40cb652956410",
+  "chapters": [
+    {
+      "id": "paseka",
+      "title": "Slunečná paseka",
+      "subtitle": "Za šuměním listí",
+      "description": "První kamarádi čekají na větvích. Houba tě vynese ke klíči."
+    },
+    {
+      "id": "haj",
+      "title": "Květinový háj",
+      "subtitle": "Po stopách motýlů",
+      "description": "Květiny slyší Nelinku! U velkého květu štěkni klávesou E a otevři si cestu."
+    },
+    {
+      "id": "reka",
+      "title": "Říční ostrůvky",
+      "subtitle": "Za třpytem vody",
+      "description": "Kameny pod tlapkami pomalu klesají. Skoč dál, než zmizí ve vodě!"
+    },
+    {
+      "id": "houby",
+      "title": "Houbové stráně",
+      "subtitle": "Hop až do korun",
+      "description": "Nasedni na velký list, nech se vyvézt nahoru a přeskoč na větev."
+    },
+    {
+      "id": "slavnost",
+      "title": "Lesní slavnost",
+      "subtitle": "Všichni spolu doma",
+      "description": "Klesající kameny, listový výtah a květinový most. Všechno už znáš!"
+    }
+  ],
+  "sha256": {
+    "AUDIO.txt": "636a8738cf1ecf654481cde5a13d337f57edf65463e92b22695ae1b8753e1a79",
+    "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+    "LICENSE-MIT": "523a23956d188905ef010091f7cf81cff3a8a9873c067d02850ccc1068de5ad4",
+    "credits/CREDITS.md": "13829e5b5588d7808032039e6221d5dcdc7acda24b2e43fc157b1245dbb4e0e5",
+    "credits/LEVELS.md": "756077eda191453d4581e1c5ffd738667013fad60a89f886be70c56f4242bb2d",
+    "credits/MEADOW-CREATURE-WALKS-PROVENANCE.txt": "79a6bb9bf3e3f77f53da90759c7d4524f1c7cd40b7459e13886ae7b480eda67e",
+    "credits/MEADOW-FINISH-PROVENANCE.txt": "1239200813258357b913ec104ff6c8437aa352fe65a1225442392c55f805ca42",
+    "credits/MEADOW-OBJECTS-V2-PROVENANCE.txt": "176cbdd370edba5182be39f6ab9a28f044a196375be8e6cfc1cf9af5a3095e14",
+    "credits/MEADOW-PROVENANCE.txt": "9d68ec7a404cbe4be43a2d0328c779ff69e795b3dff05ede4e40d74775975404",
+    "credits/NotoSans-LICENSE.txt": "e51d69f5e43cacd83ab6e5f3f1a47005380ae08b6d108d444be49e786d127458",
+    "credits/OBJECTS-PROVENANCE.txt": "098b760fc747d21998118cc6ad31c9d62d0749b410ddfb9789308ea5c934f497",
+    "credits/PROVENANCE.txt": "5b5942b87ee3d48d3fe0efe559f8190cb454c7bd5126b2d0a27cd587b9dcf337",
+    "credits/WALK-V3-PROVENANCE.txt": "07c76a4665a0c362f506d3111460ef12a8e781ce21f7cde0322f846664d515c1",
+    "index.html": "ed943c294118d7e08dbd4ec07c4c579427b2b40cf7d05ea7345370046331ea97",
+    "mq_js_bundle.js": "6e1bee703061f6fd1f7c580fa04e6041f5269c094d7894de557ee0ca7fd6fa63",
+    "nelinka-bark.wav": "5a0eeb57e1905b4f7acdaec5a2d50c90ac34f85a42e911bca1b327bd7a3dd0ad",
+    "nelinka.wasm": "4cf04c6221bd2b6877a3a0f109b5fdc4eef175956cfc0378be5ac89dad4cc387",
+    "player.css": "6309bb11ffe304226eb3468201d7457d51d2329cbe07a30130fa6a47aab25ce9",
+    "player.js": "556c61b2df14570fb5d98815acdc3eddae85d038193ea78897313e8fd6c269c5",
+    "storage.js": "12672ddaed15e1c637e6a226c53976e4c4931b5d0122a20ab0b8cc6a0829b2b4",
+    "workshop.html": "e622fa86d7b654f6966e2b2084fc1353e11d4b1f5604913d46852a614e05efff"
+  }
+}

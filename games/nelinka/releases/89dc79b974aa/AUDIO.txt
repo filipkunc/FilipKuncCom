@@ -1,0 +1,9 @@
+Nelinka bark: assets/nelinka-bark.wav
+Source: "Dog barking mono" by Brandon Morris, uploaded by HaelDB.
+https://opengameart.org/content/dog-barking-mono
+https://opengameart.org/sites/default/files/dog_barking_mono.wav
+License selected: CC0 (public domain), as offered on the source page.
+https://creativecommons.org/publicdomain/zero/1.0/
+Downloaded 2026-10-11. Edited to a single 0.4-second bark, filtered,
+faded and gain-adjusted with peak limiting. This is a stock recording,
+not a recording of Neli herself.
