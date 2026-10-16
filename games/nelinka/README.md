@@ -4,7 +4,7 @@ The current game at `/nelinka/` is a pinned WASM release from the independent
 [Nelinka repository](https://github.com/filipkunc/Nelinka). The website does not
 compile Rust and has no build/runtime dependency on a sibling checkout.
 
-- `releases/64d99c75171a/`: immutable player, workshop, WASM, audio and credits.
+- `releases/3b0afbb94763/`: immutable player, workshop, WASM, audio and credits.
 - `release.json` inside that release identifies the source commit and SHA-256
   of each packaged file. `test/release.mjs` verifies the pin and every hash.
 - `public/nelinka` (at the website root) is a repository-relative symlink to the
@@ -12,6 +12,8 @@ compile Rust and has no build/runtime dependency on a sibling checkout.
   and change that pin. Never link to a developer's sibling checkout.
 - The former JavaScript game remains at `/nelinka-classic/`, including its old
   saved progress and the calm rescue mode. New campaign saves are separate.
+
+The current campaign is **První tlapky → Za vodou → Šeptající koruny → Mlžná rokle → Návrat za světluškami**. It uses `nelinka-campaign-v2` saves and preserves earlier campaign saves.
 
 The remaining source below belongs to that preserved classic game.
 
@@ -41,7 +43,7 @@ Classic source changes appear at http://localhost:4321/nelinka-classic/.
 The build copies both pinned release and classic files into `dist/`.
 No separate game server, install or backend is needed.
 
-## Levels and objects
+## Classic levels and objects
 
 1. Slunečná paseka: learn jumping, barking, mushrooms and moving logs.
 2. Květinový háj: bark near the big musical flower to unfold a petal bridge.
