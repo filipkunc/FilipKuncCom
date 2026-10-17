@@ -1,13 +1,13 @@
 /* @ts-self-types="./nelinka.d.ts" */
-import { load, publish, save } from './snippets/nelinka-da87fb703e3d76fd/inline0.js?v=afb32a3e4aec';
-import * as import1 from "./snippets/nelinka-da87fb703e3d76fd/inline1.js?v=afb32a3e4aec"
-import * as import2 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=afb32a3e4aec"
-import * as import3 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=afb32a3e4aec"
-import * as import4 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=afb32a3e4aec"
-import * as import5 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=afb32a3e4aec"
-import * as import6 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=afb32a3e4aec"
-import * as import7 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=afb32a3e4aec"
-import * as import8 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=afb32a3e4aec"
+import { load, publish, save } from './snippets/nelinka-da87fb703e3d76fd/inline0.js?v=0ea25fcc9ac1';
+import * as import1 from "./snippets/nelinka-da87fb703e3d76fd/inline1.js?v=0ea25fcc9ac1"
+import * as import2 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=0ea25fcc9ac1"
+import * as import3 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=0ea25fcc9ac1"
+import * as import4 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=0ea25fcc9ac1"
+import * as import5 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=0ea25fcc9ac1"
+import * as import6 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=0ea25fcc9ac1"
+import * as import7 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=0ea25fcc9ac1"
+import * as import8 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=0ea25fcc9ac1"
 
 function __wbg_get_imports() {
     const import0 = {
@@ -2716,14 +2716,14 @@ function __wbg_get_imports() {
     return {
         __proto__: null,
         "./nelinka_bg.js": import0,
-        "./snippets/nelinka-da87fb703e3d76fd/inline1.js?v=afb32a3e4aec": import1,
-        "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=afb32a3e4aec": import2,
-        "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=afb32a3e4aec": import3,
-        "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=afb32a3e4aec": import4,
-        "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=afb32a3e4aec": import5,
-        "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=afb32a3e4aec": import6,
-        "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=afb32a3e4aec": import7,
-        "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=afb32a3e4aec": import8,
+        "./snippets/nelinka-da87fb703e3d76fd/inline1.js": import1,
+        "./snippets/nelinka-da87fb703e3d76fd/inline0.js": import2,
+        "./snippets/nelinka-da87fb703e3d76fd/inline0.js": import3,
+        "./snippets/nelinka-da87fb703e3d76fd/inline0.js": import4,
+        "./snippets/nelinka-da87fb703e3d76fd/inline0.js": import5,
+        "./snippets/nelinka-da87fb703e3d76fd/inline0.js": import6,
+        "./snippets/nelinka-da87fb703e3d76fd/inline0.js": import7,
+        "./snippets/nelinka-da87fb703e3d76fd/inline0.js": import8,
     };
 }
 
@@ -3212,7 +3212,7 @@ async function __wbg_init(module_or_path) {
     }
 
     if (module_or_path === undefined) {
-        module_or_path = new URL('nelinka_bg.wasm?v=afb32a3e4aec', import.meta.url);
+        module_or_path = new URL('nelinka_bg.wasm?v=0ea25fcc9ac1', import.meta.url);
     }
     const imports = __wbg_get_imports();
 

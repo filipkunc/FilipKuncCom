@@ -32,3 +32,9 @@ assert.ok(snippets.length > 0, 'typed browser bridge modules must be packaged');
 for (const snippet of snippets) {
   assert.ok(loader.includes(snippet+'?v='+revision), 'loader must pin '+snippet);
 }
+
+// Cache-busting must not rename the module keys consumed by WebAssembly.
+const wasm = new WebAssembly.Module(await readFile(join(root, 'nelinka_bg.wasm')));
+for (const name of new Set(WebAssembly.Module.imports(wasm).map(entry => entry.module))) {
+  assert.ok(loader.includes(JSON.stringify(name)+':'), 'loader must preserve WASM import key '+name);
+}

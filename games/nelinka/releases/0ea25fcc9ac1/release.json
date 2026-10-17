@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/filipkunc/Nelinka",
-  "commit": "afb32a3e4aece0249afcdf6f552968c909db12b3",
+  "commit": "0ea25fcc9ac12450e58e5648f7ba239fa9ad9346",
   "chapters": [
     {
       "id": "uvod",
@@ -48,15 +48,15 @@
     "credits/OBJECTS-PROVENANCE.txt": "098b760fc747d21998118cc6ad31c9d62d0749b410ddfb9789308ea5c934f497",
     "credits/PROVENANCE.txt": "5b5942b87ee3d48d3fe0efe559f8190cb454c7bd5126b2d0a27cd587b9dcf337",
     "credits/WALK-V3-PROVENANCE.txt": "07c76a4665a0c362f506d3111460ef12a8e781ce21f7cde0322f846664d515c1",
-    "index.html": "617f77e5d637cdfd3de49d01f15349a40485483b2bbac9af41c526a7c6b83281",
+    "index.html": "e96e04539703e2010e327133bf76b7e727608a8bc17f37c18869194beff9a639",
     "nelinka-bark.wav": "5a0eeb57e1905b4f7acdaec5a2d50c90ac34f85a42e911bca1b327bd7a3dd0ad",
-    "nelinka.js": "e6a98704cf47f34d0f66a7da97d34fb17682117906bb1a5aa7553a48d9b25b64",
+    "nelinka.js": "9745f517147b0a78ae03be3c5534b9e91c6ee7fd55c914b57539b0b7d633ec99",
     "nelinka_bg.wasm": "fa72bbf16418e3b989734ae304769c4c2a7a14a18a09c79f3c9d0851b4ad375c",
     "player.css": "6309bb11ffe304226eb3468201d7457d51d2329cbe07a30130fa6a47aab25ce9",
     "player.js": "7fd2059d24073f4c3e5fc47aa457662a4bdbbf4efd0144aa924fb5112025f4c7",
     "snippets/nelinka-da87fb703e3d76fd/inline0.js": "3ec11f3acc07c2fce4d2c405587b72ec22e76e9c98877ab4dd731322c39e32e9",
     "snippets/nelinka-da87fb703e3d76fd/inline1.js": "ef904c9a83c35a9ea23403115e3c62a2896f43cd642927f4731c8e8886dd9349",
     "storage.js": "0c491f5ac1e62c99e6800b2c24deb3389a484247a9b9c18e19e5ddc618a3a4c3",
-    "workshop.html": "7e9b19f05a76179d7347194ff9714dcb6c6bebd7b892d1e2bc1375be011cd534"
+    "workshop.html": "f4c2acc85aa10b66e14d820eb3a283a0720a69d5fd590963faf02f9229554d9b"
   }
 }
