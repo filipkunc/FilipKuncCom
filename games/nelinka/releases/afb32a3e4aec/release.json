@@ -1,0 +1,62 @@
+{
+  "repository": "https://github.com/filipkunc/Nelinka",
+  "commit": "afb32a3e4aece0249afcdf6f552968c909db12b3",
+  "chapters": [
+    {
+      "id": "uvod",
+      "title": "První tlapky",
+      "subtitle": "Po známé pěšině",
+      "description": "Mírné stráně, tajná cesta pod kopcem a první výprava do korun."
+    },
+    {
+      "id": "voda",
+      "title": "Za vodou",
+      "subtitle": "Přes potok do výšek",
+      "description": "Najdi klíč mezi větvemi, probuď květiny a překonej vodní cestu."
+    },
+    {
+      "id": "koruny",
+      "title": "Šeptající koruny",
+      "subtitle": "Nad lesní pěšinou",
+      "description": "Střední obtížnost: klíč v koruně, ostrůvek mezi břehy a houbový výstup domů."
+    },
+    {
+      "id": "rokle",
+      "title": "Mlžná rokle",
+      "subtitle": "Nad vodopádem",
+      "description": "Těžší cesta: květinový most, klesající kameny a listový výtah nad roklí."
+    },
+    {
+      "id": "navrat",
+      "title": "Návrat za světluškami",
+      "subtitle": "Všichni domů",
+      "description": "Nejtěžší výprava: dvě vodní cesty, odpočinek na ostrově a skoky po horním hřebeni."
+    }
+  ],
+  "sha256": {
+    "AUDIO.txt": "da402492bad5b27ef5bfe41aa453148bec85f3a435c98daa7055e259a9c0c273",
+    "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+    "LICENSE-MIT": "378f5840b258e2779c39418f3f2d7b2ba96f1c7917dd6be0713f88305dbda397",
+    "THIRD_PARTY.md": "52e07642ddf10a5559682c64aeadc441fd01b7f8a996ac1a3191be52ec38ea18",
+    "credits/CREDITS.md": "13829e5b5588d7808032039e6221d5dcdc7acda24b2e43fc157b1245dbb4e0e5",
+    "credits/LEVELS.md": "f94ab4f05518e6d20a945c692add6e10ec251ba1bb7513a884bcd7b29185b56f",
+    "credits/MEADOW-CREATURE-WALKS-PROVENANCE.txt": "79a6bb9bf3e3f77f53da90759c7d4524f1c7cd40b7459e13886ae7b480eda67e",
+    "credits/MEADOW-FINISH-PROVENANCE.txt": "1239200813258357b913ec104ff6c8437aa352fe65a1225442392c55f805ca42",
+    "credits/MEADOW-OBJECTS-V2-PROVENANCE.txt": "176cbdd370edba5182be39f6ab9a28f044a196375be8e6cfc1cf9af5a3095e14",
+    "credits/MEADOW-PROVENANCE.txt": "9d68ec7a404cbe4be43a2d0328c779ff69e795b3dff05ede4e40d74775975404",
+    "credits/NotoSans-LICENSE.txt": "e51d69f5e43cacd83ab6e5f3f1a47005380ae08b6d108d444be49e786d127458",
+    "credits/OBJECTS-PROVENANCE.txt": "098b760fc747d21998118cc6ad31c9d62d0749b410ddfb9789308ea5c934f497",
+    "credits/PROVENANCE.txt": "5b5942b87ee3d48d3fe0efe559f8190cb454c7bd5126b2d0a27cd587b9dcf337",
+    "credits/WALK-V3-PROVENANCE.txt": "07c76a4665a0c362f506d3111460ef12a8e781ce21f7cde0322f846664d515c1",
+    "index.html": "617f77e5d637cdfd3de49d01f15349a40485483b2bbac9af41c526a7c6b83281",
+    "nelinka-bark.wav": "5a0eeb57e1905b4f7acdaec5a2d50c90ac34f85a42e911bca1b327bd7a3dd0ad",
+    "nelinka.js": "e6a98704cf47f34d0f66a7da97d34fb17682117906bb1a5aa7553a48d9b25b64",
+    "nelinka_bg.wasm": "fa72bbf16418e3b989734ae304769c4c2a7a14a18a09c79f3c9d0851b4ad375c",
+    "player.css": "6309bb11ffe304226eb3468201d7457d51d2329cbe07a30130fa6a47aab25ce9",
+    "player.js": "7fd2059d24073f4c3e5fc47aa457662a4bdbbf4efd0144aa924fb5112025f4c7",
+    "snippets/nelinka-da87fb703e3d76fd/inline0.js": "3ec11f3acc07c2fce4d2c405587b72ec22e76e9c98877ab4dd731322c39e32e9",
+    "snippets/nelinka-da87fb703e3d76fd/inline1.js": "ef904c9a83c35a9ea23403115e3c62a2896f43cd642927f4731c8e8886dd9349",
+    "storage.js": "0c491f5ac1e62c99e6800b2c24deb3389a484247a9b9c18e19e5ddc618a3a4c3",
+    "workshop.html": "7e9b19f05a76179d7347194ff9714dcb6c6bebd7b892d1e2bc1375be011cd534"
+  }
+}

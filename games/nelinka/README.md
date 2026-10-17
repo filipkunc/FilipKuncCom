@@ -1,10 +1,10 @@
 # Nelinka — Rust campaign and classic game
 
 The current game at `/nelinka/` is a pinned WASM release from the independent
-[Nelinka repository](https://github.com/filipkunc/Nelinka). The website does not
+[Nelinka repository](https://github.com/filipkunc/Nelinka). The player and workshop use wgpu with WebGPU/WebGL2 support. The website does not
 compile Rust and has no build/runtime dependency on a sibling checkout.
 
-- `releases/3b0afbb94763/`: immutable player, workshop, WASM, audio and credits.
+- `releases/afb32a3e4aec/`: immutable player, workshop, WASM, audio and credits.
 - `release.json` inside that release identifies the source commit and SHA-256
   of each packaged file. `test/release.mjs` verifies the pin and every hash.
 - `public/nelinka` (at the website root) is a repository-relative symlink to the

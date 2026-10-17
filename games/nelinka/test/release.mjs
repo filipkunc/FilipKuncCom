@@ -20,6 +20,15 @@ assert.match(await readFile(join(root,'workshop.html'),'utf8'),/level editor/);
 assert.equal(await readlink('public/nelinka-classic'),'../games/nelinka/public');
 console.log(`Pinned Nelinka ${manifest.commit.slice(0,12)}: ${files.length} release files verified`);
 
-for(const page of ['index.html','workshop.html']) {
-  assert.ok((await readFile(join(root,page),'utf8')).includes('nelinka.wasm?v='+manifest.commit.slice(0,12)), page+' must request the pinned WASM revision');
+const revision = manifest.commit.slice(0,12);
+for (const page of ['index.html','workshop.html']) {
+  assert.ok((await readFile(join(root,page),'utf8')).includes('nelinka.js?v='+revision), page+' must request the pinned loader');
+}
+const loader = await readFile(join(root,'nelinka.js'),'utf8');
+assert.ok(loader.includes('nelinka_bg.wasm?v='+revision), 'loader must request the pinned WASM revision');
+assert.ok(manifest.sha256['nelinka_bg.wasm'], 'manifest must cover the WASM module');
+const snippets = Object.keys(manifest.sha256).filter(name => name.startsWith('snippets/') && name.endsWith('.js'));
+assert.ok(snippets.length > 0, 'typed browser bridge modules must be packaged');
+for (const snippet of snippets) {
+  assert.ok(loader.includes(snippet+'?v='+revision), 'loader must pin '+snippet);
 }
