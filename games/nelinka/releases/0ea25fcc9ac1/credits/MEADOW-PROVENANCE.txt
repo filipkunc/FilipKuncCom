@@ -1,0 +1,34 @@
+Nelinka meadow art pass — 2026-10-13
+Generated with the built-in imagegen tool (not CLI/API fallback).
+
+Visual direction: the user's locally supplied Krteček a kalhotky episode,
+sampled at 00:45, 01:30, 02:30, 03:30, 04:30, 05:30, 06:30, 07:30, 08:30,
+09:30, 10:30, and 11:50. Painted botanical scenery, olive grass, blue water,
+selective colorful flowers and clearly outlined animated characters.
+No film frames were included in the shipped assets or supplied to imagegen.
+The original Nelinka walk sheet was supplied as the identity reference for
+nelinka-walk-v2.png. Original files and their provenance remain unchanged.
+Generated alpha channels are preserved. Source crops/registration are defined
+in meadow-atlas.json and src/animation.rs, without resizing individual poses.
+
+FINAL PROMPTS
+
+assets/nelinka-walk-v2.png
+Source output: exec-b4f3718d-a35c-4a35-90c9-ba2e396b9028.png
+Reference: assets/nelinka-walk.png. transparent_background: true.
+Use case: identity-preserve. Asset type: production 2D platformer character animation sprite sheet. Create an improved WALK CYCLE sprite sheet for exactly the same female brown wirehaired dachshund puppy Nelinka from the reference: long low body, short legs, soft brown floppy ears, tan muzzle, friendly brown eyes, distinctive pink harness with dark gray buckle. Keep her design and hand-drawn dark outline. Simplify tiny fur marks slightly, warm painted cel animation style. Deliver one 1536x1024 transparent PNG laid out as exactly FOUR equal columns and TWO equal rows, eight frames read left to right then next row. Every cell 384x512, dog facing RIGHT side profile, consistent body length, head size, spine height and registration. Feet ground baseline y=400 within every cell; body comfortably inside x=24..360 and y=205..405. Animate a smooth even eight-phase WALK / light trot in place, every frame 1/8 cycle apart, frame 8 flows into frame 1. Alternate near and far leg contacts, opposite fore and hind leg phases, clear passing poses. Gentle 2px vertical bob and ear sway, no leap, no gallop or airborne stretched body. Do not translate or rescale the body across frames. True alpha transparency everywhere outside dog, no background whatsoever, no shadows, no glow, no colored halo, no ground plane, no labels or grid. Reference is design guide; replace its inconsistent galloping poses with this coherent seamless walking cycle.
+
+assets/meadow-background.png
+Source output: exec-ecea83ee-fc20-46ea-846f-5050d7218b53.png
+No image input. transparent_background: false.
+Use case: illustration-story. Asset type: production parallax BACKGROUND for a side-scrolling 2D woodland meadow platformer called Nelinka. Paint an original landscape in the spirit of mid-century Czech hand-painted children's animation: gouache on softly grained paper, delicate botanical silhouettes, painterly mossy olive-green river banks, muted turquoise blue sky fading to warm ivory at horizon, restrained ochre, small pink and cream flower accents. WIDE landscape 1536x1024. Eye level from a little dog's height, very large graceful wildflowers. Upper 60 percent is quiet light blue/ivory sky with a few faint thin distant botanical stems, no clouds or large trees; lower 40 percent is layered rolling meadow and a narrow tranquil blue stream winding HORIZONTALLY across the bottom, bordered by grass and smooth stones. Keep contrast soft, distant and slightly desaturated, so a crisp brown dog and foreground terrain read clearly over it. Plants grow organically in varied groups, beautiful imperfect brushed grass, blue cornflowers, pale umbels, airy reeds. Continuous landscape runs out both left and right edges, no border. BACKGROUND ONLY: no characters, dogs, moles, insects, buildings, text, interface, platform blocks, thick outlines, gradients of fake digital bloom or 3D rendering.
+
+assets/meadow-plants.png
+Source output: exec-681df5c8-e076-471f-9833-c0a59815ab53.png
+No image input. transparent_background: true.
+Use case: illustration-story. Asset type: game botanical sprite ATLAS on genuine transparent alpha background. 1536x1024 image in exactly THREE equal 512px columns and TWO equal 512px rows, six isolated separated sprites, one in each cell. Mid-century Czech fairy-tale animation scenery, hand-painted gouache, expressive flat botanical silhouettes, moss and olive greens, deep forest green outlines used selectively, cornflower blues, little red-pink flowers and ivory umbels. No scenery, no background, no paper rectangle, no captions, no cell lines, no shadow. Everything outside each plant must be truly transparent. Each sprite rooted at local cell y=475 with empty alpha gutter at least 20px on every cell edge. Top-left: a low wide cluster of wild grass tufts and moss, occupies lower 120px only. Top-middle: three tall daisy stems with ivory petals and ochre centers, loose asymmetrical leaves, occupies lower 330px. Top-right: tall slender reeds with curved leaves and a pale umbel, occupies lower 400px. Bottom-left: two broad dark-green fern fronds curling outward, occupies lower 300px. Bottom-middle: a little group of cornflowers and pink-red meadow flowers, occupies lower 250px. Bottom-right: three small rounded mossy river stones with a few grass blades, occupies lower 150px. Keep silhouettes spare and painterly, tasteful delicate dry brush edges. Assets viewed straight on for a side scrolling game, not overhead.
+
+assets/meadow-terrain.png
+Source output: exec-9a624eca-7688-4fb3-9b41-58fe7d1f94d5.png
+No image input. transparent_background: false.
+Use case: illustration-story. Asset type: EXACT production terrain texture atlas for a 2D platformer. Output 1536x1024 opaque image, divided into precisely THREE equal vertical columns, each 512 pixels wide and full height 1024. No gaps, no frames, no text. Hand-painted gouache, dry-brushed muted olive and ochre, mid-century Czech fairy tale nature scenery, flat side view cross-section. Column ONE x0..511: mossy olive-green grassy earth bank, top 150px is dense irregular grass/moss, lower remainder warm ochre brown soil with delicate tiny roots and faint painterly mottling. Column TWO x512..1023: continuous earthy warm ochre brown soil matching the first column's lower soil, sparse subtle pebbles and faint roots, no grass, no top edge. Column THREE x1024..1535: horizontal warm dark wood bark texture, a few long flowing grain lines and subtle knots, no grass, no round log end. Texture fills each entire column to every edge. Grass does NOT stick above image edge. First two columns share same soil color. Texture must have low contrast and broad painted patches, no glitter, no overly dense details. This is a material sample sheet, no perspective, no landscape, no objects, no typography or separator lines. Left and right edges of each material should match visually for horizontal tiling.
