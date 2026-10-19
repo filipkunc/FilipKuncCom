@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const key = 'nelinka-campaign-v2';
+const key = 'nelinka-campaign-v3';
 async function ready(page: import('@playwright/test').Page) {
   await page.goto('/nelinka?campaign=1');
   await expect(page).toHaveURL(/\/nelinka\/index\.html\?campaign=1$/);
@@ -16,7 +16,7 @@ test('pinned Rust game selects five chapters, pauses and keeps editor saves sepa
   for (let i = 0; i < 5; i++) {
     await page.locator(`[data-level="${i}"]`).click();
     await expect(page.locator('#overlay')).toBeHidden();
-    await expect(page.locator('#stats')).toContainText(`Kachňátka 0/${i === 0 ? 2 : 3}`);
+    await expect(page.locator('#stats')).toContainText(`Kachňátka 0/${[2, 3, 1, 3, 3][i]}`);
     await page.keyboard.down('ArrowRight');
     await page.waitForTimeout(150);
     await page.keyboard.up('ArrowRight');
@@ -29,24 +29,24 @@ test('pinned Rust game selects five chapters, pauses and keeps editor saves sepa
     await page.locator('#menu').click();
   }
   await page.reload();
-  await expect(page.locator('#continue')).toContainText('Návrat za světluškami');
+  await expect(page.locator('#continue')).toContainText('Poslední výprava');
   expect(await page.evaluate(() => localStorage.getItem('nelinka-workshop-level-v2'))).toBe('editor-sentinel');
   expect(errors).toEqual([]);
 });
 
 test('saved checkpoint finishes through real movement, advances and retains completion', async ({page}) => {
-  // Authored Mlžná rokle IDs from the pinned Nelinka level. No debug APIs.
-  const progress = {version:2,current:3,completed:[false,false,false,false,false],best_treats:[0,0,0,0,0],secrets:[false,false,false,false,false],runs:Array.from({length:5},()=>({checkpoint:null as number|null,activated:[] as number[],collected:[] as number[]}))};
-  progress.runs[3] = {checkpoint:42,activated:[9,10,12,16,24,37,58],collected:[]};
+  // Authored levels/zacatek.json IDs in Nelinka 2ea18c831712. No debug APIs.
+  const progress = {version:3,current:3,completed:[false,false,false,false,false],best_treats:[0,0,0,0,0],secrets:[false,false,false,false,false],runs:Array.from({length:5},()=>({checkpoint:null as number|null,activated:[] as number[],collected:[] as number[]}))};
+  progress.runs[3] = {checkpoint:36,activated:[1,3,13,14,15],collected:[]};
   await page.addInitScript(({key,progress}) => { if(!localStorage.getItem(key)) localStorage.setItem(key,JSON.stringify(progress)); },{key,progress});
   await ready(page);
   await page.locator('#continue').click();
   await expect(page.locator('#stats')).toContainText('Kachňátka 3/3');
-  await page.keyboard.down('ArrowRight');
-  await expect(page.locator('#next')).toBeVisible({timeout:15_000});
-  await page.keyboard.up('ArrowRight');
+  await page.keyboard.down('ArrowLeft');
+  await expect(page.locator('#next')).toBeVisible({timeout:20_000});
+  await page.keyboard.up('ArrowLeft');
   await page.locator('#next').click();
-  await expect(page.locator('#chapter')).toHaveText('Návrat za světluškami');
+  await expect(page.locator('#chapter')).toHaveText('Poslední výprava');
   await expect(page.locator('#overlay')).toBeHidden();
   await page.reload();
   await expect(page.locator('[data-level="3"]')).toHaveClass(/done/);
