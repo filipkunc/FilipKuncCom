@@ -1,0 +1,49 @@
+name: Verify Nelinka release import
+on:
+  push:
+    branches: [codex/import-nelinka-2ea18c831712]
+    paths: ['.nelinka-transfer/**', '.github/workflows/nelinka-import.yml']
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Reassemble and verify the exact release
+        run: |
+          cat .nelinka-transfer/part-* > games/nelinka/releases/2ea18c831712/nelinka_bg.wasm
+          echo 'bb01581f07f6ee0ab28af0ff368b6ca86a0724632b347818305e3f97ae4cb97b  games/nelinka/releases/2ea18c831712/nelinka_bg.wasm' | sha256sum --check
+          node games/nelinka/test/release.mjs
+      - name: Install browser checks
+        run: |
+          npm ci --prefix .nelinka-transfer/tools/web-tests
+          cd .nelinka-transfer/tools/web-tests
+          npx playwright install --with-deps chromium
+      - name: Check recorded audio, editor fixture and campaign
+        run: |
+          mkdir -p .nelinka-transfer/dist
+          cp -R games/nelinka/releases/2ea18c831712/. .nelinka-transfer/dist/
+          cp .nelinka-transfer/dist/index.html .nelinka-transfer/dist/player.html
+          cp .nelinka-transfer/dist/workshop.html .nelinka-transfer/dist/index.html
+          python3 -m http.server 8765 --bind 127.0.0.1 --directory .nelinka-transfer/dist &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          for attempt in $(seq 1 30); do
+            curl --fail --silent http://127.0.0.1:8765/ >/dev/null && break
+            sleep 1
+          done
+          node .nelinka-transfer/tools/web-tests/audio.cjs
+          node .nelinka-transfer/tools/web-tests/objects.cjs
+          node .nelinka-transfer/tools/web-tests/campaign.cjs
+      - name: Retain the verified binary on this import branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add games/nelinka/releases/2ea18c831712/nelinka_bg.wasm
+          git commit -m 'Retain verified Nelinka release binary'
+          git push origin HEAD:codex/import-nelinka-2ea18c831712

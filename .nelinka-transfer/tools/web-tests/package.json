@@ -1,0 +1,11 @@
+{
+  "name": "nelinka-browser-checks",
+  "private": true,
+  "scripts": {
+    "test": "node smoke.cjs && node palette.cjs && node placement-preview.cjs && node branches.cjs && node trees.cjs && node creature-slopes.cjs && node layers-sleep.cjs && node context-menu.cjs && node drop-through.cjs && node objects.cjs && node effects.cjs && node refinements.cjs && node campaign.cjs && node audio.cjs",
+    "test:wgpu": "node wgpu.cjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.60.0"
+  }
+}

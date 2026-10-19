@@ -1,0 +1,34 @@
+Nelinka bark: assets/nelinka-bark.wav
+Source: "Dog barking mono" by Brandon Morris, uploaded by HaelDB.
+https://opengameart.org/content/dog-barking-mono
+https://opengameart.org/sites/default/files/dog_barking_mono.wav
+License selected: CC0 (public domain), as offered on the source page.
+https://creativecommons.org/publicdomain/zero/1.0/
+Downloaded 2026-10-11. Edited to a single 0.4-second bark, filtered,
+faded and gain-adjusted with peak limiting. This is a stock recording,
+not a recording of Neli herself.
+
+Footsteps and landings: assets/audio/{grass,soil,wood,stone}-[1-5].wav
+Source: Impact Sounds (1.0) by Kenney.
+https://kenney.nl/assets/impact-sounds
+https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip
+License: CC0. Original notice retained as assets/audio/KENNEY-LICENSE.txt.
+Grass and wood use their corresponding footstep recordings. Stone uses concrete.
+Soil combines filtered grass rustle with a muted carpet impact. These are edited
+stock foley recordings, not recordings of Nelinka's paws.
+
+Water impacts: assets/audio/splash-[1-3].wav
+Source: "40 CC0 water / splash / slime SFX" by rubberduck, splash_02/03/08.ogg.
+https://opengameart.org/content/40-cc0-water-splash-slime-sfx
+https://opengameart.org/sites/default/files/water-splash-slime-sfx.zip
+License: CC0, as offered on the source page.
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Downloaded 2026-10-18. Foley is trimmed at the first transient, filtered, converted
+to 22050 Hz mono 16-bit PCM, faded and gain-matched with a peak ceiling. Five
+variants per walking material and three splashes avoid immediate repetition.
+assets/audio/sources.json records the input and output SHA-256 hashes.
+Foley is embedded in the native executable and WASM, with no runtime fetch.
+
+Jump, spring, pickups, interactions, respawn and completion effects remain original
+procedural synthesis in src/sound.rs, generated in memory at startup.

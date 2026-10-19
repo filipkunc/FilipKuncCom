@@ -1,0 +1,58 @@
+const {chromium}=require('@playwright/test');
+const assert=require('node:assert/strict');
+(async()=>{
+ const browser=await chromium.launch({headless:true,args:['--enable-unsafe-swiftshader','--use-gl=angle','--use-angle=swiftshader']});
+ try {
+  const page=await browser.newPage({viewport:{width:1440,height:944}}),errors=[];
+  await require('./audio-probe.cjs')(page);
+  page.on('pageerror',e=>errors.push(e.message));
+  page.on('console',m=>{if(m.type()==='error'||/PanicHookInfo|Missed function/.test(m.text()))errors.push(m.text());});
+  const fixture=require('../../old_levels/meadow.json');
+  await page.addInitScript(level=>{if(!localStorage.getItem('nelinka-workshop-level-v2'))localStorage.setItem('nelinka-workshop-level-v2',JSON.stringify(level));},fixture);
+  await page.goto(process.env.NELINKA_URL || 'http://127.0.0.1:8765');
+  await page.locator('canvas[data-ready=true]').waitFor({timeout:60000});
+  const settle=async()=>{const frame=await page.locator('canvas').getAttribute('data-frame');await page.waitForFunction(f=>+document.querySelector('canvas').dataset.frame>=+f+3,frame);};
+  const press=async key=>{await page.keyboard.down(key);await settle();await page.keyboard.up(key);await settle();};
+  assert.equal(await page.evaluate(()=>audioPlays.length),0,'editor starts silent');
+  await page.locator('canvas').click({position:{x:800,y:200}});
+  await press('Tab');await page.waitForTimeout(250);
+  await page.evaluate(()=>audioPlays.length=0);
+  await page.keyboard.down('e');await page.waitForTimeout(900);await page.keyboard.up('e');
+  let plays=await page.evaluate(()=>audioPlays);
+  assert.equal(plays.filter(s=>Math.abs(s.duration-0.4)<0.01).length,1,'held bark plays once');
+  assert.ok(plays.every(s=>s.state==='running'&&s.peak>0),`audio is unlocked and non-silent: ${JSON.stringify(plays)}`);
+  await press('Space');await page.waitForTimeout(900);
+  plays=await page.evaluate(()=>audioPlays);
+  assert.ok(plays.some(s=>Math.abs(s.duration-0.19)<0.01),'jump cue');
+  assert.ok(plays.some(s=>Math.abs(s.duration-0.24)<0.01),'recorded grass landing cue');
+  await page.evaluate(()=>audioPlays.length=0);
+  await page.keyboard.down('ArrowLeft');await page.waitForTimeout(600);await page.keyboard.up('ArrowLeft');
+  const steps=(await page.evaluate(()=>audioPlays)).filter(s=>Math.abs(s.duration-0.24)<0.01);
+  assert.ok(steps.length>=2,'walking plays recorded footsteps');
+  for(let i=1;i<steps.length;i++) assert.notEqual(steps[i].signature,steps[i-1].signature,'consecutive footstep recordings differ');
+  // Sound checkbox is immediately left of Inspector, in both edit and play mode.
+  await page.mouse.click(1310,107);await settle();
+  await page.evaluate(()=>audioPlays.length=0);
+  await press('e');await press('Space');await page.waitForTimeout(900);
+  assert.equal(await page.evaluate(()=>audioPlays.length),0,'muted gameplay stays silent');
+  await page.mouse.click(1310,107);await settle();
+  assert.equal(await page.evaluate(()=>audioPlays.length),0,'unmuting does not replay stale events');
+  await press('e');
+  assert.equal(await page.evaluate(()=>audioPlays.filter(s=>Math.abs(s.duration-0.4)<0.01).length),1);
+  await press('Tab');await page.evaluate(()=>audioPlays.length=0);await press('e');
+  assert.equal(await page.evaluate(()=>audioPlays.length),0,'editor tools stay silent');
+  await page.goto('http://127.0.0.1:8765/player.html');
+  await page.locator('canvas[data-ready=true]').waitFor({timeout:60000});
+  await page.locator('[data-level="0"]').click();await page.locator('#overlay').waitFor({state:'hidden'});
+  await page.locator('#sound').click();
+  await page.waitForTimeout(100);await page.evaluate(()=>audioPlays.length=0);
+  await press('e');assert.equal(await page.evaluate(()=>audioPlays.length),0);
+  await page.reload();await page.locator('canvas[data-ready=true]').waitFor({timeout:60000});
+  await page.locator('[data-level="0"]').click();await page.locator('#overlay').waitFor({state:'hidden'});
+  assert.equal(await page.locator('#sound').getAttribute('aria-pressed'),'true','campaign mute persists');
+  await page.locator('#sound').click();await press('e');
+  assert.equal(await page.evaluate(()=>audioPlays.filter(s=>Math.abs(s.duration-0.4)<0.01).length),1,'campaign shares the single bark playback path');
+  assert.deepEqual(errors,[]);
+  console.log('PASS: real WebAudio output, bark once per press, jump/landing, mute/unmute without replay, silent editor, campaign mute persistence');
+ } finally {await browser.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});
