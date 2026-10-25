@@ -1,13 +1,13 @@
 /* @ts-self-types="./nelinka.d.ts" */
-import { load, publish, save } from './snippets/nelinka-da87fb703e3d76fd/inline0.js?v=7013c4c6d901';
-import * as import1 from "./snippets/nelinka-da87fb703e3d76fd/inline1.js?v=7013c4c6d901"
-import * as import2 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=7013c4c6d901"
-import * as import3 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=7013c4c6d901"
-import * as import4 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=7013c4c6d901"
-import * as import5 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=7013c4c6d901"
-import * as import6 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=7013c4c6d901"
-import * as import7 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=7013c4c6d901"
-import * as import8 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=7013c4c6d901"
+import { load, publish, save } from './snippets/nelinka-da87fb703e3d76fd/inline0.js?v=22d750a24724';
+import * as import1 from "./snippets/nelinka-da87fb703e3d76fd/inline1.js?v=22d750a24724"
+import * as import2 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=22d750a24724"
+import * as import3 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=22d750a24724"
+import * as import4 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=22d750a24724"
+import * as import5 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=22d750a24724"
+import * as import6 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=22d750a24724"
+import * as import7 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=22d750a24724"
+import * as import8 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=22d750a24724"
 
 function __wbg_get_imports() {
     const import0 = {
@@ -3212,7 +3212,7 @@ async function __wbg_init(module_or_path) {
     }
 
     if (module_or_path === undefined) {
-        module_or_path = new URL('nelinka_bg.wasm?v=7013c4c6d901', import.meta.url);
+        module_or_path = new URL('nelinka_bg.wasm?v=22d750a24724', import.meta.url);
     }
     const imports = __wbg_get_imports();
 
