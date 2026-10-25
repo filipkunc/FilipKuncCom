@@ -8,7 +8,7 @@ const root = resolve('public', target);
 const manifest = JSON.parse(await readFile(join(root, 'release.json'), 'utf8'));
 assert.equal(manifest.repository, 'https://github.com/filipkunc/Nelinka');
 assert.ok(target.endsWith(manifest.commit.slice(0,12)));
-assert.equal(manifest.chapters.length, 5);
+assert.equal(manifest.chapters.length, 6);
 for (const [name, hash] of Object.entries(manifest.sha256)) {
   assert.ok(!name.startsWith('/') && !name.split('/').includes('..'));
   assert.equal(createHash('sha256').update(await readFile(join(root, name))).digest('hex'), hash, name);
