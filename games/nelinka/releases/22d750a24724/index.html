@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#283f32">
+  <meta name="description" content="Vydej se s Nelinkou na šest lesních dobrodružství. Zachraň kachňátka, najdi klíč a vrať se domů.">
+  <title>Nelinka — lesní dobrodružství</title>
+  <link rel="stylesheet" href="player.css?v=22d750a24724">
+</head>
+<body>
+  <canvas id="glcanvas" tabindex="0" aria-label="Hra Nelinka. Šipky nebo A D: pohyb. Mezerník: skok. Šipka dolů: propadnout plošinou. E: štěknout. Escape: pauza."></canvas>
+  <header id="hud" hidden>
+    <div><strong id="chapter"></strong><span id="stats"></span></div>
+    <div class="hud-buttons"><button id="sound" aria-label="Vypnout zvuk" aria-pressed="false">♪ Zvuk</button>
+    <button id="pause" data-action="5" aria-label="Pozastavit hru">Ⅱ Pauza</button></div>
+  </header>
+  <main id="overlay">
+    <section class="sheet" aria-labelledby="title">
+      <a class="back" href="/">← Filip Kunc</a>
+      <p class="eyebrow">ŠEST LESNÍCH DOBRODRUŽSTVÍ</p>
+      <h1 id="title">Nelinka</h1>
+      <p id="description">Načítám les…</p>
+      <div class="actions">
+        <button id="continue" class="primary" data-action="2" hidden>Pokračovat</button>
+        <button id="next" class="primary" data-action="4" hidden>Další dobrodružství →</button>
+        <button id="restart" data-action="3" hidden>Zkusit znovu</button>
+        <button id="menu" data-action="1" hidden>Vybrat úroveň</button>
+      </div>
+      <div id="chapters" class="chapters"></div>
+      <p class="controls">← → / A D &nbsp; pohyb <span>·</span> mezerník / ↑ &nbsp; skok <span>·</span> ↓ &nbsp; propadnout plošinou <span>·</span> E &nbsp; štěknout <span>·</span> Esc &nbsp; pauza</p>
+      <p class="hint">Pomoz kachňátkům, najdi klíč a doběhni k boudě. Štěknutí zažene zvířátka a rozkvete květinový most. Praporky ukládají cestu.</p>
+      <p class="fine">Postup se ukládá v tomto prohlížeči. <a href="workshop.html">Otevřít editor světa</a></p>
+    </section>
+  </main>
+  <nav id="touch" aria-label="Dotykové ovládání" hidden>
+    <div><button data-bit="1" aria-label="Doleva">←</button><button data-bit="2" aria-label="Doprava">→</button></div>
+    <div><button data-bit="8" aria-label="Štěknout">Haf!</button><button data-bit="4" aria-label="Skočit">↑</button><button data-bit="32" aria-label="Propadnout plošinou">↓</button></div>
+  </nav>
+  <output id="notice" role="status" hidden></output>
+  <script src="player.js?v=22d750a24724"></script>
+  <script src="storage.js?v=22d750a24724"></script>
+  <script type="module">import init from "./nelinka.js?v=22d750a24724";init().catch(error => { console.error(error); document.body.dataset.error=String(error); });document.querySelector("#glcanvas").focus();</script>
+</body>
+</html>
