@@ -13,7 +13,7 @@ compile Rust and has no build/runtime dependency on a sibling checkout.
 - The former JavaScript game remains at `/nelinka-classic/`, including its old
   saved progress and the calm rescue mode. New campaign saves are separate.
 
-The current campaign is **První tlapky → Za vodou → Šeptající koruny → Mlžná rokle → Návrat za světluškami → Pod zemí**. It uses `nelinka-campaign-v4` saves and preserves earlier campaign saves.
+The current campaign is **První tlapky → Za vodou → Skoky → Začátek → Poslední výprava → Pod zemí**. It uses `nelinka-campaign-v4` saves and preserves earlier campaign saves.
 
 The remaining source below belongs to that preserved classic game.
 
