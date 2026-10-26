@@ -1,0 +1,31 @@
+Nelinka hind-leg walk revision — 2026-10-13
+Generated with the built-in image_gen tool; no CLI/API fallback.
+Edit target / character reference: assets/nelinka-walk-v2.png.
+Output asset: assets/nelinka-walk-v3.png.
+Source output: exec-caa38496-8f6e-487f-ac4b-21780930ec80.png.
+transparent_background: true. Original RGBA output copied unchanged.
+The previous sheet and all original character artwork remain unmodified.
+Runtime registration: src/animation.rs (fixed 384x228 source windows;
+row origins y=200 and y=643, scale 0.25 for every pose).
+
+FINAL PROMPT
+
+Use case: precise-object-edit. Edit target: original supplied Nelinka walk sprite sheet. Production transparent RGBA 1536x1024, 4 columns x 2 rows, eight chronological animation frames.
+
+Fix the rear-leg walk animation decisively. The reference has the SAME rear-leg silhouette in almost every frame, which is WRONG. The new eight frames must visibly have different hind paw positions sweeping in a full loop. Preserve the original dachshund identity, head, body, harness, forelegs, scale and exact placement. Change the HIND legs only. Near hind hip is around local x=110,y=345 in top row. Each column is 384px wide. Bottom-row coordinates below are the same as top-row plus 442px. The only part allowed to move is the two hind legs from hip down.
+
+MANDATORY NEAR HIND PAW centers (local x, global y top row):
+Frame 1 top-left: (165,418), clearly forward of hip, planted.
+Frame 2 top-second: (140,418), planted, less forward.
+Frame 3 top-third: (110,418), vertically below hip, planted.
+Frame 4 top-right: (80,418), clearly BEHIND hip, planted.
+Frame 5 bottom-left: (60,852), furthest behind hip, toe-off; this is y410+442.
+Frame 6 bottom-second: (80,827), lifted and bent, recovering; y385+442.
+Frame 7 bottom-third: (110,825), lifted passing directly under hip; y383+442.
+Frame 8 bottom-right: (143,840), reaching forward and lowering; y398+442.
+Use small rounded dachshund paws; all legs remain attached naturally. Near hind leg must change angle rather than keep the same forward-bent U silhouette. In frames 4 and 5 this near leg points BACKWARD and its paw is LEFT of the hip. In frames 6 and 7 the paw is visibly OFF THE GROUND.
+
+Far hind paw uses this SAME sequence shifted four frames: x60,x80,x110,x143,x165,x140,x110,x80; y410,385,383,398,418,418,418,418 (add442 for bottom row). Far leg thinner and darker and drawn behind near leg. Four total legs, never add a fifth. As one hind leg pushes back on ground, the other hind leg swings forward lifted. Smooth wrap from frame8 to1. Do NOT duplicate the first rear-leg pose in frames4,5,8. A true animated sequence with passing and planted phases, not eight nearly identical illustrations.
+
+True alpha background outside dog. No halo, glow, shadow, labels, floor, grid or background. Keep all non-hind-leg artwork unchanged.
+
