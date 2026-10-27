@@ -57,8 +57,9 @@ test('mobile campaign exposes independent multitouch buttons and releases cancel
   const page = await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
   await ready(page);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-  await page.locator('[data-level="0"]').click();
-  await expect(page.locator('#touch')).toBeVisible();
+  await page.locator('[data-level="0"]').tap();
+  await expect(page.locator('#overlay')).toBeHidden();
+  await expect(page.locator('#touch')).toBeVisible({timeout: 15_000});
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   const client = await page.context().newCDPSession(page);
@@ -66,14 +67,16 @@ test('mobile campaign exposes independent multitouch buttons and releases cancel
     const rect = await page.locator(`[data-bit="${bit}"]`).boundingBox();
     return {id, x:rect!.x+rect!.width/2, y:rect!.y+rect!.height/2};
   }));
+  // CDP acknowledges input dispatch before the renderer necessarily handles it.
+  // Wait for the resulting state, including cancellation, on slow CI renderers.
   await client.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:points});
-  expect(await page.evaluate(()=>(window as any).nelinkaCampaign.bits)).toBe(6);
+  await expect.poll(()=>page.evaluate(()=>(window as any).nelinkaCampaign.bits)).toBe(6);
   await client.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
-  expect(await page.evaluate(()=>(window as any).nelinkaCampaign.bits)).toBe(0);
+  await expect.poll(()=>page.evaluate(()=>(window as any).nelinkaCampaign.bits)).toBe(0);
   await client.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[points[0]]});
-  expect(await page.evaluate(()=>(window as any).nelinkaCampaign.bits)).toBe(2);
+  await expect.poll(()=>page.evaluate(()=>(window as any).nelinkaCampaign.bits)).toBe(2);
   await client.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
-  expect(await page.evaluate(()=>(window as any).nelinkaCampaign.bits)).toBe(0);
+  await expect.poll(()=>page.evaluate(()=>(window as any).nelinkaCampaign.bits)).toBe(0);
   expect(errors).toEqual([]);
   await page.close();
 });

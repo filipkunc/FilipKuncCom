@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/filipkunc/Nelinka",
-  "commit": "72277f8e77330147cb17542b5e0aa756b42a67df",
+  "commit": "6c0f1203f4a45778563c0802515b5a8aa8d8b107",
   "chapters": [
     {
       "id": "uvod",
@@ -51,15 +51,15 @@
     "credits/WALK-V3-PROVENANCE.txt": "07c76a4665a0c362f506d3111460ef12a8e781ce21f7cde0322f846664d515c1",
     "credits/audio/KENNEY-LICENSE.txt": "b49aa9c56b04528b95913de13e506a0f7c5e807b9925db9bfef86af1f91120db",
     "credits/audio/sources.json": "9a599b1d96fa0beb17d65c64bbf491fbabcf2451d687602f57a2e4077c458ecc",
-    "index.html": "00782c5e3444ee6cbc80b1540e59f9a58349563acfad6ced1308cd2dc608535c",
+    "index.html": "5ad03170993ce5a724525d2b2a43eb92d44f56182675ff59deac4736d8e360fb",
     "nelinka-bark.wav": "5a0eeb57e1905b4f7acdaec5a2d50c90ac34f85a42e911bca1b327bd7a3dd0ad",
-    "nelinka.js": "7d078d119991794b38168fe7e9e0fe66be94b5b7c21e9881cab98faa38ffd754",
-    "nelinka_bg.wasm": "017c10bace4ed8bf189f4a5a9cefb69d056ffbae448d6f84786fcf3195de0f98",
+    "nelinka.js": "9949a5bc15960cfc84d54ffaabc4b2e1df57ee3ba501e9efde8d431f8f505401",
+    "nelinka_bg.wasm": "4892b6300d2655704cb24057a517dda1aeeaca0609bfe59b82706108aa070df5",
     "player.css": "23b92dd48b90f09b3be2d44a8d35e10724fe11008e2fc87f4b4ab572b71b7315",
-    "player.js": "77e9ee2a07f0fc291edcdc45c960186c027fbaea552ac407d5c3958c18c682a8",
+    "player.js": "6dffb8352ea0a14216aa1b658de309b2b5c4baed717fd1ec40eb24136538dc97",
     "snippets/nelinka-da87fb703e3d76fd/inline0.js": "3ec11f3acc07c2fce4d2c405587b72ec22e76e9c98877ab4dd731322c39e32e9",
     "snippets/nelinka-da87fb703e3d76fd/inline1.js": "ef904c9a83c35a9ea23403115e3c62a2896f43cd642927f4731c8e8886dd9349",
     "storage.js": "0c491f5ac1e62c99e6800b2c24deb3389a484247a9b9c18e19e5ddc618a3a4c3",
-    "workshop.html": "444fb44b4293fba945e2ac197ba64d3e2a3c55fcb3774cd7bd3a5911df109e7e"
+    "workshop.html": "8436d8af9d6f0e93672fe8293d104e5cae5007592640dfb4eba6bc1b37e3e233"
   }
 }

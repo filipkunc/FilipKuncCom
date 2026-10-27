@@ -22,7 +22,7 @@
       $('stats').textContent = `Kachňátka ${state.rescued}/${state.ducks}  ·  Pamlsky ${state.treats}/${state.totalTreats}  ·  Klíč ${state.key ? '✓' : '—'}`;
       const menu = state.mode === 'menu', won = state.mode === 'won';
       $('title').textContent = menu ? 'Nelinka' : won ? (state.index === state.chapters.length - 1 ? 'Všichni jsou doma!' : 'Hurá, jsme doma!') : 'Chvilka na oddech';
-      $('description').textContent = menu ? 'Šest cest lesem a pod zemí, malí kamarádi a jedna odvážná fenka. Kam se dnes vydáme?' : won ? `${state.chapters[state.index].title} je za námi. Zachráněná kachňátka: ${state.rescued}/${state.ducks}. Pamlsky: ${state.treats}/${state.totalTreats}.` : state.chapters[state.index].description;
+      $('description').textContent = menu ? 'Pět cest lesem a pod zemí, malí kamarádi a jedna odvážná fenka. Kam se dnes vydáme?' : won ? `${state.chapters[state.index].title} je za námi. Zachráněná kachňátka: ${state.rescued}/${state.ducks}. Pamlsky: ${state.treats}/${state.totalTreats}.` : state.chapters[state.index].description;
       $('continue').hidden = won;
       $('continue').textContent = menu ? `Pokračovat · ${state.chapters[state.progress.current].title}` : 'Pokračovat ve hře';
       $('next').hidden = !won || state.index === state.chapters.length - 1;

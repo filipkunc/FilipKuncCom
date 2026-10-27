@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#283f32">
-  <meta name="description" content="Vydej se s Nelinkou na šest lesních dobrodružství. Zachraň kachňátka, najdi klíč a vrať se domů.">
+  <meta name="description" content="Vydej se s Nelinkou na pět lesních dobrodružství. Zachraň kachňátka, najdi klíč a vrať se domů.">
   <title>Nelinka — lesní dobrodružství</title>
-  <link rel="stylesheet" href="player.css?v=72277f8e7733">
+  <link rel="stylesheet" href="player.css?v=6c0f1203f4a4">
 </head>
 <body>
   <canvas id="glcanvas" tabindex="0" aria-label="Hra Nelinka. Šipky nebo A D: pohyb. Mezerník: skok. Šipka dolů: propadnout plošinou. E: štěknout. Escape: pauza."></canvas>
@@ -38,8 +38,8 @@
     <div><button data-bit="8" aria-label="Štěknout">Haf!</button><button data-bit="4" aria-label="Skočit">↑</button><button data-bit="32" aria-label="Propadnout plošinou">↓</button></div>
   </nav>
   <output id="notice" role="status" hidden></output>
-  <script src="player.js?v=72277f8e7733"></script>
-  <script src="storage.js?v=72277f8e7733"></script>
-  <script type="module">import init from "./nelinka.js?v=72277f8e7733";init().catch(error => { console.error(error); document.body.dataset.error=String(error); });document.querySelector("#glcanvas").focus();</script>
+  <script src="player.js?v=6c0f1203f4a4"></script>
+  <script src="storage.js?v=6c0f1203f4a4"></script>
+  <script type="module">import init from "./nelinka.js?v=6c0f1203f4a4";init().catch(error => { console.error(error); document.body.dataset.error=String(error); });document.querySelector("#glcanvas").focus();</script>
 </body>
 </html>
