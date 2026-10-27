@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Nelinka — World Workshop</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#132024;color:#e8efe3;font:14px system-ui}
+    header{height:44px;display:flex;align-items:center;gap:14px;padding:0 18px;border-bottom:1px solid #34454b}
+    header span{margin-right:auto;color:#b0c3c2}button,label{background:#2a3d43;color:inherit;border:0;padding:6px 12px;cursor:pointer;font:inherit}
+    #glcanvas{display:block;width:100vw;height:calc(100vh - 44px);outline:none}
+    #file{display:none}#notice{position:absolute;bottom:8px;left:240px;background:#132024;padding:8px;display:none}
+  </style>
+</head>
+<body>
+  <header><strong>NELINKA</strong><span>World Workshop</span>
+    <button id="export">Export saved JSON</button><label for="file">Import JSON</label><input id="file" type="file" accept=".json,application/json">
+  </header>
+  <canvas id="glcanvas" tabindex="0" aria-label="Nelinka level editor and game"></canvas>
+  <output id="notice"></output>
+  <script src="storage.js?v=72277f8e7733"></script>
+  <script type="module">import init from "./nelinka.js?v=72277f8e7733";init().catch(error => { console.error(error); document.body.dataset.error=String(error); });document.querySelector("#glcanvas").focus();</script>
+</body>
+</html>
