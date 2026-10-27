@@ -1,22 +1,22 @@
 import { test, expect } from '@playwright/test';
 
-const key = 'nelinka-campaign-v4';
+const key = 'nelinka-campaign-v5';
 async function ready(page: import('@playwright/test').Page) {
   await page.goto('/nelinka?campaign=1');
   await expect(page).toHaveURL(/\/nelinka\/index\.html\?campaign=1$/);
   await expect(page.locator('canvas[data-ready=true]')).toBeVisible({timeout: 30_000});
-  await expect(page.locator('.chapter')).toHaveCount(6);
+  await expect(page.locator('.chapter')).toHaveCount(5);
 }
 
-test('pinned Rust game selects six chapters, pauses and keeps editor saves separate', async ({page}) => {
+test('pinned Rust game selects five chapters, pauses and keeps editor saves separate', async ({page}) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await ready(page);
   await page.evaluate(() => localStorage.setItem('nelinka-workshop-level-v2','editor-sentinel'));
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 5; i++) {
     await page.locator(`[data-level="${i}"]`).click();
     await expect(page.locator('#overlay')).toBeHidden();
-    await expect(page.locator('#stats')).toContainText(`Kachňátka 0/${[2, 3, 1, 3, 3, 3][i]}`);
+    await expect(page.locator('#stats')).toContainText(`Kachňátka 0/${[2, 3, 1, 3, 3][i]}`);
     await page.keyboard.down('ArrowRight');
     await page.waitForTimeout(150);
     await page.keyboard.up('ArrowRight');
@@ -29,14 +29,14 @@ test('pinned Rust game selects six chapters, pauses and keeps editor saves separ
     await page.locator('#menu').click();
   }
   await page.reload();
-  await expect(page.locator('#continue')).toContainText('Pod zemí');
+  await expect(page.locator('#continue')).toContainText('Poslední výprava');
   expect(await page.evaluate(() => localStorage.getItem('nelinka-workshop-level-v2'))).toBe('editor-sentinel');
   expect(errors).toEqual([]);
 });
 
 test('saved checkpoint finishes through real movement, advances and retains completion', async ({page}) => {
   // Authored levels/zacatek.json IDs in Nelinka 2ea18c831712. No debug APIs.
-  const progress = {version:4,current:3,completed:Array(6).fill(false),best_treats:Array(6).fill(0),secrets:Array(6).fill(false),runs:Array.from({length:6},()=>({checkpoint:null as number|null,activated:[] as number[],collected:[] as number[]}))};
+  const progress = {version:5,current:3,completed:Array(5).fill(false),best_treats:Array(5).fill(0),secrets:Array(5).fill(false),runs:Array.from({length:5},()=>({checkpoint:null as number|null,activated:[] as number[],collected:[] as number[]}))};
   progress.runs[3] = {checkpoint:36,activated:[1,3,13,14,15],collected:[]};
   await page.addInitScript(({key,progress}) => { if(!localStorage.getItem(key)) localStorage.setItem(key,JSON.stringify(progress)); },{key,progress});
   await ready(page);
@@ -57,8 +57,9 @@ test('mobile campaign exposes independent multitouch buttons and releases cancel
   const page = await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
   await ready(page);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-  await page.locator('[data-level="0"]').click();
-  await expect(page.locator('#touch')).toBeVisible();
+  await page.locator('[data-level="0"]').tap();
+  await expect(page.locator('#overlay')).toBeHidden();
+  await expect(page.locator('#touch')).toBeVisible({timeout: 15_000});
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   const client = await page.context().newCDPSession(page);
@@ -66,14 +67,16 @@ test('mobile campaign exposes independent multitouch buttons and releases cancel
     const rect = await page.locator(`[data-bit="${bit}"]`).boundingBox();
     return {id, x:rect!.x+rect!.width/2, y:rect!.y+rect!.height/2};
   }));
+  // CDP acknowledges input dispatch before the renderer necessarily handles it.
+  // Wait for the resulting state, including cancellation, on slow CI renderers.
   await client.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:points});
-  expect(await page.evaluate(()=>(window as any).nelinkaCampaign.bits)).toBe(6);
+  await expect.poll(()=>page.evaluate(()=>(window as any).nelinkaCampaign.bits)).toBe(6);
   await client.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
-  expect(await page.evaluate(()=>(window as any).nelinkaCampaign.bits)).toBe(0);
+  await expect.poll(()=>page.evaluate(()=>(window as any).nelinkaCampaign.bits)).toBe(0);
   await client.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[points[0]]});
-  expect(await page.evaluate(()=>(window as any).nelinkaCampaign.bits)).toBe(2);
+  await expect.poll(()=>page.evaluate(()=>(window as any).nelinkaCampaign.bits)).toBe(2);
   await client.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
-  expect(await page.evaluate(()=>(window as any).nelinkaCampaign.bits)).toBe(0);
+  await expect.poll(()=>page.evaluate(()=>(window as any).nelinkaCampaign.bits)).toBe(0);
   expect(errors).toEqual([]);
   await page.close();
 });
