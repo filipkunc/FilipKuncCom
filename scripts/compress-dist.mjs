@@ -37,7 +37,13 @@ for await (const file of walk(DIST)) {
   const gz = gzipSync(data, { level: 9 });
   // Only keep variants that actually save space.
   if (br.length < size) await writeFile(`${file}.br`, br);
-  if (gz.length < size) await writeFile(`${file}.gz`, gz);
+  // Preserve gzip artifacts already shipped with a pinned release: their bytes
+  // are covered by its manifest, even when this zlib produces another encoding.
+  if (gz.length < size) {
+    await writeFile(`${file}.gz`, gz, { flag: 'wx' }).catch(error => {
+      if (error.code !== 'EEXIST') throw error;
+    });
+  }
   files++;
   before += size;
   afterBr += Math.min(br.length, size);

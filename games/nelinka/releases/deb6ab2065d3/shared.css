@@ -1,0 +1,16 @@
+/* Native HTML controls shared by the campaign and workshop shell. */
+button{min-height:44px;border-radius:14px;font:inherit;font-weight:700;touch-action:manipulation}
+button:focus-visible{outline:3px solid #a0642b;outline-offset:3px}
+[hidden]{display:none!important}
+#loading{width:min(420px,100%);margin:24px auto;text-align:center}
+#loading-label{font-weight:700}
+#loading-detail{font-size:13px;line-height:1.5;min-height:2em}
+#loading-progress{display:block;width:100%;height:12px;border:0;border-radius:99px;overflow:hidden;accent-color:#426846;background:#d4dfc6}
+#loading-progress::-webkit-progress-bar{background:#d4dfc6;border-radius:99px}
+#loading-progress::-webkit-progress-value{background:#426846;border-radius:99px}
+#loading-progress::-moz-progress-bar{background:#426846;border-radius:99px}
+.loading #description,.loading .actions,.loading .chapters,.loading .controls,.loading .hint{display:none}
+body.loading:not(:has(.sheet)) #loading{position:fixed;inset:25% 20px auto;padding:24px;background:#21373e;border-radius:20px}
+body.loading>header button{visibility:hidden}
+body>header button{min-height:36px;border-radius:10px}
+@media(max-width:600px){body>header{gap:8px;padding:0 8px}body>header span{display:none}body>header strong{margin-right:auto}body>header button{font-size:12px;padding:6px 10px}}

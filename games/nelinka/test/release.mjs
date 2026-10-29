@@ -22,8 +22,11 @@ console.log(`Pinned Nelinka ${manifest.commit.slice(0,12)}: ${files.length} rele
 
 const revision = manifest.commit.slice(0,12);
 for (const page of ['index.html','workshop.html']) {
-  assert.ok((await readFile(join(root,page),'utf8')).includes('nelinka.js?v='+revision), page+' must request the pinned loader');
+  assert.ok((await readFile(join(root,page),'utf8')).includes('loader.js?v='+revision), page+' must request the pinned loader');
 }
+const startup = await readFile(join(root,'loader.js'),'utf8');
+assert.ok(startup.includes("new URL(import.meta.url).search"), 'startup must propagate its pinned revision');
+assert.ok(manifest.sha256['nelinka_bg.wasm.gz'], 'manifest must cover compressed WASM');
 const loader = await readFile(join(root,'nelinka.js'),'utf8');
 assert.ok(loader.includes('nelinka_bg.wasm?v='+revision), 'loader must request the pinned WASM revision');
 assert.ok(manifest.sha256['nelinka_bg.wasm'], 'manifest must cover the WASM module');
