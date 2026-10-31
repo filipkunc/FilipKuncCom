@@ -4,7 +4,7 @@ The current game at `/nelinka/` is a pinned WASM release from the independent
 [Nelinka repository](https://github.com/filipkunc/Nelinka). The player and workshop use wgpu with WebGPU/WebGL2 support. The website does not
 compile Rust and has no build/runtime dependency on a sibling checkout.
 
-- `releases/d84f2d2e5235/`: immutable player, workshop, WASM, audio and credits.
+- `releases/d1e9da497078/`: immutable player, workshop, WASM, audio and credits.
 - `release.json` inside that release identifies the source commit and SHA-256
   of each packaged file. `test/release.mjs` verifies the pin and every hash.
 - `public/nelinka` (at the website root) is a repository-relative symlink to the
@@ -14,6 +14,10 @@ compile Rust and has no build/runtime dependency on a sibling checkout.
   saved progress and the calm rescue mode. New campaign saves are separate.
 
 The current campaign is **První tlapky → Za vodou → Skoky → Začátek → Poslední výprava**. It uses `nelinka-campaign-v5` saves and preserves earlier campaign saves. The finale has been reworked, Burrow remains available in the workshop, and activated checkpoints show a gold leaf emblem on the teal flag.
+
+The workshop at `/nelinka/workshop.html` includes a browser-local level library,
+validated JSON import/export, and a custom campaign builder with ordered chapters.
+Campaigns share as self-contained JSON files; no server storage or database is used.
 
 The remaining source below belongs to that preserved classic game.
 
