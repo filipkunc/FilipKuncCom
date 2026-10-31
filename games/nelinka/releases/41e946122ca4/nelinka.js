@@ -1,14 +1,14 @@
 /* @ts-self-types="./nelinka.d.ts" */
-import { custom_campaign, load, publish, save, workshop_reply, workshop_request, workshop_saved, workshop_tabs } from './snippets/nelinka-da87fb703e3d76fd/inline0.js?v=eca6a7f2589d';
-import * as import1 from "./snippets/nelinka-da87fb703e3d76fd/inline1.js?v=eca6a7f2589d"
-import * as import2 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=eca6a7f2589d"
-import * as import3 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=eca6a7f2589d"
-import * as import4 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=eca6a7f2589d"
-import * as import5 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=eca6a7f2589d"
-import * as import6 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=eca6a7f2589d"
-import * as import7 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=eca6a7f2589d"
-import * as import8 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=eca6a7f2589d"
-import * as import9 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=eca6a7f2589d"
+import { custom_campaign, load, publish, save, workshop_reply, workshop_request, workshop_state } from './snippets/nelinka-da87fb703e3d76fd/inline0.js?v=41e946122ca4';
+import * as import1 from "./snippets/nelinka-da87fb703e3d76fd/inline1.js?v=41e946122ca4"
+import * as import2 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=41e946122ca4"
+import * as import3 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=41e946122ca4"
+import * as import4 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=41e946122ca4"
+import * as import5 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=41e946122ca4"
+import * as import6 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=41e946122ca4"
+import * as import7 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=41e946122ca4"
+import * as import8 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=41e946122ca4"
+import * as import9 from "./snippets/nelinka-da87fb703e3d76fd/inline0.js?v=41e946122ca4"
 
 function __wbg_get_imports() {
     const import0 = {
@@ -2634,12 +2634,8 @@ function __wbg_get_imports() {
             getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
             getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
         },
-        __wbg_workshop_saved_39515350e7d4a122: function(arg0, arg1) {
-            const ret = workshop_saved(getStringFromWasm0(arg0, arg1));
-            return ret;
-        },
-        __wbg_workshop_tabs_b2314b49c4e437f2: function(arg0, arg1) {
-            workshop_tabs(getStringFromWasm0(arg0, arg1));
+        __wbg_workshop_state_02a5049807998bd3: function(arg0, arg1) {
+            workshop_state(getStringFromWasm0(arg0, arg1));
         },
         __wbg_writeBuffer_b4bdd36178348ca5: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4, arg5, arg6) {
             arg0.writeBuffer(arg1, arg2, getArrayU8FromWasm0(arg3, arg4), arg5, arg6);
@@ -2656,7 +2652,7 @@ function __wbg_get_imports() {
             return ret;
         },
         __wbindgen_generic_0000000000000001: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 1451, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 1455, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm_bindgen_6207a10a3459ac8d___convert__closures_____invoke___wasm_bindgen_6207a10a3459ac8d___JsValue______true_);
             return ret;
         },
@@ -3235,7 +3231,7 @@ async function __wbg_init(module_or_path) {
     }
 
     if (module_or_path === undefined) {
-        module_or_path = new URL('nelinka_bg.wasm?v=eca6a7f2589d', import.meta.url);
+        module_or_path = new URL('nelinka_bg.wasm?v=41e946122ca4', import.meta.url);
     }
     const imports = __wbg_get_imports();
 

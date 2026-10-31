@@ -1,7 +1,6 @@
 
 export function workshop_zoom(zoom) { document.querySelector('#glcanvas').dataset.zoom = String(zoom); }
-export function workshop_saved(text) { return window.nelinkaWorkshop?.saved(JSON.parse(text)) ?? true; }
-export function workshop_tabs(text) { window.nelinkaWorkshop?.tabs(JSON.parse(text)); }
+export function workshop_state(text) { window.nelinkaWorkshop?.state(JSON.parse(text)); }
 export function workshop_request() { return window.nelinkaWorkshop?.requests.shift() || ''; }
 export function workshop_reply(text) { window.nelinkaWorkshop?.reply(JSON.parse(text)); }
 export function custom_campaign() { if (!new URLSearchParams(location.search).has('custom')) return ''; try { return sessionStorage.getItem('nelinka-custom-play') || ''; } catch { return ''; } }

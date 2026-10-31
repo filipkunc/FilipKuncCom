@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/filipkunc/Nelinka",
-  "commit": "eca6a7f2589d2a44cdc3773c9f7e9f709889c167",
+  "commit": "41e946122ca46ea912cadf81c9f6e7bf1584ab73",
   "chapters": [
     {
       "id": "uvod",
@@ -51,18 +51,18 @@
     "credits/WALK-V3-PROVENANCE.txt": "07c76a4665a0c362f506d3111460ef12a8e781ce21f7cde0322f846664d515c1",
     "credits/audio/KENNEY-LICENSE.txt": "b49aa9c56b04528b95913de13e506a0f7c5e807b9925db9bfef86af1f91120db",
     "credits/audio/sources.json": "9a599b1d96fa0beb17d65c64bbf491fbabcf2451d687602f57a2e4077c458ecc",
-    "index.html": "d10a205c319458015dbb63f59386d7ce39423c2d51f5598ccd3146db83c6386a",
+    "index.html": "80467ff450cc526e14c61b3bc533a6825544ed14d66a61077a5f7888de48a5e7",
     "loader.js": "7c69d73ee6d8aa43f68cdba7c5cc52e922cd7f81d957db62678edb7264220306",
     "nelinka-bark.wav": "5a0eeb57e1905b4f7acdaec5a2d50c90ac34f85a42e911bca1b327bd7a3dd0ad",
-    "nelinka.js": "86fc53a4f877999e7eccd2ef4139f5560efd3154c80f7acbcd2b1055859d3ddc",
-    "nelinka_bg.wasm": "6b16bfed7c1f1c52d443736befba00c2e935eb189b4053f2837bbb1f0cad4fd6",
-    "nelinka_bg.wasm.gz": "b58b2db3349554e4361335b0180ea4c5044907255a1e3ed14d6f27bf80544a49",
+    "nelinka.js": "57f8dd3cee89ba53f3b1a22a1ac21167e1099c6e32feb073520a9de1abff56d5",
+    "nelinka_bg.wasm": "daf38eee3c1a1c17b994b5707c687e5f14a1e9c2e6356efe3056a401dc08713d",
+    "nelinka_bg.wasm.gz": "1683109babb33996a5aa16cd287fcd86b36df5cad4cf5b4e495a47653d8b4d67",
     "player.css": "39df4ee8b4561a77de7064defe05d5060a634625dc7897d8321dfea39922c328",
     "player.js": "5a110258d727ca91e3d9384e880351542d10c2391d766ba3e41d78c97378e441",
     "shared.css": "fa8b60169e6ce5335b4952efd2a672ee110d0cacea511609fd4e8b582c558616",
-    "snippets/nelinka-da87fb703e3d76fd/inline0.js": "11adc24678bd0e1f6db1a7ddba9d9a2c7a520e6a7da10d4f77ef4c6ed18deeb5",
+    "snippets/nelinka-da87fb703e3d76fd/inline0.js": "e335941fd3447dd6754cb55eae7fee1d65eac90920463d148bd677b726ebf6f6",
     "snippets/nelinka-da87fb703e3d76fd/inline1.js": "ef904c9a83c35a9ea23403115e3c62a2896f43cd642927f4731c8e8886dd9349",
-    "storage.js": "a658419f08fb6f6e96141ecf3113cc6298c5394d6c90fcf51d060e800e3b11cc",
-    "workshop.html": "16feb26ac14b36438587721a963e0b77b76ebbd62c27d636e45cf961a1458c51"
+    "storage.js": "7b71c778827f9e699ae5778df74bb2e875d99a94499ef58950da271e3803e361",
+    "workshop.html": "d5ae544c26cb7b1d721e938156347b17381ab05e306f8ca0ed5bd060341e529d"
   }
 }
