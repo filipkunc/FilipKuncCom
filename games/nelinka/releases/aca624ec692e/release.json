@@ -1,0 +1,68 @@
+{
+  "repository": "https://github.com/filipkunc/Nelinka",
+  "commit": "aca624ec692e88f0d64818e00f4e2c8584e68f7b",
+  "chapters": [
+    {
+      "id": "uvod",
+      "title": "První tlapky",
+      "subtitle": "Po známé pěšině",
+      "description": "Mírné stráně, tajná cesta pod kopcem a první výprava do korun."
+    },
+    {
+      "id": "voda",
+      "title": "Za vodou",
+      "subtitle": "Přes potok do výšek",
+      "description": "Najdi klíč mezi větvemi, probuď květiny a překonej vodní cestu."
+    },
+    {
+      "id": "skoky",
+      "title": "Skoky",
+      "subtitle": "Vzhůru do výšek",
+      "description": "Skákej přes vodu, využij houby a výtahy a zachraň kachňátko."
+    },
+    {
+      "id": "zacatek",
+      "title": "Začátek",
+      "subtitle": "Cesta zpátky domů",
+      "description": "Najdi klíč, zachraň tři kachňátka a vrať se k domečku."
+    },
+    {
+      "id": "posledni",
+      "title": "Poslední výprava",
+      "subtitle": "Ještě jedno dobrodružství",
+      "description": "Překonej vodu a výškové překážky a doveď tři kachňátka domů."
+    }
+  ],
+  "sha256": {
+    "AUDIO.txt": "2d1ffc52cd29b7b433e358d9ee068e5302bd9ac5f2b76f135c8787e78bf34536",
+    "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+    "LICENSE-MIT": "378f5840b258e2779c39418f3f2d7b2ba96f1c7917dd6be0713f88305dbda397",
+    "THIRD_PARTY.md": "52e07642ddf10a5559682c64aeadc441fd01b7f8a996ac1a3191be52ec38ea18",
+    "credits/CREDITS.md": "e935980879560a0213a7df72c83c64a10fe813cc34be119298eb94531fe3a2b7",
+    "credits/LEVELS.md": "d581ca3e33a8710520f959d972fe01499bf5f818978682cbe31d40a8dc960e5e",
+    "credits/MEADOW-CAVE-VINES-PROVENANCE.txt": "dcd10435ffaac454474bac402932df80fb2cc2fe6c5242fe49cc09bc0e1d136e",
+    "credits/MEADOW-CREATURE-WALKS-PROVENANCE.txt": "79a6bb9bf3e3f77f53da90759c7d4524f1c7cd40b7459e13886ae7b480eda67e",
+    "credits/MEADOW-FINISH-PROVENANCE.txt": "1239200813258357b913ec104ff6c8437aa352fe65a1225442392c55f805ca42",
+    "credits/MEADOW-OBJECTS-V2-PROVENANCE.txt": "176cbdd370edba5182be39f6ab9a28f044a196375be8e6cfc1cf9af5a3095e14",
+    "credits/MEADOW-PROVENANCE.txt": "9d68ec7a404cbe4be43a2d0328c779ff69e795b3dff05ede4e40d74775975404",
+    "credits/NotoSans-LICENSE.txt": "e51d69f5e43cacd83ab6e5f3f1a47005380ae08b6d108d444be49e786d127458",
+    "credits/OBJECTS-PROVENANCE.txt": "098b760fc747d21998118cc6ad31c9d62d0749b410ddfb9789308ea5c934f497",
+    "credits/PROVENANCE.txt": "5b5942b87ee3d48d3fe0efe559f8190cb454c7bd5126b2d0a27cd587b9dcf337",
+    "credits/WALK-V3-PROVENANCE.txt": "07c76a4665a0c362f506d3111460ef12a8e781ce21f7cde0322f846664d515c1",
+    "credits/audio/KENNEY-LICENSE.txt": "b49aa9c56b04528b95913de13e506a0f7c5e807b9925db9bfef86af1f91120db",
+    "credits/audio/sources.json": "9a599b1d96fa0beb17d65c64bbf491fbabcf2451d687602f57a2e4077c458ecc",
+    "index.html": "0069d7e8d003f3cdfc46c51470b886acc931b211d3c84482f54bc210c5800b89",
+    "loader.js": "7c69d73ee6d8aa43f68cdba7c5cc52e922cd7f81d957db62678edb7264220306",
+    "nelinka-bark.wav": "5a0eeb57e1905b4f7acdaec5a2d50c90ac34f85a42e911bca1b327bd7a3dd0ad",
+    "nelinka.js": "f3791637435c81f89f304efbe96ce4107947a79d150d5bfe6202009c9940ec7f",
+    "nelinka_bg.wasm": "d0be2f29cea17ea538231bdd0c195ee397f6b877a83cd328429c7ea97c553525",
+    "nelinka_bg.wasm.gz": "7e7dd7500fa018471a11e11e1c76de626dd60e6084d99c5165fc92ebd08272ee",
+    "player.css": "39df4ee8b4561a77de7064defe05d5060a634625dc7897d8321dfea39922c328",
+    "player.js": "5a110258d727ca91e3d9384e880351542d10c2391d766ba3e41d78c97378e441",
+    "shared.css": "fa8b60169e6ce5335b4952efd2a672ee110d0cacea511609fd4e8b582c558616",
+    "snippets/nelinka-da87fb703e3d76fd/inline0.js": "e335941fd3447dd6754cb55eae7fee1d65eac90920463d148bd677b726ebf6f6",
+    "snippets/nelinka-da87fb703e3d76fd/inline1.js": "ef904c9a83c35a9ea23403115e3c62a2896f43cd642927f4731c8e8886dd9349",
+    "storage.js": "1fef40db39fc51e63588167965e87aafe987d4a9397e8c65367d60cae758cf44",
+    "workshop.html": "8ec5e3a76c9b4046f7685dd2947d4278b14c16a5a5cb8ee20fecd8b86dc9c4d8"
+  }
+}
