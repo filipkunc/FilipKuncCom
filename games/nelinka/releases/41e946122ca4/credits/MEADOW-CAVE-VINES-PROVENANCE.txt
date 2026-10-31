@@ -1,0 +1,12 @@
+Nelinka painted cave vines — 2026-10-25
+Asset: meadow-cave-vines.png
+Generated with the built-in imagegen tool, transparent_background: true.
+Source output: exec-3340957f-3812-4b2a-bdb1-70e79f25264f.png
+No image inputs were supplied. Existing meadow foliage was visually inspected
+for palette and texture direction. Original generated RGBA pixels are retained;
+rendering now samples individual leaves in src/vines.rs and src/scenery.rs,
+arranging them on procedural stems without editing the source pixels. Original puppy art and
+its provenance are unchanged.
+
+Final prompt:
+Create a production-ready transparent PNG game sprite: a single loose cluster of three slender trailing cave vines hanging down from the top center, with unequal lengths, the longest ending near the bottom, isolated on fully transparent background. Hand-painted storybook gouache and dry brush watercolor foliage, earthy muted olive/sage greens and warm umber stems. Small irregular pointed oval leaves in alternating staggered positions, naturally curled and angled, visible mottled pigment, fine understated veins, softly broken brush edges. Sparse airy foliage, thin gently curving stems; leafy width about one third of height, portrait composition with transparent margins. At game scale the cluster will be 65 world pixels wide by 170 tall. Botanical naturalism matching textured painted meadow plants, not flat vector shapes or symmetrical paired ellipses. No rocks, no ground, no flowers, no frame, no text, no background haze or shadows. Actual alpha transparency between every leaf and stem.

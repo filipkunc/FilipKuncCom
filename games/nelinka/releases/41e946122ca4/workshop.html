@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Nelinka — World Workshop</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#132024;color:#e8efe3;font:14px system-ui}
+    header{height:44px;display:flex;align-items:center;gap:14px;padding:0 18px;border-bottom:1px solid #34454b}
+    header span{margin-right:auto;color:#b0c3c2}button,label{background:#2a3d43;color:inherit;border:0;padding:6px 12px;cursor:pointer;font:inherit}
+    #glcanvas{display:block;width:100vw;height:calc(100vh - 78px);outline:none}
+    dialog{color:inherit;background:#132024;border:1px solid #657c70;border-radius:12px;width:min(800px,95vw);max-height:85vh;overflow:auto}dialog::backdrop{background:#0009}dialog li{margin:10px 0;display:flex;gap:8px;align-items:center}dialog li span{flex:1}dialog p{line-height:1.5;color:#b0c3c2}button:disabled{opacity:.4;cursor:default}input{font:inherit;padding:6px}#notice{z-index:5;max-width:70vw}
+    #level-tabs{height:34px;display:flex;overflow-x:auto;background:#1d2327;gap:4px;padding:2px 8px}.level-tab{display:flex;flex-shrink:0}.level-tab button{min-height:28px;padding:3px 10px;border-radius:4px}.level-tab [aria-selected="true"]{background:#396452}
+    #file{display:none}#notice{position:absolute;bottom:8px;left:240px;background:#132024;padding:8px;display:none}
+  </style>
+  <link rel="stylesheet" href="shared.css?v=41e946122ca4">
+</head>
+<body class="loading" data-player="index.html">
+  <header><strong>NELINKA</strong><span>World Workshop</span>
+    <button id="new-level">New</button><button id="save-library">Save to library</button><button id="library-open">My library</button><button id="export">Export JSON</button><button id="import" onclick="document.getElementById('file').click()">Import JSON</button><input id="file" type="file" accept=".json,application/json">
+  </header>
+  <nav id="level-tabs" role="tablist" aria-label="Open levels"></nav>
+  <canvas id="glcanvas" tabindex="0" aria-label="Nelinka level editor and game"></canvas>
+  <div id="loading" role="status" aria-live="polite">
+        <p id="loading-label">Loading the workshop…</p>
+        <progress id="loading-progress" aria-labelledby="loading-label"></progress>
+        <p id="loading-detail">The first visit may take a moment.</p>
+        <button id="loading-retry" hidden>Try again</button>
+      </div>
+  <dialog id="library" aria-labelledby="library-title">
+    <button id="library-close" style="float:right">Close</button><h2 id="library-title">My library</h2>
+    <p>Stored only in this browser. Export JSON to share or back up. Clearing site data removes local saves.</p>
+    <p id="library-notice" role="status" aria-live="polite"></p>
+    <button id="builtin-open">Open built-in campaign levels</button>
+    <ul id="library-levels"></ul>
+    <h2>Custom campaign</h2>
+    <label>Campaign name <input id="campaign-name" maxlength="200"></label>
+    <p>Add saved levels above, then arrange their order. Each chapter is a copy of its library level. Edit chapter opens a tab; Save chapter updates that campaign chapter.</p>
+    <ol id="campaign-levels"></ol>
+    <button id="campaign-open">Open all chapters</button><button id="campaign-export">Export campaign JSON</button><button id="campaign-play">Play campaign</button>
+    <p>Tabs retain separate edits, cameras and undo history while this page is open. Save each tab before closing or reloading. Play campaign opens a new browser tab.</p>
+    <p>Import a campaign JSON with Import JSON in the toolbar. No account or upload needed.</p>
+  </dialog>
+  <output id="notice" role="status" aria-live="polite"></output>
+  <script src="storage.js?v=41e946122ca4"></script>
+  <script type="module" src="loader.js?v=41e946122ca4"></script>
+</body>
+</html>
