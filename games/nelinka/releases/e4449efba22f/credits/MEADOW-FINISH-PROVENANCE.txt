@@ -1,0 +1,19 @@
+Generated for Nelinka with the built-in image_gen tool on 2026-10-15.
+Reference: assets/meadow-objects-v2.png (style only).
+Final PNGs are copied unchanged with generated RGBA transparency preserved.
+Runtime source bounds are recorded in meadow-finish.json; no raster resampling.
+Original puppy artwork and its provenance are unchanged.
+
+Treat generation prompt:
+Use case: illustration-story. Asset type: one production transparent game sprite for Nelinka, a painted woodland platformer. The attached atlas is a STYLE REFERENCE ONLY; produce a NEW single isolated sprite, not an edited atlas. Subject: a small golden baked dog biscuit shaped like a chunky horizontal bone, softly rounded ends, toasted warm-brown rim, a few tiny baked pinholes, delicate flour and crumb texture, readable silhouette at 30 pixels wide. Hand-painted gouache and colored-pencil storybook illustration, subtle organic dark-brown edge accents, soft upper-left light and believable thickness. Match the reference's natural materials and muted ochre palette, especially the wooden log and brass key. Composition: one biscuit centered, horizontal with a very slight diagonal lift, fully visible, generous transparent margin. Genuine transparent alpha background, no shadow outside the silhouette, no glow, no text, no labels, no extra objects, no scenery, no vector or plastic rendering.
+
+Optional cleanup variant prompt (not selected; the original already has a clean alpha silhouette):
+undefined
+
+Home generation prompt:
+Use case: illustration-story. Asset type: one production transparent finish-location sprite for Nelinka, a painted woodland platformer. The attached atlas is a STYLE REFERENCE ONLY; produce a NEW single isolated sprite, not an edited atlas. Subject: a welcoming little wooden doghouse for a dachshund, viewed mostly from the front with a little of its right side visible. Low broad warm honey-brown weathered timber walls, terracotta shingle gable roof, dark arched doorway centered on the front, a small bone-shaped wood carving above the doorway, a rolled muted teal blanket just inside. Tiny moss tufts at the base and roof corners, two modest meadow flowers at the base. Charming detailed painted gouache and colored-pencil storybook style, organic brown edge accents, soft upper-left light, natural wood grain and individual shingles. Match the wooden platform, signboard and plants of the style reference. Horizontal ground contact baseline, complete house centered with transparent margin, clear doorway readable when entire house is 145 pixels wide. Genuine transparent alpha background. No animal, no lettering, no flags, no landscape/background, no ground strip, no glow, no cast shadow beyond the object's base, no vector or plastic rendering.
+
+Selected outputs:
+meadow-treat.png: exec-33986f9a-e04a-4c30-b4ce-276ec83ee110.png
+meadow-home.png: exec-30712b66-a6c9-4ce4-933f-c22a6fe74dcc.png
+The image preview shows RGB in transparent regions; inspected RGBA confirms a clean silhouette.

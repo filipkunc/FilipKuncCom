@@ -1,0 +1,47 @@
+Nelinka artwork — built-in image generation, 2026-10-11.
+
+Character reference supplied by the owner:
+/home/fkunc/Projects/fheroes2, branch FK/Azure-Dragon,
+commit c9e6e8b406adb547b092295cc0b1408af608312f,
+files/data/sprites/dachshund_001.png through dachshund_009.png.
+These are the user's custom female dachshund Neli. The source repository was
+read only. Original custom sprites were used as identity/pose references;
+no original Heroes II art is included in this game.
+
+Final assets: assets/nelinka-walk.png and assets/nelinka-actions.png.
+nelinka.mjs records crops, consistent source scales and shoulder/floor anchors.
+The running cycle uses complete poses, with hind-leg push-off and tuck.
+
+Initial design prompt (intermediate, not shipped):
+Use case: illustration-story. Asset: production 2D game animation sprite sheet, true transparent background, 1536x1024 landscape, exactly FOUR columns TWO rows, eight complete full-body poses in equal cells.
+Identity reference images: Neli, the user's female wire-haired dachshund from an existing game. Keep her chocolate/warm brown wiry coat, tan eyebrows and scruffy tan beard/muzzle, long low sausage-shaped torso, very SHORT legs, floppy dark brown ears, slim tapering tail and unmistakable PINK CHEST HARNESS with darker small buckle. No neckerchief. She is cheerful, sweet and determined.
+Style: crisp classic Czech children's cel animation with dark warm-brown outlines and simple warm flat colors; a few small tufts indicate wire hair; expressive friendly eyes. NOT pixel art, not painted realism, not soft blurry fur.
+Create a COHERENT eight-frame light running/trotting loop facing RIGHT, strict side profile, all four feet visible where anatomically appropriate. These are COMPLETE hand-drawn poses, NOT separated parts or rotating sticks. Match the locomotion intention of the reference poses, adapted to short dachshund legs. Bending elbows and rear knees/hocks, visible planted paws and lifted passing paws. Opposite diagonal pair alternates: near front/far rear advance together, near rear/far front opposite.
+Read order left-right top row then left-right bottom row: 1 first diagonal contact, 2 weight absorption knees flex, 3 passing near-front underneath body lifting, 4 opposite pair approaching contact, 5 opposite diagonal contact, 6 weight absorption opposite legs flex, 7 passing opposite legs underneath body, 8 first pair approaching contact to loop smoothly to frame1.
+CRITICAL REGISTRATION: same body length, head size, harness geometry, muzzle/nose position and horizontal body center in every cell. Shoulder/hip stay attached in exactly consistent places. Back stays almost level, only tiny natural vertical bounce. Distinct near/far legs; far legs slightly darker. Keep entire silhouette comfortably inside each cell with generous transparent padding. Identical scale and ground baseline, no drift, no duplicates, no extra legs. Tail and ears may overlap slightly differently but remain consistent length. No frame labels, no text, no ground shadows, no scene, no visible grid, NO green background. Preserve identity from references but make true short dachshund proportions.
+
+Proportion correction used to establish the action design:
+Use case: precise-object-edit. Edit this 8-pose transparent sprite sheet of Nelinka. KEEP all eight cells, pose order, same character face, wire-haired brown coat and tan beard, pink harness, tail, crisp dark outlines, character size consistency, true transparent background. ONE targeted anatomy correction: make her a recognizably LOW, LONG dachshund. The current legs are too tall, resembling a terrier. SHORTEN all four legs in EVERY pose by about FORTY-FIVE percent, keeping their elbow and knee/hock bends and distinct gait poses. Lengthen the horizontal ribcage/loin section behind the pink harness by about 15 percent, within the generous horizontal gaps. Body belly should sit low over the paws. Keep head and face identical across cells, absolutely no taller legs, no stretching or blurry image warp. Redraw crisp complete poses. Each dog remains wholly within its own 4-column 2-row cell. No text, no scenery, no shadows, no opaque backdrop. Preserve the existing animation phase distinctions; change only dachshund proportions.
+
+nelinka-actions.png final prompt:
+Use case: illustration-story. Asset: FOUR action poses for the exact same Nelinka in the reference sheet. 2 columns by 2 rows, square transparent 1024x1024 canvas.
+Keep this female wire-haired dachshund EXACTLY: long low chocolate-brown body, very short legs, tan beard/muzzle and eyebrows, floppy brown ears, slim tapering tail, pink chest harness with dark buckle. Same head shape, proportions, outline weight, color palette and simplified fur details, friendly expression. Strict right-facing side profile. Crisp children's storybook cel illustration, no blur.
+Top left: IDLE standing relaxed on all four short paws, mouth closed friendly smile, tail raised gently. This is also her portrait.
+Top right: JUMP upward, body angled upward 20 degrees, front legs lifted and elbows bent, rear legs pushing off, ears trailing slightly; dachshund stays LONG with SHORT legs.
+Bottom left: DESCENDING / landing-ready, body nearly horizontal, all four short paws reaching softly downward, natural bent knees, head looking ahead.
+Bottom right: BARK, standing securely on all four short paws, mouth open in a friendly woof, head slightly lifted. No sound-effect symbols.
+All four complete dogs at SAME CHARACTER SCALE, each inside its own equal cell, transparent margins all around. Keep identical length of torso and consistent muzzle, ear and harness geometry across poses. NO missing limbs, NO long terrier legs, NO detached parts, NO neckerchief, NO background, NO grid, NO shadows, NO text. True transparent background.
+
+nelinka-walk.png final prompt:
+Use case: illustration-story. Production game sprite sheet, exactly 8 COMPLETE dog poses in 4 columns and 2 rows, 1536x1024, genuinely transparent, no text or grid.
+Reference 1 is the FINAL CHARACTER DESIGN of Nelinka: low long brown wire-haired female dachshund, short legs, tan beard and eyebrows, floppy ears, pink harness, crisp children's storybook outlines. Copy this design faithfully.
+References 2 through 5 are FOUR KEY MOTION POSES from her existing game animation: rear-leg push-off, stretched flight, gathered flight, front-leg contact. They are pose guides only, NOT style or leg-length guides. Draw those key poses and their in-betweens in the sequence below, with the design and short legs of reference 1. Their green backgrounds must NOT appear. Use a bounding RUN cycle, not a trot. The rear legs must clearly PUSH BACK, extend, tuck FORWARD beneath the belly, and land again. Front legs must reach forward then support, fold and extend. Natural bending elbow and hock joints, no rotating cutout sticks.
+Frame1: front paw forward contact, rear legs gathered ready to push.
+Frame2: front supports body, rear feet push backward.
+Frame3: rear feet finishing push, front paws folding, body rising.
+Frame4: stretched aerial stride, both rear legs reaching BACK and both front legs tucked.
+Frame5: gathering for landing, rear knees tucked FORWARD under belly and front paws reach far forward/down.
+Frame6: front paws land, rear paws swing beneath body.
+Frame7: body travels over front support, hind paws now well FORWARD preparing contact.
+Frame8: gathered/recovery back to frame1.
+Every frame must visibly progress the HIND LEGS as well as front. Keep head, torso LENGTH, harness and tail consistent; allow only small body pitch and bounce matching gait. Fixed character scale, fixed horizontal shoulder location within each cell, same floor baseline for planted paws, correct gentle lift for airborne poses. FULL body in every cell, at least 20 pixels transparent margin on left/right so neighboring frames never touch. No shadows, no text, no extra limbs, no decorative props.
